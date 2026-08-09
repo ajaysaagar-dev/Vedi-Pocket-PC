@@ -48,28 +48,20 @@ export async function probeReachable(ip: string, port: number | string): Promise
   const safeIp = cleanIp(ip);
   const targetPort = port || 8000;
   const url = `http://${safeIp}:${targetPort}/health`;
-  const rootUrl = `http://${safeIp}:${targetPort}/`;
 
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 5000);
-    
-    // Try /health first, fallback to /
-    let res = await fetch(url, { signal: ctrl.signal }).catch(() => null);
-    if (!res || !res.ok) {
-      res = await fetch(rootUrl, { signal: ctrl.signal }).catch(() => null);
-    }
-    
-    clearTimeout(timer);
+    const fetchPromise = fetch(url);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timed out')), 5000)
+    );
+
+    const res = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
     if (res && res.ok) {
       return null;
     }
     return `Server replied with HTTP status ${res ? res.status : 'offline'}.`;
   } catch (err: any) {
     const msg = err?.message || String(err);
-    if (msg.includes('Aborted')) {
-      return `Server ${safeIp}:${targetPort} did not respond within 5 seconds. Make sure the server is running and Windows Firewall allows inbound connections.`;
-    }
     return `Could not reach server (${safeIp}:${targetPort}): ${msg}`;
   }
 }
@@ -94,16 +86,17 @@ export async function pairWithHost(
   // 1. Direct POST /pair authentication
   let pairJson: any;
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-
-    const res = await fetch(`${url}/pair`, {
+    const fetchPromise = fetch(`${url}/pair`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin }),
-      signal: ctrl.signal,
     });
-    clearTimeout(timer);
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timed out after 6 seconds')), 6000)
+    );
+
+    const res = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
 
     pairJson = await res.json().catch(() => ({}));
     if (!res.ok || pairJson.status !== 'success' || !pairJson.token) {
@@ -118,12 +111,6 @@ export async function pairWithHost(
     }
   } catch (err: any) {
     const msg = err?.message || String(err);
-    if (msg.includes('Aborted') || msg.includes('Abort')) {
-      return {
-        kind: 'unreachable',
-        reason: `Server at ${safeIp}:${targetPort} did not respond within 6s. Make sure both devices are on the same Wi-Fi network.`,
-      };
-    }
     return {
       kind: 'unreachable',
       reason: `Could not connect to server at ${safeIp}:${targetPort}: ${msg}`,
