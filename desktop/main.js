@@ -40,8 +40,7 @@ async function boot() {
   // Kick off Expo first (mobile dev server), then stream + backend.
   processes.startExpo();
   setTimeout(() => {
-    processes.startStreamServer();
-    processes.startBackend();
+    processes.startServer();
   }, 1200);
 
   app.on('activate', () => {
