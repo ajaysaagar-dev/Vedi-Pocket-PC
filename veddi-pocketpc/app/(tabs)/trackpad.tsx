@@ -79,7 +79,7 @@ export default function TrackpadScreen() {
       lastTranslationX.value = event.translationX;
       lastTranslationY.value = event.translationY;
 
-      if (Math.abs(dx) >= 0.5 || Math.abs(dy) >= 0.5) {
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
         wsClient.send({
           type: 'mouse_move',
           dx,
