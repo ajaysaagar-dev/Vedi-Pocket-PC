@@ -20,7 +20,8 @@ class PCRemoteWSClient {
    */
   connect(device: PairedDevice) {
     const safeIp = cleanIp(device.ip);
-    const safeDevice = { ...device, ip: safeIp };
+    const safePort = Number(device.port) || 8000;
+    const safeDevice: PairedDevice = { ...device, ip: safeIp, port: safePort };
 
     // Already connected (or mid-handshake) to this exact device? Nothing to do.
     if (
@@ -28,7 +29,7 @@ class PCRemoteWSClient {
       (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) &&
       this.currentDevice &&
       this.currentDevice.ip === safeDevice.ip &&
-      this.currentDevice.port === safeDevice.port &&
+      Number(this.currentDevice.port) === safePort &&
       this.currentDevice.token === safeDevice.token
     ) {
       return;
