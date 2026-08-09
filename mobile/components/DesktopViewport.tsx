@@ -52,7 +52,7 @@ interface DesktopViewportProps {
 }
 
 export default function DesktopViewport({
-  streamPort = 8080,
+  streamPort = 8000,
   interactive = true,
 }: DesktopViewportProps) {
   const activeDevice = useDeviceStore(state => state.activeDevice);
@@ -138,7 +138,7 @@ export default function DesktopViewport({
 
   // Determine effective target IP, Port, and Session Token
   const targetIp = customIp || activeDevice?.ip || '127.0.0.1';
-  const targetPort = customPort || String(streamPort);
+  const targetPort = customPort || String(activeDevice?.port || streamPort);
   const targetToken = activeDevice?.token || '';
 
   // Start FPS & KB/s calculation timer
@@ -174,7 +174,7 @@ export default function DesktopViewport({
     stopStream();
 
     const tokenQuery = targetToken ? `?token=${encodeURIComponent(targetToken)}` : '';
-    const wsUrl = `ws://${targetIp}:${targetPort}/ws${tokenQuery}`;
+    const wsUrl = `ws://${targetIp}:${targetPort}/stream${tokenQuery}`;
     console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
     setIsStreaming(true);
 

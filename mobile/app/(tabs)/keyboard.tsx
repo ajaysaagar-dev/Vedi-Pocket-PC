@@ -96,7 +96,7 @@ export default function KeyboardScreen() {
   return (
     <View style={styles.screen}>
       {/* Real-time Desktop Viewport Scene */}
-      <DesktopViewport streamPort={8080} interactive={false} />
+      <DesktopViewport streamPort={8000} interactive={false} />
 
       <TextInput
         ref={inputRef}

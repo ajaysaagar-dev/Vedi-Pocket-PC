@@ -101,7 +101,7 @@ export default function PairingScreen() {
         if (result.kind === 'unreachable') {
           const directDevice = {
             ip,
-            port: parseInt(port, 10) || 8080,
+            port: parseInt(port, 10) || 8000,
             token: pin || 'direct',
             hostname: `PC (${ip})`,
           };

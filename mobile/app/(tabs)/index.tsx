@@ -63,7 +63,7 @@ export default function IndexScreen() {
         // Fallback for direct stream connection
         const directDevice = {
           ip: safeIp,
-          port: parseInt(port, 10) || 8080,
+          port: parseInt(port, 10) || 8000,
           token: pin || 'direct',
           hostname: `PC (${safeIp})`,
         };

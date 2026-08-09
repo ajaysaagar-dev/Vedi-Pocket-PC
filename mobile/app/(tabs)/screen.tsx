@@ -21,14 +21,18 @@ export default function ScreenTabScreen() {
         </View>
 
         {/* Real-time Desktop Viewport Component */}
-        <DesktopViewport streamPort={8080} interactive={true} />
+        <DesktopViewport streamPort={8000} interactive={true} />
 
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Viewport Controls &amp; Gestures</Text>
+          <Text style={styles.infoTitle}>Real-time Screen Stream</Text>
           <Text style={styles.infoBody}>
-            • <Text style={styles.bold}>Tap Screen:</Text> Sends a left mouse click at exact tap coordinates on your PC desktop.
-            {'\n'}• <Text style={styles.bold}>Start/Stop:</Text> Toggle real-time WebSocket binary frame streaming.
-            {'\n'}• <Text style={styles.bold}>Settings (⚙):</Text> Configure custom screen stream server IP &amp; port (default 8080).
+            High-framerate, ultra-low latency desktop screen capture stream.
+            {'\n\n'}
+            <Text style={styles.bold}>Features & Controls:</Text>
+            {'\n'}• <Text style={styles.bold}>Touch & Drag:</Text> Move mouse cursor directly on screen.
+            {'\n'}• <Text style={styles.bold}>Tap:</Text> Left-click active element.
+            {'\n'}• <Text style={styles.bold}>Resolution & FPS:</Text> Adjust in Settings (⚙) dynamically.
+            {'\n'}• <Text style={styles.bold}>Settings (⚙):</Text> Configure custom screen stream server IP &amp; port (default 8000).
             {'\n'}• <Text style={styles.bold}>Fullscreen (⤢):</Text> Expand desktop viewport to fill full mobile screen.
           </Text>
         </View>

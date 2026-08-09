@@ -100,7 +100,7 @@ export default function ControlsScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}>
       {/* Real-time Desktop Viewport Scene */}
-      <DesktopViewport streamPort={8080} interactive={false} />
+      <DesktopViewport streamPort={8000} interactive={false} />
 
       {!isConnected && (
         <View style={styles.warningBanner}>

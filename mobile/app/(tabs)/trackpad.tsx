@@ -191,7 +191,7 @@ export default function TrackpadScreen() {
 
       {/* Embedded Desktop Viewport (if toggled) */}
       {showScreenViewport && (
-        <DesktopViewport streamPort={8080} interactive={true} />
+        <DesktopViewport streamPort={8000} interactive={true} />
       )}
 
       {/* Help card */}
