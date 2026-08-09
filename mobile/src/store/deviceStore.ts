@@ -76,7 +76,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
 
       // Auto-connect to newly paired device
-      const { wsClient } = require('../ws/client');
+      const { wsClient } = require('../data/ws/client');
       wsClient.connect(device);
     } catch (e) {
       console.warn("Failed to save added device to secure store:", e);
@@ -111,7 +111,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         }
       }
 
-      const { wsClient } = require('../ws/client');
+      const { wsClient } = require('../data/ws/client');
       if (nextActive) {
         wsClient.connect(nextActive);
       } else {
@@ -139,7 +139,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
         }
       }
 
-      const { wsClient } = require('../ws/client');
+      const { wsClient } = require('../data/ws/client');
       if (device) {
         wsClient.connect(device);
       } else {

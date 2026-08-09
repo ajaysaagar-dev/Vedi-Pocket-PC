@@ -1,4 +1,4 @@
-import { useDeviceStore, PairedDevice } from '../store/deviceStore';
+import { useDeviceStore, PairedDevice } from '../../store/deviceStore';
 import { cleanIp } from './pairing';
 
 class PCRemoteWSClient {

@@ -6,7 +6,7 @@
  * /health first (no auth) so we can tell the user exactly what failed.
  */
 
-import { PairedDevice } from '../store/deviceStore';
+import { PairedDevice } from '../../store/deviceStore';
 
 export type PairResult =
   | { kind: 'ok'; device: PairedDevice; hostname: string }
