@@ -1,0 +1,17 @@
+# Vedi Pocket PC - Master Python Requirements
+-e ./packages/agent-core
+
+# Screen Stream Server & Remote Agent dependencies
+mss
+Pillow
+aiohttp
+pyautogui
+fastapi
+uvicorn
+websockets
+zeroconf
+pycaw; sys_platform == 'win32'
+comtypes; sys_platform == 'win32'
+pystray
+qrcode
+psutil

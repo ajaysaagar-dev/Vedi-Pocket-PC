@@ -1,3 +1,6 @@
+# Runtime deps for the control agent. The shared domain code lives
+# in `../packages/agent-core`; install it editable with:
+#     pip install -e ../packages/agent-core
 fastapi
 uvicorn
 websockets
@@ -7,6 +10,9 @@ pycaw; sys_platform == 'win32'
 comtypes; sys_platform == 'win32'
 pystray
 pillow
-cryptography
 qrcode
 psutil
+
+# Test deps
+pytest
+httpx

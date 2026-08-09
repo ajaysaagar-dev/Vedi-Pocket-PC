@@ -20,23 +20,40 @@ The local server agent that runs on your laptop/PC to handle mouse, keyboard, me
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠 Installation & Setup
+
+After the hexagonal-architecture refactor this folder is a **thin shell** over the shared `agent_core` package:
+
+```
+vedi-pocketpc-backend/
+├── main.py                    composition root — only place adapters get constructed
+├── presentation/
+│   ├── http/                  FastAPI routers (pairing, system, media)
+│   └── ws/                    WebSocket transport + dispatch table
+├── infrastructure/            logging, mDNS discovery
+└── tests/                     composition-root smoke + fake-driver tests
+```
 
 ```bash
-# Navigate to agent directory
-cd agent
+# 1. Install the shared domain package
+pip install -e ../packages/agent-core
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate      # On Windows
-source venv/bin/activate   # On macOS/Linux
-
-# Install dependencies
+# 2. Backend deps
 pip install -r requirements.txt
 
-# Start the agent
+# 3. Run
 python main.py
 ```
+
+---
+
+## 🔐 Login Flow (unchanged)
+
+`POST /pair` accepts `{"pin": "1234"}` and returns
+`{"token": "...", "status": "success"}`. The mobile app's
+`pairing.tsx` already speaks this contract — the refactor deliberately
+preserves the wire format byte-for-byte so existing installs keep
+working.
 
 ---
 
@@ -49,3 +66,9 @@ build_agent.bat
 ```
 
 Output binary will be located at `dist/PCRemoteAgent.exe`.
+
+## 🧪 Tests
+
+```bash
+pytest tests/
+```
