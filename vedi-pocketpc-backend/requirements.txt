@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+websockets
+pyautogui
+zeroconf
+pycaw; sys_platform == 'win32'
+comtypes; sys_platform == 'win32'
+pystray
+pillow
+cryptography
+qrcode
+psutil

@@ -1,0 +1,68 @@
+{
+  "name": "vedi-pocketpc-desktop",
+  "version": "1.0.0",
+  "description": "VediPocketPC Desktop Controller",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [
+    "electron",
+    "pocketpc",
+    "screen-stream",
+    "remote-control",
+    "expo"
+  ],
+  "author": "VediPocketPC Team",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.vedipocketpc.desktop",
+    "productName": "VediPocketPC Controller",
+    "copyright": "Copyright © 2026 VediPocketPC",
+    "asar": false,
+    "win": {
+      "target": ["nsis", "zip"],
+      "requestedExecutionLevel": "asInvoker",
+      "forceCodeSigning": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "styles.css"
+    ],
+    "extraResources": [
+      {
+        "from": "screen-stream-server",
+        "to": "screen-stream-server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "veddi-pocketpc",
+        "to": "veddi-pocketpc",
+        "filter": ["**/*", "!node_modules/.cache/**", "!.git/**"]
+      },
+      {
+        "from": "vedi-pocketpc-backend",
+        "to": "vedi-pocketpc-backend",
+        "filter": ["**/*"]
+      }
+    ]
+  }
+}
