@@ -37,7 +37,7 @@ class PairDevice:
             return PairResult(accepted=True, device_token=token)
 
         # 2. Check if client_ip was previously connected/paired
-        if client_ip and self._tokens.verify(SessionToken(value="check_ip"), client_ip=client_ip):
+        if client_ip and self._tokens.verify(SessionToken(value="0" * 32), client_ip=client_ip):
             token = self._tokens.issue(client_ip=client_ip)
             return PairResult(accepted=True, device_token=token)
 
