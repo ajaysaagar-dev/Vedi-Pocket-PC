@@ -110,7 +110,26 @@ if exist "%ROOT_DIR%\veddi-pocketpc\package.json" (
 
 echo.
 echo =======================================================
-echo [STEP 5/6] Installing Screen Stream Server Python dependencies...
+echo [STEP 5/7] Installing Core Python package (agent-core)...
+echo =======================================================
+if exist "%ROOT_DIR%\requirements.txt" (
+    cd /d "%ROOT_DIR%"
+    python -m pip install -r requirements.txt
+    if !errorlevel! neq 0 (
+        echo [ERROR] Failed to install master Python requirements / agent-core.
+        set HAS_ERRORS=1
+    ) else (
+        echo [SUCCESS] Core Python package (agent-core) installed successfully.
+    )
+) else (
+    if exist "%ROOT_DIR%\packages\agent-core" (
+        python -m pip install -e "%ROOT_DIR%\packages\agent-core"
+    )
+)
+
+echo.
+echo =======================================================
+echo [STEP 6/7] Installing Screen Stream Server Python dependencies...
 echo =======================================================
 if exist "%ROOT_DIR%\screen-stream-server\requirements.txt" (
     cd /d "%ROOT_DIR%\screen-stream-server"
@@ -127,7 +146,7 @@ if exist "%ROOT_DIR%\screen-stream-server\requirements.txt" (
 
 echo.
 echo =======================================================
-echo [STEP 6/6] Installing PC Remote Backend Python dependencies...
+echo [STEP 7/7] Installing PC Remote Backend Python dependencies...
 echo =======================================================
 if exist "%ROOT_DIR%\vedi-pocketpc-backend\requirements.txt" (
     cd /d "%ROOT_DIR%\vedi-pocketpc-backend"
