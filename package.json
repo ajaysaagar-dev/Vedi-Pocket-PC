@@ -28,8 +28,10 @@
     "appId": "com.vedipocketpc.desktop",
     "productName": "VediPocketPC Controller",
     "copyright": "Copyright © 2026 VediPocketPC",
+    "icon": "assets/icon.ico",
     "asar": false,
     "win": {
+      "icon": "assets/icon.ico",
       "target": ["nsis", "zip"],
       "requestedExecutionLevel": "asInvoker",
       "forceCodeSigning": false
@@ -42,6 +44,7 @@
     },
     "files": [
       "controller/**/*",
+      "assets/**/*",
       "index.html",
       "renderer.js",
       "styles.css"

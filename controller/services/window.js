@@ -11,6 +11,7 @@ function createWindow() {
     minWidth: 880,
     minHeight: 650,
     title: 'VediPocketPC Controller',
+    icon: path.join(__dirname, '..', '..', 'assets', 'icon.ico'),
     backgroundColor: '#0F131A',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
