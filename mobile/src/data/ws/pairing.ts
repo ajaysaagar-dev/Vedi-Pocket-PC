@@ -87,35 +87,28 @@ export async function pairWithHost(
   port: number | string,
   pin: string
 ): Promise<PairResult> {
-  // 1. Reachability probe
-  const reachErr = await probeReachable(ip, port);
-  if (reachErr) return { kind: 'unreachable', reason: reachErr };
+  const safeIp = cleanIp(ip);
+  const targetPort = typeof port === 'string' ? parseInt(port, 10) || 8000 : port || 8000;
+  const url = `http://${safeIp}:${targetPort}`;
 
-  const url = serverUrl(ip, port);
-
-  // 2. Pair
+  // 1. Direct POST /pair authentication
   let pairJson: any;
   try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+
     const res = await fetch(`${url}/pair`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin }),
+      signal: ctrl.signal,
     });
+    clearTimeout(timer);
+
     pairJson = await res.json().catch(() => ({}));
     if (!res.ok || pairJson.status !== 'success' || !pairJson.token) {
       if (res.status === 400) {
         return { kind: 'bad-pin', reason: pairJson.detail || 'Invalid PIN code.' };
-      }
-      // If server doesn't require PIN authentication (e.g. 404 / 405 on stream server), pair directly
-      if (res.status === 404 || res.status === 405) {
-        const safeIp = cleanIp(ip);
-        const device: PairedDevice = {
-          ip: safeIp,
-          port: typeof port === 'string' ? parseInt(port, 10) : port,
-          token: pin || 'stream_paired_token',
-          hostname: `PC Stream (${safeIp})`,
-        };
-        return { kind: 'ok', device, hostname: device.hostname };
       }
       return {
         kind: 'server-error',
@@ -124,16 +117,23 @@ export async function pairWithHost(
       };
     }
   } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (msg.includes('Aborted') || msg.includes('Abort')) {
+      return {
+        kind: 'unreachable',
+        reason: `Server at ${safeIp}:${targetPort} did not respond within 6s. Make sure both devices are on the same Wi-Fi network.`,
+      };
+    }
     return {
       kind: 'unreachable',
-      reason: `Lost connection during pairing: ${err?.message || String(err)}`,
+      reason: `Could not connect to server at ${safeIp}:${targetPort}: ${msg}`,
     };
   }
 
   const token: string = pairJson.token;
 
-  // 3. Status (best-effort — fall back to a default hostname)
-  let hostname = 'Unknown PC';
+  // 2. Fetch /status for hostname (best-effort)
+  let hostname = `PC (${safeIp})`;
   try {
     const statusRes = await fetch(`${url}/status`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -143,13 +143,12 @@ export async function pairWithHost(
       hostname = statusJson.hostname || hostname;
     }
   } catch {
-    // Non-fatal — pairing still succeeded.
+    // Non-fatal
   }
 
-  const safeIp = cleanIp(ip);
   const device: PairedDevice = {
     ip: safeIp,
-    port: typeof port === 'string' ? parseInt(port, 10) || 8000 : port || 8000,
+    port: targetPort,
     token,
     hostname,
   };
