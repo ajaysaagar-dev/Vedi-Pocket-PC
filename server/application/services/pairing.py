@@ -23,13 +23,22 @@ class PairDevice:
         self._pin = configured_pin
         self._tokens = tokens
 
-    def pair(self, supplied_pin: str) -> PairResult:
-        """Compare `supplied_pin` against the configured PIN.
+    def pair(self, supplied_pin: str, client_ip: str | None = None) -> PairResult:
+        """Compare `supplied_pin` against the configured PIN or check if client_ip is known.
 
         Returns a `PairResult` whose `accepted` flag is the only thing
         the HTTP layer needs to decide between 200 and 400.
         """
-        if supplied_pin != self._pin.value:
-            return PairResult(accepted=False, reason="Invalid PIN code")
-        token = self._tokens.issue()
-        return PairResult(accepted=True, device_token=token)
+        clean_pin = (supplied_pin or "").strip()
+
+        # 1. Direct PIN match
+        if clean_pin == self._pin.value:
+            token = self._tokens.issue(client_ip=client_ip)
+            return PairResult(accepted=True, device_token=token)
+
+        # 2. Check if client_ip was previously connected/paired
+        if client_ip and self._tokens.verify(SessionToken(value="check_ip"), client_ip=client_ip):
+            token = self._tokens.issue(client_ip=client_ip)
+            return PairResult(accepted=True, device_token=token)
+
+        return PairResult(accepted=False, reason="Invalid PIN code")

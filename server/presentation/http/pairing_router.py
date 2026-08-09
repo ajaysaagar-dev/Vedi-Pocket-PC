@@ -16,12 +16,10 @@ def build_router(container) -> APIRouter:
     @router.post("/pair", response_model=PairResponse)
     def pair_device(req: PairRequest, request: Request):
         client_ip = request.client.host if request.client else None
-        result: PairResult = container.pair_device.pair(req.pin)
+        result: PairResult = container.pair_device.pair(req.pin, client_ip=client_ip)
         
-        # In stream context, empty pin could be allowed if it was local, but here we unify.
-        # It's better to just enforce PIN checking since the mobile app sends one.
         if not result.accepted or result.device_token is None:
-            print(f"[AUTH] Failed pairing attempt with PIN: {req.pin} from {client_ip}")
+            print(f"[AUTH] Failed pairing attempt with PIN: '{req.pin}' from {client_ip} (Expected: '{container.pairing_pin.value}')")
             raise HTTPException(status_code=400, detail=result.reason or "Invalid PIN code")
             
         if client_ip:
