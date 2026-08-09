@@ -86,7 +86,7 @@ class PCRemoteWSClient {
         if (msg.type === 'pong') {
           // heartbeat alive
         } else if (msg.type === 'auth_result' && msg.status === 'failed') {
-          console.warn('[WS] Auth failed:', msg.message);
+          console.warn('[WS] Auth failed:', msg.message || 'Invalid token');
           this.disconnect();
         }
       } catch (e) {

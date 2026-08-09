@@ -55,6 +55,8 @@ ALLOWED_CONTROL_TYPES = {
     "hotkey",
     "key_down",
     "key_up",
+    "auth",
+    "ping",
 }
 
 
@@ -130,7 +132,7 @@ class StreamManager:
                 return ws
 
             if payload.get("type") != "auth" or not self._verify_auth_message(payload.get("token", "")):
-                await ws.send_json({"type": "auth_result", "status": "failed"})
+                await ws.send_json({"type": "auth_result", "status": "failed", "message": "Invalid token"})
                 await ws.close(code=1008)
                 return ws
 
@@ -281,6 +283,16 @@ class StreamManager:
 
             elif msg_type == "key_up":
                 return
+
+            elif msg_type == "auth":
+                token_str = str(payload.get("token", ""))
+                if self._verify_auth_message(token_str):
+                    await ws.send_json({"type": "auth_result", "status": "success"})
+                else:
+                    await ws.send_json({"type": "auth_result", "status": "failed", "message": "Invalid token"})
+
+            elif msg_type == "ping":
+                await ws.send_json({"type": "pong"})
 
         except Exception as e:
             print(f"[ERROR] Executing {msg_type} from {client_ip}: {e}", flush=True)
