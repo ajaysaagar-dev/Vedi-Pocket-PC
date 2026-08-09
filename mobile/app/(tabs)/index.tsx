@@ -60,17 +60,8 @@ export default function IndexScreen() {
         Alert.alert('Paired', `Connected to ${result.hostname}.`);
         wsClient.connect(result.device);
       } else {
-        // Fallback for direct stream connection
-        const directDevice = {
-          ip: safeIp,
-          port: parseInt(port, 10) || 8000,
-          token: pin || 'direct',
-          hostname: `PC (${safeIp})`,
-        };
-        await addDevice(directDevice);
-        setPin('');
-        setShowManualForm(false);
-        Alert.alert('Added Device', `Configured connection to ${safeIp}:${port}.`);
+        const { title, body } = describePairError(result);
+        Alert.alert(title, body);
       }
     } catch (err) {
       console.error(err);

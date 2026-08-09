@@ -112,19 +112,6 @@ export default function PairingScreen() {
         await addDevice(result.device);
         router.back();
       } else {
-        // If probing failed on backend port, fallback to adding direct device for screen streaming
-        if (result.kind === 'unreachable') {
-          const directDevice = {
-            ip,
-            port: parseInt(port, 10) || 8000,
-            token: pin || 'direct',
-            hostname: `PC (${ip})`,
-          };
-          await addDevice(directDevice);
-          router.back();
-          return;
-        }
-
         const { title, body } = describePairError(result);
         Alert.alert(title, body, [{ text: 'Try again', onPress: () => setScanned(false) }]);
       }
