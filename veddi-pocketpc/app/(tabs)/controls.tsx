@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import {
   Volume2,
   VolumeX,
@@ -98,7 +98,7 @@ export default function ControlsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}>
       {/* Real-time Desktop Viewport Scene */}
       <DesktopViewport streamPort={8080} interactive={false} />
 
@@ -187,7 +187,7 @@ export default function ControlsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -278,8 +278,11 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: palette.background,
+  },
+  scrollContent: {
     padding: Spacing.md,
     gap: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
 
   warningBanner: {
