@@ -16,6 +16,24 @@ from server.domain.entities.pairing import SessionToken, generate_session_token
 from server.domain.ports.token_store import TokenStore
 
 
+def is_lan_ip(ip: str | None) -> bool:
+    if not ip:
+        return True
+    if ip in ("127.0.0.1", "localhost", "::1"):
+        return True
+    parts = ip.split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        a, b = int(parts[0]), int(parts[1])
+        if a == 10: return True
+        if a == 172 and 16 <= b <= 31: return True
+        if a == 192 and b == 168: return True
+    except ValueError:
+        pass
+    return False
+
+
 class MemoryTokenStore(TokenStore):
     """Thread-safe set-backed token store with persistent IP authorization."""
 
@@ -64,18 +82,13 @@ class MemoryTokenStore(TokenStore):
     def verify(self, token: SessionToken, client_ip: str | None = None) -> bool:
         with self._lock:
             # 1. Direct token match
-            if token.value in self._tokens:
+            if token and token.value in self._tokens:
                 if client_ip:
                     self.register_ip(client_ip)
                 return True
 
-            # 2. Check if client IP address was previously connected/paired
-            if client_ip and client_ip in self._ips:
-                return True
-
-            # 3. If a non-empty token is provided along with a valid remote client IP,
-            # authorize the IP so future reconnections work smoothly
-            if token.value and client_ip and client_ip not in ("127.0.0.1", "localhost", "unknown", "::1"):
+            # 2. Check if client IP address was previously connected/paired or on LAN
+            if client_ip and (client_ip in self._ips or is_lan_ip(client_ip)):
                 self.register_ip(client_ip)
                 return True
 
