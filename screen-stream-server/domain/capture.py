@@ -96,6 +96,15 @@ class ScreenCapturer:
             img = Image.frombytes("RGB", raw_shot.size, raw_shot.bgra, "raw", "BGRX")
             orig_w, orig_h = img.size
 
+            if orig_w > max_width or orig_h > max_height:
+                ratio = min(max_width / orig_w, max_height / orig_h)
+                new_w = max(1, int(orig_w * ratio))
+                new_h = max(1, int(orig_h * ratio))
+                img = img.resize((new_w, new_h), Image.Resampling.BILINEAR)
+
+            scale_x = img.width / orig_w if orig_w > 0 else 1.0
+            scale_y = img.height / orig_h if orig_h > 0 else 1.0
+
             # Draw hardware mouse cursor overlay (Windows-only).
             if sys.platform == "win32":
                 try:
@@ -113,35 +122,23 @@ class ScreenCapturer:
                     ci = _CURSORINFO()
                     ci.cbSize = ctypes.sizeof(_CURSORINFO)
                     if user32.GetCursorInfo(ctypes.byref(ci)) and (ci.flags & 1):
-                        cx = ci.ptScreenPos.x - mon.get("left", 0)
-                        cy = ci.ptScreenPos.y - mon.get("top", 0)
+                        cx = int((ci.ptScreenPos.x - mon.get("left", 0)) * scale_x)
+                        cy = int((ci.ptScreenPos.y - mon.get("top", 0)) * scale_y)
 
-                        scale_x = (min(max_width / orig_w, max_height / orig_h) if (orig_w > max_width or orig_h > max_height) else 1.0)
-                        scale_y = scale_x
-
-                        mcx = int(cx * scale_x)
-                        mcy = int(cy * scale_y)
-
-                        if 0 <= mcx < (orig_w * scale_x) and 0 <= mcy < (orig_h * scale_y):
+                        if 0 <= cx < img.width and 0 <= cy < img.height:
                             draw = ImageDraw.Draw(img)
                             arrow = [
                                 (cx, cy),
-                                (cx, cy + 16),
-                                (cx + 4, cy + 12),
-                                (cx + 8, cy + 18),
-                                (cx + 11, cy + 16),
-                                (cx + 7, cy + 11),
-                                (cx + 12, cy + 11),
+                                (cx, cy + 14),
+                                (cx + 4, cy + 10),
+                                (cx + 7, cy + 15),
+                                (cx + 10, cy + 13),
+                                (cx + 6, cy + 9),
+                                (cx + 10, cy + 9),
                             ]
                             draw.polygon(arrow, fill=(255, 255, 255), outline=(0, 0, 0))
                 except Exception:
                     pass
-
-            if orig_w > max_width or orig_h > max_height:
-                ratio = min(max_width / orig_w, max_height / orig_h)
-                new_w = max(1, int(orig_w * ratio))
-                new_h = max(1, int(orig_h * ratio))
-                img = img.resize((new_w, new_h), Image.Resampling.BILINEAR)
 
             self._last_resolution = (img.width, img.height)
 
