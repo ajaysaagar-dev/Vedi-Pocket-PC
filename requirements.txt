@@ -1,5 +1,5 @@
 # Vedi Pocket PC - Master Python Requirements
--e ./packages/agent-core
+
 
 # Screen Stream Server & Remote Agent dependencies
 mss

@@ -2,7 +2,7 @@
   "name": "vedi-pocketpc-desktop",
   "version": "1.0.0",
   "description": "Vedi Pocket PC Desktop Controller",
-  "main": "controller/main.js",
+  "main": "desktop/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
@@ -43,26 +43,18 @@
       "createStartMenuShortcut": true
     },
     "files": [
-      "controller/**/*",
-      "assets/**/*",
-      "index.html",
-      "renderer.js",
-      "styles.css"
+      "desktop/**/*",
+      "assets/**/*"
     ],
     "extraResources": [
       {
-        "from": "screen-stream-server",
-        "to": "screen-stream-server",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "veddi-pocketpc",
-        "to": "veddi-pocketpc",
+        "from": "mobile",
+        "to": "mobile",
         "filter": ["**/*", "!node_modules/.cache/**", "!.git/**"]
       },
       {
-        "from": "vedi-pocketpc-backend",
-        "to": "vedi-pocketpc-backend",
+        "from": "server",
+        "to": "server",
         "filter": ["**/*"]
       }
     ]

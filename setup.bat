@@ -57,7 +57,7 @@ echo.
 echo ========================================================
 echo [3/3] Installing Mobile App (Expo) Dependencies...
 echo ========================================================
-cd veddi-pocketpc
+cd mobile
 call npm install
 cd ..
 if %ERRORLEVEL% NEQ 0 (

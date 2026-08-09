@@ -1,5 +1,0 @@
-Metadata-Version: 2.4
-Name: agent-core
-Version: 1.0.0
-Summary: Shared domain package used by vedi-pocketpc-backend and screen-stream-server.
-Requires-Python: >=3.10
