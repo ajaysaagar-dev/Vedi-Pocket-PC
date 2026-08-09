@@ -93,6 +93,36 @@ def _auth_ok(_msg: dict, _ctrl: ControlInput) -> dict:
     return {"type": "auth_result", "status": "success"}
 
 
+def _media_playpause(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="playpause"))
+    return None
+
+
+def _media_next(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="nexttrack"))
+    return None
+
+
+def _media_prev(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="prevtrack"))
+    return None
+
+
+def _volume_up(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="volumeup"))
+    return None
+
+
+def _volume_down(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="volumedown"))
+    return None
+
+
+def _volume_mute(_msg: dict, ctrl: ControlInput) -> dict | None:
+    ctrl.execute(KeyPressCommand(key="volumemute"))
+    return None
+
+
 # Public dispatch table — wire type → handler.
 DISPATCH: Dict[str, Handler] = {
     "mouse_move": _mouse_move,
@@ -103,6 +133,12 @@ DISPATCH: Dict[str, Handler] = {
     "hotkey": _hotkey,
     "ping": _ping,
     "auth": _auth_ok,
+    "media_playpause": _media_playpause,
+    "media_next": _media_next,
+    "media_prev": _media_prev,
+    "volume_up": _volume_up,
+    "volume_down": _volume_down,
+    "volume_mute": _volume_mute,
 }
 
 

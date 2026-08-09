@@ -57,6 +57,12 @@ ALLOWED_CONTROL_TYPES = {
     "key_up",
     "auth",
     "ping",
+    "media_playpause",
+    "media_next",
+    "media_prev",
+    "volume_up",
+    "volume_down",
+    "volume_mute",
 }
 
 
@@ -283,6 +289,24 @@ class StreamManager:
 
             elif msg_type == "key_up":
                 return
+
+            elif msg_type == "media_playpause":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="playpause"))
+
+            elif msg_type == "media_next":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="nexttrack"))
+
+            elif msg_type == "media_prev":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="prevtrack"))
+
+            elif msg_type == "volume_up":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="volumeup"))
+
+            elif msg_type == "volume_down":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="volumedown"))
+
+            elif msg_type == "volume_mute":
+                await asyncio.to_thread(self.control_input.execute, KeyPressCommand(key="volumemute"))
 
             elif msg_type == "auth":
                 token_str = str(payload.get("token", ""))

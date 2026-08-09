@@ -15,6 +15,8 @@ import { useDeviceStore } from '../../src/store/deviceStore';
 import DesktopViewport from '../../components/DesktopViewport';
 import { palette, Spacing, Radius, Typography, Elevation } from '../../constants/theme-m3';
 
+import wsClient from '../../src/ws/client';
+
 export default function ControlsScreen() {
   const connectionStatus = useDeviceStore(state => state.connectionStatus);
   const activeDevice = useDeviceStore(state => state.activeDevice);
@@ -30,8 +32,10 @@ export default function ControlsScreen() {
       Alert.alert('Not connected', 'Please connect to a device first.');
       return;
     }
+
+    let httpSuccess = false;
     try {
-      const serverUrl = `http://${activeDevice.ip}:${activeDevice.port}`;
+      const serverUrl = `http://${activeDevice.ip}:${activeDevice.port || 8000}`;
       const response = await fetch(`${serverUrl}${endpoint}`, {
         method,
         headers: {
@@ -40,9 +44,33 @@ export default function ControlsScreen() {
         },
         body: body ? JSON.stringify(body) : null,
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (response.ok) {
+        httpSuccess = true;
+      }
     } catch (err) {
-      console.warn(`Error sending command to ${endpoint}:`, err);
+      console.warn(`HTTP endpoint ${endpoint} unreachable, attempting WebSocket fallback:`, err);
+    }
+
+    // Dual-dispatch / Fallback over active WebSocket connection
+    const wsMap: Record<string, string> = {
+      '/media/playpause': 'media_playpause',
+      '/media/next': 'media_next',
+      '/media/prev': 'media_prev',
+      '/media/volume/up': 'volume_up',
+      '/media/volume/down': 'volume_down',
+      '/media/volume/mute': 'volume_mute',
+      '/system/lock': 'system_lock',
+      '/system/sleep': 'system_sleep',
+      '/system/shutdown': 'system_shutdown',
+    };
+
+    const wsType = wsMap[endpoint];
+    if (wsType) {
+      wsClient.send({ type: wsType });
+      httpSuccess = true;
+    }
+
+    if (!httpSuccess) {
       Alert.alert('Connection error', 'Failed to reach the PC. Ensure the agent is running.');
     }
   };
