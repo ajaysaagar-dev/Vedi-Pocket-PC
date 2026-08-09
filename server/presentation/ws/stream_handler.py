@@ -24,9 +24,19 @@ def build_router(container) -> APIRouter:
         client_ip = websocket.client.host if websocket.client else None
 
         # 1) Auth
-        token_to_verify = token or ""
-        if container.token_store.verify(SessionToken(value=token_to_verify), client_ip=client_ip):
-            authenticated = True
+        token_str = token or ""
+        if len(token_str) >= 16:
+            try:
+                authenticated = container.token_store.verify(SessionToken(value=token_str), client_ip=client_ip)
+            except Exception:
+                authenticated = False
+        elif client_ip:
+            try:
+                authenticated = container.token_store.verify(SessionToken(value="0" * 32), client_ip=client_ip)
+            except Exception:
+                authenticated = False
+
+        if authenticated:
             await websocket.send_json({"type": "auth_result", "status": "success"})
         else:
             try:
@@ -35,7 +45,7 @@ def build_router(container) -> APIRouter:
                 message = json.loads(data)
                 if message.get("type") == "auth":
                     auth_token = message.get("token", "")
-                    if container.token_store.verify(SessionToken(value=auth_token), client_ip=client_ip):
+                    if len(auth_token) >= 16 and container.token_store.verify(SessionToken(value=auth_token), client_ip=client_ip):
                         authenticated = True
                         await websocket.send_json({"type": "auth_result", "status": "success"})
                     else:
