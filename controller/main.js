@@ -1,5 +1,5 @@
 /**
- * VediPocketPC Controller — Electron entry point.
+ * Vedi Pocket PC — Electron entry point.
  *
  * Thin wiring layer: every line of business logic lives in
  * `services/*` or `ipc/handlers.js`. This file should stay close to

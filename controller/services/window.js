@@ -10,7 +10,7 @@ function createWindow() {
     height: 780,
     minWidth: 880,
     minHeight: 650,
-    title: 'VediPocketPC Controller',
+    title: 'Vedi Pocket PC',
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.ico'),
     backgroundColor: '#0F131A',
     webPreferences: {

@@ -1,4 +1,4 @@
-# VediPocketPC — Electron Controller
+# Vedi Pocket PC — Electron Controller
 
 The desktop controller that bundles the screen-stream server, the
 FastAPI backend, and the Expo dev server into a single tray-friendly
