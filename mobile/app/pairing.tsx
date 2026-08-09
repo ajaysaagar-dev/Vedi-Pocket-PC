@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Camera, RefreshCcw } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
-import { pairWithHost, describePairError } from '../src/data/ws/pairing';
+import { pairWithHost, describePairError, cleanIp } from '../src/data/ws/pairing';
 import { palette, Spacing, Radius, Typography, Elevation } from '../constants/theme-m3';
 
 export default function PairingScreen() {
