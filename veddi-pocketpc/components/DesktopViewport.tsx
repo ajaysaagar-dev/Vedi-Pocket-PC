@@ -136,9 +136,10 @@ export default function DesktopViewport({
     })
   ).current;
 
-  // Determine effective target IP and Port
+  // Determine effective target IP, Port, and Session Token
   const targetIp = customIp || activeDevice?.ip || '127.0.0.1';
   const targetPort = customPort || String(streamPort);
+  const targetToken = activeDevice?.token || '';
 
   // Start FPS & KB/s calculation timer
   useEffect(() => {
@@ -172,7 +173,8 @@ export default function DesktopViewport({
   const startStream = useCallback(() => {
     stopStream();
 
-    const wsUrl = `ws://${targetIp}:${targetPort}/ws`;
+    const tokenQuery = targetToken ? `?token=${encodeURIComponent(targetToken)}` : '';
+    const wsUrl = `ws://${targetIp}:${targetPort}/ws${tokenQuery}`;
     console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
     setIsStreaming(true);
 
@@ -184,6 +186,9 @@ export default function DesktopViewport({
       ws.onopen = () => {
         console.log('[ScreenViewport] Connected to screen stream');
         try {
+          if (targetToken) {
+            ws.send(JSON.stringify({ type: 'auth', token: targetToken }));
+          }
           ws.send(
             JSON.stringify({
               type: 'set_stream_settings',
@@ -227,7 +232,7 @@ export default function DesktopViewport({
       console.error('[ScreenViewport] Failed to open stream socket:', e);
       setIsStreaming(false);
     }
-  }, [targetIp, targetPort, stopStream]);
+  }, [targetIp, targetPort, targetToken, selectedRes.w, selectedRes.h, selectedFps, stopStream]);
 
   // Auto-start screen stream on component mount & clean up on unmount
   useEffect(() => {
