@@ -96,14 +96,13 @@ class StreamManager:
 
     # ---------------- auth ----------------
     def _verify_query_token(self, request: web.Request) -> bool:
-        """Check the `?token=...` query string."""
-        token = request.query.get("token")
-        if not token:
-            return False
-        return self.token_store.verify(SessionToken(value=token))
+        """Check the `?token=...` query string or authorized IP."""
+        token = request.query.get("token") or ""
+        client_ip = request.remote or "unknown"
+        return self.token_store.verify(SessionToken(value=token), client_ip=client_ip)
 
-    def _verify_auth_message(self, token_str: str) -> bool:
-        return self.token_store.verify(SessionToken(value=token_str))
+    def _verify_auth_message(self, token_str: str, client_ip: str | None = None) -> bool:
+        return self.token_store.verify(SessionToken(value=token_str), client_ip=client_ip)
 
     # ---------------- handler entry ----------------
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
@@ -137,7 +136,7 @@ class StreamManager:
                 await ws.close(code=1008)
                 return ws
 
-            if payload.get("type") != "auth" or not self._verify_auth_message(payload.get("token", "")):
+            if payload.get("type") != "auth" or not self._verify_auth_message(payload.get("token", ""), client_ip=client_ip):
                 await ws.send_json({"type": "auth_result", "status": "failed", "message": "Invalid token"})
                 await ws.close(code=1008)
                 return ws

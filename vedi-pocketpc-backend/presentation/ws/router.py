@@ -23,13 +23,15 @@ def build_router(container) -> APIRouter:
     ):
         await websocket.accept()
         authenticated = False
+        client_ip = websocket.client.host if websocket.client else None
 
-        # 1) Query-param auth (preferred path — saves a round-trip)
-        if token and container.token_store.verify(SessionToken(value=token)):
+        # 1) Query-param auth or persistent IP verification
+        token_to_verify = token or ""
+        if container.token_store.verify(SessionToken(value=token_to_verify), client_ip=client_ip):
             authenticated = True
-            print("[WS] WebSocket client connected and authenticated via query parameter.")
+            print(f"[WS] WebSocket client connected and authenticated (IP: {client_ip}).")
         else:
-            print("[WS] Client connected. Awaiting authentication message...")
+            print(f"[WS] Client {client_ip} connected. Awaiting authentication message...")
 
         try:
             while True:
@@ -43,13 +45,13 @@ def build_router(container) -> APIRouter:
                 # 2) Auth handshake (only needed if query-param auth failed)
                 if not authenticated:
                     if message.get("type") == "auth":
-                        auth_token = message.get("token")
-                        if auth_token and container.token_store.verify(SessionToken(value=auth_token)):
+                        auth_token = message.get("token", "")
+                        if container.token_store.verify(SessionToken(value=auth_token), client_ip=client_ip):
                             authenticated = True
-                            print("[WS] Client authenticated via auth message.")
+                            print(f"[WS] Client {client_ip} authenticated via auth message.")
                             await websocket.send_json({"type": "auth_result", "status": "success"})
                         else:
-                            print(f"[WS] Client authentication failed with token: {auth_token}")
+                            print(f"[WS] Client {client_ip} authentication failed with token: {auth_token}")
                             await websocket.send_json({"type": "auth_result", "status": "failed", "message": "Invalid token"})
                             await websocket.close(code=1008)
                             return

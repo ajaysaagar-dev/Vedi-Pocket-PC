@@ -48,9 +48,10 @@ def verify_token_header(
             detail="Invalid authorization header format (Bearer <token> expected)",
         )
 
+    client_ip = request.client.host if request.client else None
     container = request.app.state.container
     token = SessionToken(value=parts[1])
-    if not container.token_store.verify(token):
+    if not container.token_store.verify(token, client_ip=client_ip):
         raise HTTPException(status_code=401, detail="Invalid session token")
     return token
 
@@ -71,12 +72,15 @@ def build_router(container) -> APIRouter:
         }
 
     @router.post("/pair", response_model=PairResponse)
-    def pair_device(req: PairRequest):
+    def pair_device(req: PairRequest, request: Request):
+        client_ip = request.client.host if request.client else None
         result: PairResult = container.pair_device.pair(req.pin)
         if not result.accepted or result.device_token is None:
-            print(f"[AUTH] Failed pairing attempt with PIN: {req.pin}")
+            print(f"[AUTH] Failed pairing attempt with PIN: {req.pin} from {client_ip}")
             raise HTTPException(status_code=400, detail=result.reason or "Invalid PIN code")
-        print("[AUTH] Device successfully paired! Token issued.")
+        if client_ip:
+            container.token_store.register_ip(client_ip)
+        print(f"[AUTH] Device successfully paired from {client_ip}! Token issued.")
         return PairResponse(token=result.device_token.value, status="success")
 
     @router.get("/status")
