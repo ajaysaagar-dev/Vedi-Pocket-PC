@@ -37,6 +37,7 @@ class ProcessManager {
     this.currentExpoPort = 8081;
     this.currentExpoUrl = '';
     this.lanIp = network.getLanIp();
+    this.pairingPin = '';
 
     this._statusListeners = new Set();
     this._logListeners = new Set();
@@ -56,6 +57,7 @@ class ProcessManager {
     const payload = {
       lanIp: this.lanIp,
       serverPort: 8000,
+      pairingPin: this.pairingPin,
       expoPort: this.currentExpoPort,
       isServerRunning: this.isServerRunning,
       isExpoRunning: this.isExpoRunning,
@@ -179,7 +181,15 @@ class ProcessManager {
     this.isServerRunning = true;
     this._emitStatus();
 
-    this.serverProcess.stdout.on('data', (data) => this._emitLog('python-log', `[Server] ${data.toString()}`));
+    this.serverProcess.stdout.on('data', (data) => {
+      const text = data.toString();
+      this._emitLog('python-log', `[Server] ${text}`);
+      const pinMatch = text.match(/Pairing PIN:\s*(\d{4})/i);
+      if (pinMatch) {
+        this.pairingPin = pinMatch[1];
+        this._emitStatus();
+      }
+    });
     this.serverProcess.stderr.on('data', (data) => this._emitLog('python-log', `[Server Err] ${data.toString()}`));
     this.serverProcess.on('error', (err) => {
       console.error(`[Server Spawn Error] ${err.message}`);

@@ -62,14 +62,26 @@ export default function PairingScreen() {
     let port = '8000';
     let pin = '';
 
-    // Handle Format A: ip:port:pin
-    const colonParts = str.split(':');
-    if (colonParts.length === 3 && !str.includes('://')) {
+    // Check for query parameter PIN (?pin=1234 or &pin=1234)
+    const pinQueryMatch = str.match(/[?&]pin=(\d{4})/i);
+    if (pinQueryMatch) {
+      pin = pinQueryMatch[1];
+    }
+
+    // Strip scheme if present
+    const cleanStr = str.replace(/^(https?:\/\/|wss?:\/\/)/i, '').split('/')[0].split('?')[0];
+    const colonParts = cleanStr.split(':');
+
+    if (colonParts.length >= 3) {
+      // ip:port:pin
       ip = colonParts[0];
       port = colonParts[1];
-      pin = colonParts[2];
+      pin = pin || colonParts[2];
+    } else if (colonParts.length === 2) {
+      // ip:port
+      ip = colonParts[0];
+      port = colonParts[1];
     } else {
-      // Handle Format B: http://10.242.210.183:8080 or ws://10.242.210.183:8080/ws
       const ipMatch = str.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
       if (ipMatch) {
         ip = ipMatch[0];
@@ -79,6 +91,9 @@ export default function PairingScreen() {
         }
       }
     }
+
+    // Clean IP address format
+    ip = cleanIp(ip);
 
     if (!ip) {
       Alert.alert(

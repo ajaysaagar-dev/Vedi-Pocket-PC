@@ -9,13 +9,15 @@ const qr = require('../services/qr');
 
 function statusPayload(processes) {
   const lanIp = network.getLanIp();
-  const serverUrl = `http://${lanIp}:8000`;
+  const pin = processes.pairingPin ? `:${processes.pairingPin}` : '';
+  const serverUrl = `${lanIp}:8000${pin}`;
   const wsUrl = `ws://${lanIp}:8000/ws`;
   const expoUrl = processes.currentExpoUrl || `exp://${lanIp}:${processes.currentExpoPort}`;
 
   return {
     lanIp,
     serverPort: 8000,
+    pairingPin: processes.pairingPin || '',
     expoPort: processes.currentExpoPort,
     isServerRunning: processes.isServerRunning,
     isExpoRunning: processes.isExpoRunning,
