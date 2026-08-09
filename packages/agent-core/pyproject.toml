@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-core"
+version = "1.0.0"
+description = "Shared domain package used by vedi-pocketpc-backend and screen-stream-server."
+requires-python = ">=3.10"
+dependencies = []
+
+# This package has no runtime dependencies — adapters bring their own
+# (pyautogui, pycaw, comtypes, zeroconf, …). That keeps domain code testable
+# on machines where those heavy native libraries aren't installed.
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent_core*"]
+
+[tool.setuptools.package-data]
+agent_core = ["py.typed"]
