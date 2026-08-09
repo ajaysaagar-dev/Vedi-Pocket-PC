@@ -1,4 +1,4 @@
-# 🖥️ Vedi Pocket PC
+# Vedi Pocket PC
 
 Turn your phone into a wireless trackpad, keyboard, and screen for your PC — no cloud, no cables, no internet required. Vedi Pocket PC streams your desktop to your phone and sends mouse, keyboard, media, and power commands back, all over your local Wi-Fi.
 
