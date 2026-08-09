@@ -235,6 +235,179 @@ New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direct
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
 
+## Dependencies
+
+This project has **4 runtimes**: one Node/Electron app, one Node/Expo app, and
+two independent Python services. Each has its own dependency set — there is
+no single `npm install` or `pip install` that covers everything.
+
+---
+
+## Node.js — Desktop Controller (`controller/` / repo root)
+
+**Requires:** Node.js 18+, npm
+
+```bash
+cd controller   # or repo root if not using the restructured layout
+npm install
+```
+
+| Package | Version | Purpose |
+|---|---|---|
+| `qrcode` | ^1.5.4 | Generates the pairing/Expo QR codes shown in the desktop UI |
+| `electron` | ^33.4.11 *(devDependency)* | Desktop app shell/runtime |
+| `electron-builder` | ^25.1.8 *(devDependency)* | Packages the app into a Windows installer (`npm run build`) |
+
+No other runtime dependencies — `services/` and `ipc/` in the clean-architecture
+scaffold use only Node built-ins (`os`, `path`, `fs`, `child_process`, `events`).
+
+---
+
+## Node.js — Mobile App (`veddi-pocketpc/`)
+
+**Requires:** Node.js 18+, npm, [Expo Go](https://expo.dev/go) on the test device
+
+```bash
+cd veddi-pocketpc
+npm install
+```
+
+| Package | Version | Purpose |
+|---|---|---|
+| `expo` | ~57.0.11 | Core Expo runtime |
+| `expo-router` | ~57.0.11 | File-based navigation (`app/(tabs)/...`) |
+| `expo-camera` | ~57.0.3 | QR code scanning for pairing |
+| `expo-constants` | ~57.0.9 | App/device constants |
+| `expo-font` | ~57.0.1 | Custom font loading |
+| `expo-haptics` | ~57.0.1 | Trackpad tap/click haptic feedback |
+| `expo-image` | ~57.0.2 | Optimized image rendering |
+| `expo-linking` | ~57.0.5 | Deep-link handling |
+| `expo-secure-store` | ~57.0.1 | Storing paired-device tokens securely on device |
+| `expo-splash-screen` | ~57.0.5 | App launch splash screen |
+| `expo-status-bar` | ~57.0.1 | Status bar styling |
+| `expo-symbols` | ~57.0.2 | SF Symbols (iOS) support |
+| `expo-system-ui` | ~57.0.2 | System UI theming |
+| `expo-web-browser` | ~57.0.2 | In-app browser (external links) |
+| `react` | 19.2.3 | UI library |
+| `react-dom` | 19.2.3 | Web target rendering (Expo web) |
+| `react-native` | 0.86.2 | Mobile runtime |
+| `react-native-gesture-handler` | ~2.32.0 | Trackpad pan/tap gesture detection |
+| `react-native-reanimated` | 4.5.1 | Animated trackpad feedback (spring/gesture-driven UI) |
+| `react-native-safe-area-context` | ~5.7.0 | Safe-area insets across devices |
+| `react-native-screens` | ~4.26.0 | Native screen container optimization |
+| `react-native-svg` | 15.15.4 | SVG icon rendering |
+| `react-native-web` | ~0.21.0 | Web target support |
+| `react-native-worklets` | 0.10.1 | Worklet runtime backing Reanimated |
+| `@expo/vector-icons` | ^15.0.3 | Icon set |
+| `@react-navigation/bottom-tabs` | ^7.4.0 | Tab bar (Screen / Trackpad / Keyboard / Controls) |
+| `@react-navigation/elements` | ^2.6.3 | Navigation UI primitives |
+| `@react-navigation/native` | ^7.1.8 | Core navigation |
+| `lucide-react-native` | ^0.379.0 | Icon components used across screens |
+| `zustand` | ^4.5.2 | `deviceStore.ts` state management |
+
+**Dev dependencies:**
+
+| Package | Version | Purpose |
+|---|---|---|
+| `typescript` | ~6.0.3 | Type checking |
+| `@types/react` | ~19.2.4 | React type definitions |
+| `eslint` | ^9.25.0 | Linting |
+| `eslint-config-expo` | ~57.0.1 | Expo's ESLint ruleset |
+
+---
+
+## Python — Remote Agent Backend (`vedi-pocketpc-backend/`)
+
+**Requires:** Python 3.10+ (3.11+ recommended), Windows 10/11 (uses `pycaw`, Win32 `ctypes`)
+
+```bash
+cd vedi-pocketpc-backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+If using the clean-architecture scaffold, also install the shared domain
+package first (editable install, so changes propagate immediately):
+
+```bash
+pip install -e ../packages/agent-core
+```
+
+| Package | Purpose |
+|---|---|
+| `fastapi` | HTTP + WebSocket framework for pairing, system, media, and `/ws` routes |
+| `uvicorn[standard]` | ASGI server running FastAPI |
+| `zeroconf` | mDNS advertising (`_pcremote._tcp.local.`) so the mobile app can auto-discover the PC |
+| `psutil` | Battery status, network interface enumeration for LAN IP detection |
+| `pycaw` | Windows Core Audio control (get/set system volume) |
+| `comtypes` | COM interop required by `pycaw` |
+| `pyautogui` | Mouse movement, clicks, scrolling, keyboard input, hotkeys |
+| `qrcode` | Renders the pairing QR code printed to the terminal on startup |
+| `pystray` | System tray icon with "Show Connection Info" / "Quit" menu |
+| `pillow` | Image handling, used by both `pystray` (tray icon) and `qrcode` |
+| `pytest` *(dev)* | Running the unit tests in `tests/` |
+
+---
+
+## Python — Screen Stream Server (`screen-stream-server/`)
+
+**Requires:** Python 3.10+ (3.11+ recommended), Windows 10/11
+
+```bash
+cd screen-stream-server
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+If using the clean-architecture scaffold, also install the shared domain
+package:
+
+```bash
+pip install -e ../packages/agent-core
+```
+
+| Package | Purpose |
+|---|---|
+| `aiohttp` | HTTP + WebSocket server for `/`, `/health`, `/status`, `/ws` |
+| `mss` | Fast cross-platform screen capture |
+| `pyautogui` | Trackpad-driven mouse/keyboard control (shared logic if using `agent_core`) |
+| `pillow` | JPEG encoding of captured frames, cursor-overlay drawing |
+
+---
+
+## Quick reference — install everything
+
+```bash
+# Desktop controller
+cd controller && npm install && cd ..
+
+# Mobile app
+cd veddi-pocketpc && npm install && cd ..
+
+# Shared Python domain package (clean-architecture scaffold only)
+pip install -e packages/agent-core
+
+# Backend agent
+cd vedi-pocketpc-backend && pip install -r requirements.txt && cd ..
+
+# Screen stream server
+cd screen-stream-server && pip install -r requirements.txt && cd ..
+```
+
+## Notes
+
+- `pycaw`, `comtypes`, and the `ctypes`/`pystray` tray/volume/power code paths
+  are **Windows-only** — on macOS/Linux those features silently no-op (the
+  original code already guards this with `sys.platform == 'win32'` checks).
+- `pyautogui` is listed in **both** Python services' requirements today
+  because the original code duplicates the input-control logic. Once merged
+  onto `agent_core` (see the clean-architecture scaffold), it's still a
+  direct dependency of `agent_core` itself, and both services get it
+  transitively through `pip install -e packages/agent-core` — you can drop
+  it from each service's own `requirements.txt` at that point.
+
 ## 🧰 Tech Stack
 
 <div align="center">
