@@ -19,7 +19,7 @@ from typing import Optional
 
 import webview
 import qrcode
-from bottle import Bottle, request, response
+from bottle import Bottle, request, response, static_file
 
 def get_lan_ip() -> str:
     """Find local Wi-Fi / Ethernet LAN IP address."""
@@ -187,6 +187,8 @@ HTML_CONTENT = """<!DOCTYPE html>
     };
     tailwind.config = darkThemeConfig;
 </script>
+<link rel="icon" type="image/png" href="/assets/icon.png"/>
+<link rel="shortcut icon" href="/assets/icon.png"/>
 <style>
         body.theme-dark {
             background-color: #131313;
@@ -228,9 +230,14 @@ HTML_CONTENT = """<!DOCTYPE html>
 
 <!-- Top Navigation Container -->
 <header class="glass-panel w-full max-w-container-max-width rounded-xl p-6 flex justify-between items-center mb-6">
-  <div>
-    <h1 class="font-headline-lg text-headline-lg text-primary">Vedi Pocket PC</h1>
-    <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">pywebview Apple Glassmorphism Desktop Controller</p>
+  <div class="flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-outline-variant p-1.5 flex items-center justify-center shadow-md overflow-hidden">
+      <img src="/assets/icon.png" class="w-full h-full object-contain rounded-lg" alt="Vedi Pocket PC Logo" />
+    </div>
+    <div>
+      <h1 class="font-headline-lg text-headline-lg text-primary">Vedi Pocket PC</h1>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">pywebview Apple Glassmorphism Desktop Controller</p>
+    </div>
   </div>
   
   <div class="flex items-center gap-3">
@@ -654,6 +661,13 @@ bottle_app = Bottle()
 @bottle_app.route('/')
 def route_index():
     return HTML_CONTENT
+
+@bottle_app.route('/assets/icon.png')
+def route_icon():
+    icon_path = os.path.join(manager.mobile_dir, "assets", "images", "android-icon-foreground.png")
+    if not os.path.exists(icon_path):
+        icon_path = os.path.join(manager.mobile_dir, "assets", "images", "favicon.png")
+    return static_file(os.path.basename(icon_path), root=os.path.dirname(icon_path))
 
 @bottle_app.route('/api/status')
 def route_status():
