@@ -266,9 +266,10 @@ def main() -> None:
     server_thread = threading.Thread(target=start_fastapi, daemon=True)
     server_thread.start()
 
-    startup_timer = threading.Timer(2.0, lambda: show_pairing_info_dialog(container))
-    startup_timer.daemon = True
-    startup_timer.start()
+    if os.environ.get("HIDE_DIALOG") != "1":
+        startup_timer = threading.Timer(2.0, lambda: show_pairing_info_dialog(container))
+        startup_timer.daemon = True
+        startup_timer.start()
 
     run_tray(container)
 

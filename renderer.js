@@ -55,9 +55,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const info = await window.electronAPI.getServerInfo();
 
-      txtLanIp.textContent = info.lanIp;
-      txtWsUrl.textContent = info.wsUrl;
-      txtExpoUrl.textContent = info.expoUrl;
+      if (txtLanIp) txtLanIp.textContent = info.lanIp;
+      if (txtWsUrl) txtWsUrl.textContent = info.wsUrl;
+      if (txtExpoUrl) txtExpoUrl.textContent = info.expoUrl;
       if (txtPairingUrl) {
         // Show the encoded QR payload, not the URL the WebSocket uses.
         // That's what the mobile scanner parses.
@@ -74,24 +74,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       // alone is enough to grant a session token via its /pair endpoint.
       const hasQrPayload = !!(info.pairingUrl || info.serverQr);
       if (hasQrPayload && info.serverQr) {
-        imgServerQr.src = info.serverQr;
-        imgServerQr.style.display = 'block';
-        serverQrLoader.style.display = 'none';
+        if (imgServerQr) {
+          imgServerQr.src = info.serverQr;
+          imgServerQr.style.display = 'block';
+        }
+        if (serverQrLoader) serverQrLoader.style.display = 'none';
       } else {
-        imgServerQr.style.display = 'none';
-        serverQrLoader.style.display = 'flex';
-        serverQrLoader.classList.add('loading');
+        if (imgServerQr) imgServerQr.style.display = 'none';
+        if (serverQrLoader) {
+          serverQrLoader.style.display = 'flex';
+          serverQrLoader.classList.add('loading');
+        }
       }
 
       // Render Expo Mobile App QR (Requires Expo Server running)
       if (info.isExpoRunning && info.expoQr) {
-        imgExpoQr.src = info.expoQr;
-        imgExpoQr.style.display = 'block';
-        expoQrLoader.style.display = 'none';
+        if (imgExpoQr) {
+          imgExpoQr.src = info.expoQr;
+          imgExpoQr.style.display = 'block';
+        }
+        if (expoQrLoader) expoQrLoader.style.display = 'none';
       } else {
-        imgExpoQr.style.display = 'none';
-        expoQrLoader.style.display = 'flex';
-        expoQrLoader.classList.add('loading');
+        if (imgExpoQr) imgExpoQr.style.display = 'none';
+        if (expoQrLoader) {
+          expoQrLoader.style.display = 'flex';
+          expoQrLoader.classList.add('loading');
+        }
       }
 
       // Update status badges. The spawn flags are the optimistic view;
@@ -99,28 +107,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 // on the pill) is the truth — it actually fetched /health. When
 // they disagree we mark the pill as "stalled" so the user knows
 // the Node process says "running" but the network disagrees.
-      const probeStream = pillPythonStatus.dataset.probeStream;
-      const probeBackend = pillPythonStatus.dataset.probeBackend;
+      const probeStream = pillPythonStatus ? pillPythonStatus.dataset.probeStream : undefined;
+      const probeBackend = pillPythonStatus ? pillPythonStatus.dataset.probeBackend : undefined;
       const streamReachable = probeStream === 'true';
       const backendReachable = probeBackend === 'true';
 
-      if (info.isPythonRunning && !streamReachable) {
-        pillPythonStatus.textContent = 'Stalled';
-        pillPythonStatus.className = 'status-pill stalled';
-      } else if (streamReachable) {
-        pillPythonStatus.textContent = 'Running';
-        pillPythonStatus.className = 'status-pill online';
-      } else {
-        pillPythonStatus.textContent = 'Stopped';
-        pillPythonStatus.className = 'status-pill';
+      if (pillPythonStatus) {
+        if (info.isPythonRunning && !streamReachable) {
+          pillPythonStatus.textContent = 'Stalled';
+          pillPythonStatus.className = 'status-pill stalled';
+        } else if (streamReachable) {
+          pillPythonStatus.textContent = 'Running';
+          pillPythonStatus.className = 'status-pill online';
+        } else {
+          pillPythonStatus.textContent = 'Stopped';
+          pillPythonStatus.className = 'status-pill';
+        }
       }
 
-      if (info.isExpoRunning) {
-        pillExpoStatus.textContent = 'Running';
-        pillExpoStatus.className = 'status-pill online';
-      } else {
-        pillExpoStatus.textContent = 'Stopped';
-        pillExpoStatus.className = 'status-pill';
+      if (pillExpoStatus) {
+        if (info.isExpoRunning) {
+          pillExpoStatus.textContent = 'Running';
+          pillExpoStatus.className = 'status-pill online';
+        } else {
+          pillExpoStatus.textContent = 'Stopped';
+          pillExpoStatus.className = 'status-pill';
+        }
       }
 
       // We also surface backend reachability — if the backend says
@@ -141,15 +153,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      if (hasQrPayload && info.isExpoRunning) {
-        globalStatusDot.className = 'status-dot active';
-        globalStatusText.textContent = `All Servers Active (${info.lanIp})`;
-      } else if (hasQrPayload || info.isExpoRunning) {
-        globalStatusDot.className = 'status-dot active';
-        globalStatusText.textContent = `Partial Active (${info.lanIp})`;
-      } else {
-        globalStatusDot.className = 'status-dot off';
-        globalStatusText.textContent = 'Servers Offline';
+      if (globalStatusDot && globalStatusText) {
+        if (hasQrPayload && info.isExpoRunning) {
+          globalStatusDot.className = 'status-dot active';
+          globalStatusText.textContent = `All Servers Active (${info.lanIp})`;
+        } else if (hasQrPayload || info.isExpoRunning) {
+          globalStatusDot.className = 'status-dot active';
+          globalStatusText.textContent = `Partial Active (${info.lanIp})`;
+        } else {
+          globalStatusDot.className = 'status-dot off';
+          globalStatusText.textContent = 'Servers Offline';
+        }
       }
     } catch (err) {
       console.error('Error fetching server info:', err);
@@ -181,9 +195,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   btnRefreshInfo.addEventListener('click', refreshServerInfo);
 
-  btnCopyServerUrl.addEventListener('click', () => copyToClipboard(txtWsUrl.textContent));
-  btnCopyExpoUrl.addEventListener('click', () => copyToClipboard(txtExpoUrl.textContent));
-  btnCopyIp.addEventListener('click', () => copyToClipboard(txtLanIp.textContent));
+  btnCopyServerUrl.addEventListener('click', () => {
+    const textToCopy = txtPairingUrl ? txtPairingUrl.textContent : (txtWsUrl ? txtWsUrl.textContent : '');
+    copyToClipboard(textToCopy);
+  });
+  btnCopyExpoUrl.addEventListener('click', () => copyToClipboard(txtExpoUrl ? txtExpoUrl.textContent : ''));
+  btnCopyIp.addEventListener('click', () => copyToClipboard(txtLanIp ? txtLanIp.textContent : ''));
 
   // Tab switching
   tabPython.addEventListener('click', () => {

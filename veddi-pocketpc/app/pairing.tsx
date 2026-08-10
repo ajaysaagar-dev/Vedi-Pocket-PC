@@ -47,7 +47,7 @@ export default function PairingScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.center}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={palette.primary} />
       </View>
     );
@@ -55,7 +55,7 @@ export default function PairingScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.center}>
+      <View style={styles.centerContainer}>
         <StatusBar style="dark" />
         <View style={styles.permissionCard}>
           <View style={styles.permissionIcon}>
@@ -158,31 +158,29 @@ export default function PairingScreen() {
     } finally {
       setPairingInProgress(false);
     }
-  };
-
-  return (
+  };  return (
     <View style={styles.cameraRoot}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <StatusBar style="light" />
       <CameraView
         style={styles.camera}
         facing="back"
-        // Pin the camera to a 4:3 aspect so the reticle shape matches
-        // the area the QR detector actually scans. Without this, the
-        // sensor's native aspect ratio (often 16:9) would squish the
-        // viewfinder and misalign the on-screen reticle with the area
-        // the OS samples for barcodes.
-        ratio="4:3"
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
-      {/* Overlay UI — sit *above* the camera without darkening it.
-          Previous version painted a full-screen `rgba(0,0,0,0.55)` scrim
-          on top of the camera feed, which on Android turned the live
-          viewfinder into a black screen. The reticle corners + hint
-          pill are enough visual scaffolding; we leave the camera
-          feed itself untouched. */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+      {/* Viewfinder Dark Mask with Center Transparent Cutout */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.maskRowTop} />
+        <View style={[styles.maskRowCenter, { height: reticleSize }]}>
+          <View style={styles.maskSide} />
+          <View style={{ width: reticleSize, height: reticleSize }} />
+          <View style={styles.maskSide} />
+        </View>
+        <View style={styles.maskRowBottom} />
+      </View>
+
+      {/* Overlay UI — Top Close Button, Perfectly Centered Reticle & Bottom Status */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {/* Top bar — close */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + Spacing.xs }]}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
@@ -190,28 +188,24 @@ export default function PairingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Center reticle — responsive size, hint above so it doesn't
-            collide with the bottom status pill. */}
-        <View style={styles.center} pointerEvents="none">
-          <View style={styles.reticleHintTop}>
-            <Text style={styles.hintText}>Align the QR within the frame</Text>
-          </View>
+        {/* Center reticle — EXACT geometric center of the screen */}
+        <View style={styles.centerContainer} pointerEvents="none">
           <View
             style={[
               styles.reticle,
               { width: reticleSize, height: reticleSize },
             ]}
           >
+            <View style={styles.reticleHintTop}>
+              <Text style={styles.hintText}>Align QR code within frame</Text>
+            </View>
             <View style={[styles.corner, styles.tl]} />
             <View style={[styles.corner, styles.tr]} />
             <View style={[styles.corner, styles.bl]} />
             <View style={[styles.corner, styles.br]} />
-            {/* Centre crosshair — subtle aid for alignment on the
-                second axis. Drawn as two thin guide lines; reads as
-                part of the reticle so it doesn't look like a defect. */}
             <View style={styles.crossH} />
             <View style={styles.crossV} />
-            {/* Animated success flash on scan */}
+            <View style={styles.laserLine} />
             {pairingInProgress && <View style={styles.scanFlash} />}
           </View>
         </View>
@@ -247,21 +241,24 @@ export default function PairingScreen() {
 const styles = StyleSheet.create({
   cameraRoot: { flex: 1, backgroundColor: '#000' },
   camera: {
-    // Explicit flex fill instead of `absoluteFillObject` — under the
-    // new architecture some Android builds were laying out the
-    // CameraView with zero width/height when only positioned absolute
-    // with no parent flex chain.
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
-  center: {
-    flex: 1,
+
+  // Viewfinder dark mask around center cutout
+  maskRowTop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+  maskRowCenter: { flexDirection: 'row' },
+  maskSide: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+  maskRowBottom: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+
+  // Center container for 100% exact alignment
+  centerContainer: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: Spacing.xl,
   },
 
   topBar: {
@@ -269,6 +266,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingTop: Spacing.xl,
     paddingHorizontal: Spacing.md,
+    zIndex: 10,
   },
   iconBtn: {
     width: 44,
@@ -281,66 +279,81 @@ const styles = StyleSheet.create({
   },
 
   reticle: {
-    // Size is set inline from `reticleSize` so it scales with the
-    // screen. The previous hard-coded 260×260 was hard to align
-    // with on tablets.
     position: 'relative',
-    marginTop: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
+  reticleHintTop: {
+    position: 'absolute',
+    top: -48,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Elevation.level2,
+  },
+  hintText: {
+    ...Typography.labelLarge,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+
   corner: {
     position: 'absolute',
     width: 32,
     height: 32,
-    borderColor: palette.primary,
+    borderColor: '#38bdf8',
   },
-  tl: { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 6 },
-  tr: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 6 },
-  bl: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 6 },
-  br: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 6 },
+  tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 14 },
+  tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 14 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 14 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 14 },
 
-  // Faint guide crosshair so users can tell whether the camera is
-  // actually pointing at the code (not a tilted view). 0.4 opacity
-  // keeps it from competing with the corner brackets.
   crossH: {
     position: 'absolute',
-    left: '12%',
-    right: '12%',
+    left: '20%',
+    right: '20%',
     top: '50%',
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   crossV: {
     position: 'absolute',
-    top: '12%',
-    bottom: '12%',
+    top: '20%',
+    bottom: '20%',
     left: '50%',
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  laserLine: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: '50%',
+    height: 2,
+    backgroundColor: '#38bdf8',
+    borderRadius: 1,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
-  // Brief flash overlay drawn while the pairing request is in flight.
-  // Green is universal "success" — feels good on Android too where
-  // haptics are short.
   scanFlash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(46, 125, 50, 0.25)',
-    borderRadius: 8,
-  },
-
-  reticleHintTop: {
-    backgroundColor: 'rgba(254, 247, 255, 0.9)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    ...Elevation.level2,
-  },
-
-  hintText: {
-    ...Typography.labelLarge,
-    color: palette.onSurface,
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(34, 197, 94, 0.35)',
+    borderRadius: 12,
   },
 
   bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingBottom: Spacing.xxl,
     paddingHorizontal: Spacing.md,
     alignItems: 'center',

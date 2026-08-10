@@ -8,7 +8,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const { app } = require('electron');
 
 const network = require('./network');
@@ -49,6 +49,51 @@ class ProcessManager {
 
     this._statusListeners = new Set();
     this._logListeners = new Set();
+  }
+
+  _freePort(port) {
+    if (process.platform !== 'win32') return;
+    try {
+      // `findstr ":PORT>"` is anchored to a non-digit so we don't
+      // accidentally match `:80801` or `:8080X` — the trailing `>`
+      // (or end-of-line, if findstr supports it) ensures we only get
+      // exact-port matches. `findstr LISTENING` filters out
+      // ESTABLISHED / TIME_WAIT lines that also bind a port locally.
+      const stdout = execSync(
+        `netstat -ano | findstr LISTENING | findstr ":${port} "`,
+        { encoding: 'utf8', timeout: 4000 }
+      );
+      if (!stdout) return;
+      const lines = stdout.trim().split(/[\r\n]+/);
+      const myPid = String(process.pid);
+      const killed = new Set();
+      for (const line of lines) {
+        // netstat row: "<Proto> <Local> <Remote> <State> <PID>"
+        // matches both IPv4 ("0.0.0.0:8080") and IPv6 ("[::]:8080").
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[parts.length - 1];
+        if (!pid || !/^\d+$/.test(pid) || pid === '0' || pid === myPid) continue;
+        if (killed.has(pid)) continue;
+        killed.add(pid);
+        console.log(`[Desktop] Auto-clearing port ${port} occupied by PID ${pid}`);
+        try {
+          // Synchronous kill + timeout so the OS actually releases
+          // the socket before we return. Asynchronous `exec` would
+          // race with the subsequent `spawn()`.
+          execSync(`taskkill /pid ${pid} /F /T`, {
+            stdio: 'ignore',
+            timeout: 4000,
+          });
+        } catch (_) {
+          // Non-zero exit usually means the process is already gone
+          // by the time we got here — that's still success for our
+          // purposes, the port is free.
+        }
+      }
+    } catch (_) {
+      // netstat / findstr returning nothing is the happy path —
+      // port is already free, nothing to do.
+    }
   }
 
   onStatusUpdate(cb) {
@@ -96,6 +141,8 @@ class ProcessManager {
   startExpo() {
     if (this.expoProcess) return;
 
+    this._freePort(8081);
+
     const expoDir = resolveSubdir('veddi-pocketpc');
     const expoPkg = path.join(expoDir, 'node_modules', 'expo');
 
@@ -119,7 +166,7 @@ class ProcessManager {
     const localExpoBin = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli');
     const localExpoJs = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli.js');
 
-    const expoArgs = ['start', '-c', '--host', 'lan'];
+    const expoArgs = ['start', '-c', '--host', 'lan', '--port', '8081'];
     const useLocalJs = fs.existsSync(localExpoJs);
     const cliPath = useLocalJs ? localExpoJs : localExpoBin;
 
@@ -202,6 +249,8 @@ class ProcessManager {
   startStreamServer() {
     if (this.pythonProcess) return;
 
+    this._freePort(8080);
+
     const serverDir = resolveSubdir('screen-stream-server');
     const { env } = network.getSpawnEnv();
     const pythonCmd = getPythonPath();
@@ -273,6 +322,8 @@ class ProcessManager {
   // ------------------------- Backend agent -------------------------
   startBackend() {
     if (this.backendProcess) return;
+
+    this._freePort(8000);
 
     const backendDir = resolveSubdir('vedi-pocketpc-backend');
     const { env } = network.getSpawnEnv();
@@ -402,7 +453,23 @@ class ProcessManager {
     if (!child || child.pid === undefined || child.pid === null) return;
     try {
       if (process.platform === 'win32') {
-        exec(`taskkill /pid ${child.pid} /T /F`);
+        // taskkill used to be fire-and-forget `exec(...)` here, but
+        // that races with the next spawn: by the time `_freePort`
+        // ran a millisecond later, the OS hadn't actually released
+        // 8080/8000 and the new bind failed with [Errno 10048].
+        // Switched to `execSync` with a 4-second budget so the port
+        // is guaranteed free before the caller continues. The /T flag
+        // tears down child trees (mss / opencv / etc.) so we don't
+        // leak grandchildren holding subresources.
+        try {
+          execSync(`taskkill /pid ${child.pid} /T /F`, {
+            stdio: 'ignore',
+            timeout: 4000,
+          });
+        } catch (_) {
+          // Exit code 128 / non-zero means the process was already
+          // gone — that's fine, the port is already free.
+        }
       } else {
         try {
           child.kill('SIGINT');

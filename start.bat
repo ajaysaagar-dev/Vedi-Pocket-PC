@@ -29,10 +29,14 @@ if %ERRORLEVEL% NEQ 0 (
 for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
 echo   [OK] Node.js  !NODE_VER!
 
+if exist "%~dp0.venv\Scripts\python.exe" (
+    set "PATH=%~dp0.venv\Scripts;!PATH!"
+)
+
 where python >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo   [ERROR] Python was not found in your PATH.
+    echo   [ERROR] Python was not found in your PATH or .venv.
     echo   Vedi Pocket PC needs Python 3.10+ to run the screen
     echo   stream server and the FastAPI pairing backend.
     echo.
@@ -46,32 +50,17 @@ for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
 echo   [OK] Python    !PY_VER!
 
 :: ----------------------------------------------------------------
-:: 2. Warn about ports — pre-empt the most common launch failure.
+:: 2. Auto-clear occupied ports (8080, 8000, 8081)
 :: ----------------------------------------------------------------
 echo.
-echo [2/5] Checking required ports ^(8080, 8000, 8081^)...
-set "PORT_OK=1"
+echo [2/5] Checking and preparing required ports ^(8080, 8000, 8081^)...
 for %%P in (8080 8000 8081) do (
-    netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
-    if !ERRORLEVEL! EQU 0 (
-        echo   [WARN] Port %%P is already in use.
-        echo          Free it before launching, or set STREAM_PORT
-        echo          / EXPO_PORT env vars to override the defaults.
-        set "PORT_OK=0"
+    for /f "tokens=5" %%A in ('netstat -aon ^| findstr "LISTENING" ^| findstr ":%%P " 2^>nul') do (
+        echo   [INFO] Port %%P is in use by PID %%A. Auto-terminating stale process...
+        taskkill /f /pid %%A /t >nul 2>&1
     )
 )
-if "%PORT_OK%"=="0" (
-    echo.
-    echo   Continue anyway? The stream server may fail to bind. ^(Y/N^)
-    set /p CONT=
-    if /i not "!CONT!"=="Y" (
-        echo Aborted. Free the ports and try again.
-        pause
-        exit /b 1
-    )
-) else (
-    echo   [OK] All ports clear.
-)
+echo   [OK] All ports clear.
 
 :: ----------------------------------------------------------------
 :: 3. Install Python deps if missing — a fresh checkout won't have
@@ -80,7 +69,7 @@ if "%PORT_OK%"=="0" (
 :: ----------------------------------------------------------------
 echo.
 echo [3/5] Verifying Python dependencies...
-python -c "import mss, aiohttp, fastapi, pyautogui" >nul 2>&1
+python -c "import mss, aiohttp, fastapi, pyautogui, websockets" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [INFO] Missing Python deps. Running pip install...
     python -m pip install --upgrade pip

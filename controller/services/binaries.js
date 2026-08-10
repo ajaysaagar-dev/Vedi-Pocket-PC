@@ -31,6 +31,16 @@ function getNodePath() {
 
 function getPythonPath() {
   const isWin = process.platform === 'win32';
+
+  // First check if workspace .venv Python exists
+  const projectRoot = path.resolve(__dirname, '..', '..');
+  const venvPy = isWin
+    ? path.join(projectRoot, '.venv', 'Scripts', 'python.exe')
+    : path.join(projectRoot, '.venv', 'bin', 'python');
+  if (fs.existsSync(venvPy)) {
+    return venvPy;
+  }
+
   try {
     const cmd = isWin ? 'where python' : 'which python3';
     const output = execSync(cmd, { encoding: 'utf8' }).trim();
