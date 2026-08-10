@@ -1,12 +1,11 @@
-// Reanimated prints a dev-only warning when the OS-level "Reduce Motion"
-// accessibility setting is on. We don't gate animations on it, so silence
-// the noise. Must run BEFORE `react-native-gesture-handler` is required,
-// since that's what pulls reanimated in and triggers the module-load
-// reduced-motion check. Using `require` (not `import`) ensures this call
-// is not hoisted past the gesture-handler import below.
-require('react-native').LogBox.ignoreLogs([
-  '[Reanimated] Reduced motion setting is enabled on this device.',
-]);
+// MUST be the first import. Babel's CommonJS transform hoists every
+// `import` statement to the top of the file in source order, so this side
+// effect runs before `react-native-gesture-handler` (and therefore
+// `react-native-reanimated`) is required. Without this, reanimated's
+// module-load check in `animation/util.ts:80` fires its dev-only "Reduced
+// motion is enabled" warning. We don't gate animations on that setting, so
+// suppress it at the source. See patch-reanimated.ts for details.
+import '../src/utils/patch-reanimated';
 
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
