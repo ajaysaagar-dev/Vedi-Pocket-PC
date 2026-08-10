@@ -664,9 +664,9 @@ def route_index():
 
 @bottle_app.route('/assets/icon.png')
 def route_icon():
-    icon_path = os.path.join(manager.mobile_dir, "assets", "images", "android-icon-foreground.png")
+    icon_path = os.path.join(manager.mobile_dir, "assets", "images", "icon.png")
     if not os.path.exists(icon_path):
-        icon_path = os.path.join(manager.mobile_dir, "assets", "images", "favicon.png")
+        icon_path = os.path.join(manager.mobile_dir, "assets", "images", "android-icon-foreground.png")
     return static_file(os.path.basename(icon_path), root=os.path.dirname(icon_path))
 
 @bottle_app.route('/api/status')
