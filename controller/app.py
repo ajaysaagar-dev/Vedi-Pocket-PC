@@ -1,5 +1,5 @@
 """
-Vedi Pocket PC — PySide6 Desktop Controller
+Vedi Pocket PC — Apple Glassmorphism PySide6 Desktop Controller
 Native Python GUI control panel and multi-process manager for Screen Stream Server,
 FastAPI Backend Agent, and Mobile Expo Dev Server.
 """
@@ -11,13 +11,20 @@ import socket
 import subprocess
 from typing import Optional
 
-from PySide6.QtCore import Qt, QProcess, QTimer, QSize, Signal, Slot
-from PySide6.QtGui import QIcon, QPixmap, QImage, QFont, QColor, QAction, QTextCursor
+from PySide6.QtCore import (
+    Qt, QProcess, QTimer, QSize, Signal, Slot,
+    QPropertyAnimation, QEasingCurve, QParallelAnimationGroup
+)
+from PySide6.QtGui import (
+    QIcon, QPixmap, QImage, QFont, QColor, QAction, QTextCursor,
+    QPainter, QBrush, QPen
+)
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTabWidget, QTextEdit, QFrame, QGridLayout,
     QSystemTrayIcon, QMenu, QMessageBox, QGroupBox, QLineEdit,
-    QSizePolicy, QFileDialog, QStyle
+    QSizePolicy, QFileDialog, QStyle, QGraphicsDropShadowEffect,
+    QGraphicsOpacityEffect
 )
 import qrcode
 from PIL import Image as PILImage
@@ -52,8 +59,8 @@ def find_free_port(preferred: int) -> int:
     return port
 
 
-def generate_qr_pixmap(data: str, size: int = 180) -> QPixmap:
-    """Generate a clean dark-themed QPixmap for a QR code."""
+def generate_apple_qr(data: str, size: int = 170) -> QPixmap:
+    """Generate an Apple-style crisp white QR code on dark glass background."""
     if not data:
         pix = QPixmap(size, size)
         pix.fill(Qt.transparent)
@@ -67,7 +74,7 @@ def generate_qr_pixmap(data: str, size: int = 180) -> QPixmap:
         )
         qr.add_data(data)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="#38bdf8", back_color="#0f172a").convert("RGBA")
+        img = qr.make_image(fill_color="#ffffff", back_color="#0a0a0f").convert("RGBA")
         
         im_bytes = img.tobytes("raw", "RGBA")
         qimg = QImage(im_bytes, img.width, img.height, QImage.Format_RGBA8888)
@@ -96,141 +103,191 @@ def kill_process_tree(pid: int):
             pass
 
 
-DARK_QSS = """
+# --- Apple Glassmorphism Pure Black & White QSS Theme ---
+APPLE_GLASS_QSS = """
 QMainWindow, QWidget#centralWidget {
-    background-color: #0f172a;
-    color: #f8fafc;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    background-color: #000000;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
 }
 
-QFrame.card {
-    background-color: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 12px;
+QFrame.glassCard {
+    background-color: rgba(22, 22, 26, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 16px;
 }
 
 QLabel {
-    color: #f8fafc;
+    color: #ffffff;
 }
 
-QLabel.titleLabel {
-    font-size: 20px;
-    font-weight: bold;
-    color: #38bdf8;
+QLabel.brandTitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+}
+
+QLabel.brandSub {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 400;
 }
 
 QLabel.sectionTitle {
-    font-size: 14px;
-    font-weight: 600;
-    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
     text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 QLabel.statusBadge {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: 12px;
+    letter-spacing: 0.5px;
 }
 
 QLabel.statusRunning {
-    background-color: #064e3b;
-    color: #34d399;
-    border: 1px solid #059669;
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 QLabel.statusStopped {
-    background-color: #451a03;
-    color: #fb923c;
-    border: 1px solid #d97706;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 QPushButton {
     font-size: 13px;
     font-weight: 600;
-    border-radius: 8px;
-    padding: 8px 16px;
-    background-color: #334155;
-    color: #f8fafc;
-    border: 1px solid #475569;
+    border-radius: 20px;
+    padding: 10px 20px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 QPushButton:hover {
-    background-color: #475569;
-    border-color: #64748b;
+    background-color: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
-QPushButton.primaryBtn {
-    background-color: #0284c7;
+QPushButton:pressed {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+QPushButton.primaryPill {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    font-weight: 700;
+}
+
+QPushButton.primaryPill:hover {
+    background-color: rgba(255, 255, 255, 0.88);
+    border-color: rgba(255, 255, 255, 0.88);
+}
+
+QPushButton.primaryPill:pressed {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+QPushButton.stopPill {
+    background-color: rgba(239, 68, 68, 0.16);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+QPushButton.stopPill:hover {
+    background-color: rgba(239, 68, 68, 0.28);
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+QPushButton.accentPill {
+    background-color: rgba(255, 255, 255, 0.12);
     color: #ffffff;
-    border: 1px solid #38bdf8;
+    border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
-QPushButton.primaryBtn:hover {
-    background-color: #0369a1;
-}
-
-QPushButton.stopBtn {
-    background-color: #dc2626;
-    color: #ffffff;
-    border: 1px solid #ef4444;
-}
-
-QPushButton.stopBtn:hover {
-    background-color: #b91c1c;
-}
-
-QPushButton.accentBtn {
-    background-color: #7c3aed;
-    color: #ffffff;
-    border: 1px solid #a78bfa;
-}
-
-QPushButton.accentBtn:hover {
-    background-color: #6d28d9;
+QPushButton.accentPill:hover {
+    background-color: rgba(255, 255, 255, 0.22);
 }
 
 QTabWidget::pane {
-    border: 1px solid #334155;
-    border-radius: 8px;
-    background-color: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background-color: rgba(12, 12, 15, 0.9);
 }
 
 QTabBar::tab {
-    background-color: #0f172a;
-    color: #94a3b8;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.45);
     font-weight: 600;
-    padding: 8px 16px;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    margin-right: 2px;
+    font-size: 12px;
+    padding: 8px 18px;
+    border-radius: 14px;
+    margin-right: 4px;
 }
 
 QTabBar::tab:selected {
-    background-color: #1e293b;
-    color: #38bdf8;
-    border-bottom: 2px solid #38bdf8;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
 }
 
 QTextEdit {
-    background-color: #090d16;
-    color: #34d399;
-    font-family: 'Consolas', 'Courier New', monospace;
+    background-color: #050508;
+    color: #ffffff;
+    font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
     font-size: 12px;
-    border: 1px solid #1e293b;
-    border-radius: 6px;
-    padding: 8px;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    line-height: 1.5;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.2);
+    min-height: 20px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
 }
 """
+
+
+def apply_glass_shadow(widget: QWidget, blur: int = 24, alpha: int = 120):
+    """Apply an Apple-style subtle ambient drop shadow."""
+    shadow = QGraphicsDropShadowEffect(widget)
+    shadow.setBlurRadius(blur)
+    shadow.setColor(QColor(0, 0, 0, alpha))
+    shadow.setOffset(0, 8)
+    widget.setGraphicsEffect(shadow)
 
 
 class ControllerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Vedi Pocket PC — Controller")
-        self.setMinimumSize(920, 680)
-        self.setStyleSheet(DARK_QSS)
+        self.setWindowTitle("Vedi Pocket PC")
+        self.setMinimumSize(960, 700)
+        self.setStyleSheet(APPLE_GLASS_QSS)
 
         # Base directories
         self.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -255,9 +312,44 @@ class ControllerWindow(QMainWindow):
 
         self._init_ui()
         self._init_tray()
+        self._animate_window_fade_in()
 
         # Start servers automatically on launch
-        QTimer.singleShot(500, self.start_all_servers)
+        QTimer.singleShot(400, self.start_all_servers)
+
+    def _animate_window_fade_in(self):
+        """Apple-style smooth window entry animation."""
+        self.setWindowOpacity(0.0)
+        self.anim = QPropertyAnimation(self, b"windowOpacity")
+        self.anim.setDuration(450)
+        self.anim.setStartValue(0.0)
+        self.anim.setEndValue(1.0)
+        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.anim.start()
+
+    def _animate_qr_update(self, label: QLabel, pixmap: QPixmap):
+        """Smooth fade pulse animation when updating QR codes."""
+        effect = QGraphicsOpacityEffect(label)
+        label.setGraphicsEffect(effect)
+
+        anim_out = QPropertyAnimation(effect, b"opacity")
+        anim_out.setDuration(150)
+        anim_out.setStartValue(1.0)
+        anim_out.setEndValue(0.2)
+        anim_out.setEasingCurve(QEasingCurve.OutQuad)
+
+        anim_in = QPropertyAnimation(effect, b"opacity")
+        anim_in.setDuration(250)
+        anim_in.setStartValue(0.2)
+        anim_in.setEndValue(1.0)
+        anim_in.setEasingCurve(QEasingCurve.InCubic)
+
+        def swap():
+            label.setPixmap(pixmap)
+            anim_in.start()
+
+        anim_out.finished.connect(swap)
+        anim_out.start()
 
     def _init_ui(self):
         central_widget = QWidget(self)
@@ -265,21 +357,37 @@ class ControllerWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(16, 16, 16, 16)
-        main_layout.setSpacing(16)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(18)
 
-        # --- Header Row ---
+        # --- Header Glass Card ---
         header_frame = QFrame()
-        header_frame.setProperty("class", "card")
-        header_layout = QHBoxLayout(header_frame)
+        header_frame.setProperty("class", "glassCard")
+        apply_glass_shadow(header_frame)
         
-        app_title = QLabel("⚡ Vedi Pocket PC — Desktop Controller")
-        app_title.setProperty("class", "titleLabel")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(16, 12, 16, 12)
+        
+        title_box = QVBoxLayout()
+        title_box.setSpacing(2)
 
-        self.lan_label = QLabel(f"🌐 LAN IP: {self.lan_ip}")
-        self.lan_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #94a3b8;")
+        brand_title = QLabel("Vedi Pocket PC")
+        brand_title.setProperty("class", "brandTitle")
 
-        header_layout.addWidget(app_title)
+        brand_sub = QLabel("Apple Glassmorphism Controller · LAN Local Engine")
+        brand_sub.setProperty("class", "brandSub")
+
+        title_box.addWidget(brand_title)
+        title_box.addWidget(brand_sub)
+
+        self.lan_label = QLabel(f"🌐  {self.lan_ip}")
+        self.lan_label.setStyleSheet(
+            "font-size: 13px; font-weight: 700; color: #ffffff; "
+            "background: rgba(255,255,255,0.08); padding: 6px 14px; "
+            "border-radius: 14px; border: 1px solid rgba(255,255,255,0.12);"
+        )
+
+        header_layout.addLayout(title_box)
         header_layout.addStretch()
         header_layout.addWidget(self.lan_label)
 
@@ -287,59 +395,75 @@ class ControllerWindow(QMainWindow):
 
         # --- Middle Split Layout: Controls + QR Displays ---
         middle_layout = QHBoxLayout()
-        middle_layout.setSpacing(16)
+        middle_layout.setSpacing(18)
 
         # Left Column: Service Status & Controls Card
         status_card = QFrame()
-        status_card.setProperty("class", "card")
+        status_card.setProperty("class", "glassCard")
+        apply_glass_shadow(status_card)
+
         status_layout = QVBoxLayout(status_card)
+        status_layout.setSpacing(14)
 
         services_title = QLabel("System Services")
         services_title.setProperty("class", "sectionTitle")
         status_layout.addWidget(services_title)
 
         grid = QGridLayout()
-        grid.setVerticalSpacing(12)
+        grid.setVerticalSpacing(14)
         grid.setHorizontalSpacing(16)
 
         # 1. Stream Server Row
-        grid.addWidget(QLabel("📡 Screen Stream Server (:8080)"), 0, 0)
-        self.stream_status_badge = QLabel("STOPPED")
+        stream_lbl = QLabel("📡 Screen Stream (:8080)")
+        stream_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);")
+        grid.addWidget(stream_lbl, 0, 0)
+
+        self.stream_status_badge = QLabel("OFFLINE")
         self.stream_status_badge.setProperty("class", "statusBadge statusStopped")
-        grid.addWidget(self.stream_status_badge, 0, 1)
+        grid.addWidget(self.stream_status_badge, 0, 1, alignment=Qt.AlignRight)
 
         # 2. Remote Agent Row
-        grid.addWidget(QLabel("🔧 Remote Agent Backend (:8000)"), 1, 0)
-        self.backend_status_badge = QLabel("STOPPED")
+        backend_lbl = QLabel("🔧 Remote Agent (:8000)")
+        backend_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);")
+        grid.addWidget(backend_lbl, 1, 0)
+
+        self.backend_status_badge = QLabel("OFFLINE")
         self.backend_status_badge.setProperty("class", "statusBadge statusStopped")
-        grid.addWidget(self.backend_status_badge, 1, 1)
+        grid.addWidget(self.backend_status_badge, 1, 1, alignment=Qt.AlignRight)
 
         # 3. Mobile Expo Server Row
-        grid.addWidget(QLabel("📱 Mobile Client App (:8088)"), 2, 0)
-        self.expo_status_badge = QLabel("STOPPED")
+        expo_lbl = QLabel("📱 Mobile Client (:8088)")
+        expo_lbl.setStyleSheet("font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);")
+        grid.addWidget(expo_lbl, 2, 0)
+
+        self.expo_status_badge = QLabel("OFFLINE")
         self.expo_status_badge.setProperty("class", "statusBadge statusStopped")
-        grid.addWidget(self.expo_status_badge, 2, 1)
+        grid.addWidget(self.expo_status_badge, 2, 1, alignment=Qt.AlignRight)
 
         status_layout.addLayout(grid)
-        status_layout.addSpacing(16)
+        status_layout.addSpacing(6)
 
-        # Master Controls
+        # Master Controls Pills
         btn_layout = QVBoxLayout()
-        btn_layout.setSpacing(8)
+        btn_layout.setSpacing(10)
 
-        self.start_btn = QPushButton("🚀 Start All Services")
-        self.start_btn.setProperty("class", "primaryBtn")
+        self.start_btn = QPushButton("Start All Services")
+        self.start_btn.setProperty("class", "primaryPill")
+        self.start_btn.setCursor(Qt.PointingHandCursor)
         self.start_btn.clicked.connect(self.start_all_servers)
 
-        self.stop_btn = QPushButton("⏹️ Stop All Services")
-        self.stop_btn.setProperty("class", "stopBtn")
+        self.stop_btn = QPushButton("Stop All Services")
+        self.stop_btn.setProperty("class", "stopPill")
+        self.stop_btn.setCursor(Qt.PointingHandCursor)
         self.stop_btn.clicked.connect(self.stop_all_servers)
 
-        self.restart_btn = QPushButton("🔄 Restart All Services")
+        self.restart_btn = QPushButton("Restart All Services")
+        self.restart_btn.setProperty("class", "accentPill")
+        self.restart_btn.setCursor(Qt.PointingHandCursor)
         self.restart_btn.clicked.connect(self.restart_all_servers)
 
-        self.reload_expo_btn = QPushButton("⚡ Reload Expo Mobile App (Clear Cache)")
-        self.reload_expo_btn.setProperty("class", "accentBtn")
+        self.reload_expo_btn = QPushButton("Reload Mobile App (Clear Cache)")
+        self.reload_expo_btn.setCursor(Qt.PointingHandCursor)
         self.reload_expo_btn.clicked.connect(self.reload_expo)
 
         btn_layout.addWidget(self.start_btn)
@@ -352,26 +476,37 @@ class ControllerWindow(QMainWindow):
 
         middle_layout.addWidget(status_card, stretch=1)
 
-        # Right Column: QR Code Cards (PC Pairing & Expo Client)
+        # Right Column: Apple Glass QR Code Cards (PC Pairing & Expo Client)
         qr_card = QFrame()
-        qr_card.setProperty("class", "card")
+        qr_card.setProperty("class", "glassCard")
+        apply_glass_shadow(qr_card)
+
         qr_layout = QHBoxLayout(qr_card)
-        qr_layout.setSpacing(16)
+        qr_layout.setSpacing(20)
 
         # PC Pairing QR Column
         pc_qr_box = QVBoxLayout()
+        pc_qr_box.setSpacing(10)
+
         pc_title = QLabel("1. Scan PC Pairing QR")
         pc_title.setProperty("class", "sectionTitle")
         pc_title.setAlignment(Qt.AlignCenter)
         
         self.pc_qr_label = QLabel()
-        self.pc_qr_label.setFixedSize(180, 180)
+        self.pc_qr_label.setFixedSize(170, 170)
         self.pc_qr_label.setAlignment(Qt.AlignCenter)
-        self.pc_qr_label.setPixmap(generate_qr_pixmap("", 180))
+        self.pc_qr_label.setStyleSheet(
+            "background-color: #0a0a0f; border-radius: 14px; "
+            "border: 1px solid rgba(255,255,255,0.12);"
+        )
+        self.pc_qr_label.setPixmap(generate_apple_qr("", 170))
 
         self.pin_info_label = QLabel("PIN: ----")
         self.pin_info_label.setAlignment(Qt.AlignCenter)
-        self.pin_info_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #38bdf8;")
+        self.pin_info_label.setStyleSheet(
+            "font-size: 15px; font-weight: 700; color: #ffffff; "
+            "letter-spacing: 2px;"
+        )
 
         pc_qr_box.addWidget(pc_title)
         pc_qr_box.addWidget(self.pc_qr_label, alignment=Qt.AlignCenter)
@@ -379,18 +514,26 @@ class ControllerWindow(QMainWindow):
 
         # Expo App QR Column
         expo_qr_box = QVBoxLayout()
+        expo_qr_box.setSpacing(10)
+
         expo_title = QLabel("2. Scan Expo Go QR")
         expo_title.setProperty("class", "sectionTitle")
         expo_title.setAlignment(Qt.AlignCenter)
 
         self.expo_qr_label = QLabel()
-        self.expo_qr_label.setFixedSize(180, 180)
+        self.expo_qr_label.setFixedSize(170, 170)
         self.expo_qr_label.setAlignment(Qt.AlignCenter)
-        self.expo_qr_label.setPixmap(generate_qr_pixmap("", 180))
+        self.expo_qr_label.setStyleSheet(
+            "background-color: #0a0a0f; border-radius: 14px; "
+            "border: 1px solid rgba(255,255,255,0.12);"
+        )
+        self.expo_qr_label.setPixmap(generate_apple_qr("", 170))
 
-        self.expo_info_label = QLabel("Waiting for Expo...")
+        self.expo_info_label = QLabel("Initializing Expo...")
         self.expo_info_label.setAlignment(Qt.AlignCenter)
-        self.expo_info_label.setStyleSheet("font-size: 12px; color: #94a3b8;")
+        self.expo_info_label.setStyleSheet(
+            "font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 500;"
+        )
 
         expo_qr_box.addWidget(expo_title)
         expo_qr_box.addWidget(self.expo_qr_label, alignment=Qt.AlignCenter)
@@ -402,16 +545,19 @@ class ControllerWindow(QMainWindow):
         middle_layout.addWidget(qr_card, stretch=2)
         main_layout.addLayout(middle_layout)
 
-        # --- Bottom Logs Viewer Tabbed Section ---
+        # --- Bottom Logs Glass Card Section ---
         logs_card = QFrame()
-        logs_card.setProperty("class", "card")
+        logs_card.setProperty("class", "glassCard")
+        apply_glass_shadow(logs_card)
+
         logs_layout = QVBoxLayout(logs_card)
-        logs_layout.setContentsMargins(8, 8, 8, 8)
+        logs_layout.setContentsMargins(10, 10, 10, 10)
+        logs_layout.setSpacing(8)
 
         tab_row = QHBoxLayout()
         self.tabs = QTabWidget()
 
-        # Tabs
+        # Logs Tabs
         self.all_log_edit = QTextEdit()
         self.all_log_edit.setReadOnly(True)
 
@@ -421,11 +567,16 @@ class ControllerWindow(QMainWindow):
         self.expo_log_edit = QTextEdit()
         self.expo_log_edit.setReadOnly(True)
 
-        self.tabs.addTab(self.all_log_edit, "All Combined Logs")
-        self.tabs.addTab(self.python_log_edit, "Python Server Logs")
-        self.tabs.addTab(self.expo_log_edit, "Mobile Expo Server Logs")
+        self.tabs.addTab(self.all_log_edit, "Combined Stream Logs")
+        self.tabs.addTab(self.python_log_edit, "Python Backend Logs")
+        self.tabs.addTab(self.expo_log_edit, "Expo Mobile Logs")
 
-        clear_btn = QPushButton("🧹 Clear Logs")
+        clear_btn = QPushButton("Clear Console")
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setStyleSheet(
+            "font-size: 11px; padding: 4px 12px; border-radius: 10px; "
+            "background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6);"
+        )
         clear_btn.clicked.connect(self.clear_logs)
 
         tab_row.addWidget(self.tabs)
@@ -435,12 +586,18 @@ class ControllerWindow(QMainWindow):
         main_layout.addWidget(logs_card, stretch=1)
 
     def _init_tray(self):
-        """Initialize System Tray icon and menu."""
+        """Initialize System Tray icon and context menu."""
         self.tray_icon = QSystemTrayIcon(self)
         icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
         self.tray_icon.setIcon(icon)
 
         tray_menu = QMenu()
+        tray_menu.setStyleSheet(
+            "QMenu { background-color: #16161a; color: #ffffff; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px; }"
+            "QMenu::item { padding: 6px 16px; border-radius: 4px; font-size: 12px; font-weight: 500; }"
+            "QMenu::item:selected { background-color: rgba(255,255,255,0.15); }"
+        )
+
         show_action = QAction("Show Controller", self)
         show_action.triggered.connect(self.show_normal)
         
@@ -485,7 +642,7 @@ class ControllerWindow(QMainWindow):
             self.hide()
             self.tray_icon.showMessage(
                 "Vedi Pocket PC",
-                "Controller minimized to tray. Double click icon to open.",
+                "Controller minimized to system tray.",
                 QSystemTrayIcon.Information,
                 2000
             )
@@ -527,7 +684,7 @@ class ControllerWindow(QMainWindow):
     def restart_all_servers(self):
         self.append_log("python", "Restarting all system services...")
         self.stop_all_servers()
-        QTimer.singleShot(1000, self.start_all_servers)
+        QTimer.singleShot(800, self.start_all_servers)
 
     # 1. Screen Stream Server
     def start_stream_server(self):
@@ -551,7 +708,7 @@ class ControllerWindow(QMainWindow):
 
         self.stream_process.start(sys.executable, ["main.py"])
 
-        self.stream_status_badge.setText("RUNNING")
+        self.stream_status_badge.setText("ACTIVE")
         self.stream_status_badge.setProperty("class", "statusBadge statusRunning")
         self.stream_status_badge.style().unpolish(self.stream_status_badge)
         self.stream_status_badge.style().polish(self.stream_status_badge)
@@ -570,7 +727,7 @@ class ControllerWindow(QMainWindow):
 
     def _on_stream_finished(self):
         self.append_log("python", "Screen Stream Server process exited.")
-        self.stream_status_badge.setText("STOPPED")
+        self.stream_status_badge.setText("OFFLINE")
         self.stream_status_badge.setProperty("class", "statusBadge statusStopped")
         self.stream_status_badge.style().unpolish(self.stream_status_badge)
         self.stream_status_badge.style().polish(self.stream_status_badge)
@@ -604,7 +761,7 @@ class ControllerWindow(QMainWindow):
 
         self.backend_process.start(sys.executable, ["main.py"])
 
-        self.backend_status_badge.setText("RUNNING")
+        self.backend_status_badge.setText("ACTIVE")
         self.backend_status_badge.setProperty("class", "statusBadge statusRunning")
         self.backend_status_badge.style().unpolish(self.backend_status_badge)
         self.backend_status_badge.style().polish(self.backend_status_badge)
@@ -622,7 +779,8 @@ class ControllerWindow(QMainWindow):
             self.pairing_pin = match.group(1)
             self.pin_info_label.setText(f"PIN: {self.pairing_pin}")
             qr_payload = f"{self.lan_ip}:{self.backend_port}:{self.pairing_pin}"
-            self.pc_qr_label.setPixmap(generate_qr_pixmap(qr_payload, 180))
+            pix = generate_apple_qr(qr_payload, 170)
+            self._animate_qr_update(self.pc_qr_label, pix)
             self.append_log("python", f"Captured PC Pairing PIN: {self.pairing_pin}")
 
     def _on_backend_stderr(self):
@@ -633,7 +791,7 @@ class ControllerWindow(QMainWindow):
 
     def _on_backend_finished(self):
         self.append_log("python", "Remote Agent Backend process exited.")
-        self.backend_status_badge.setText("STOPPED")
+        self.backend_status_badge.setText("OFFLINE")
         self.backend_status_badge.setProperty("class", "statusBadge statusStopped")
         self.backend_status_badge.style().unpolish(self.backend_status_badge)
         self.backend_status_badge.style().polish(self.backend_status_badge)
@@ -666,12 +824,13 @@ class ControllerWindow(QMainWindow):
 
         self.expo_process.start(npx_cmd, expo_args)
 
-        self.expo_status_badge.setText("RUNNING")
+        self.expo_status_badge.setText("ACTIVE")
         self.expo_status_badge.setProperty("class", "statusBadge statusRunning")
         self.expo_status_badge.style().unpolish(self.expo_status_badge)
         self.expo_status_badge.style().polish(self.expo_status_badge)
 
-        self.expo_qr_label.setPixmap(generate_qr_pixmap(self.expo_url, 180))
+        pix = generate_apple_qr(self.expo_url, 170)
+        self._animate_qr_update(self.expo_qr_label, pix)
         self.expo_info_label.setText(f"exp://{self.lan_ip}:{self.expo_port}")
 
     def _on_expo_stdout(self):
@@ -686,7 +845,8 @@ class ControllerWindow(QMainWindow):
         match = re.search(r"exp://[\w.\-]+(?::\d+)?[^\s]*", clean_text)
         if match:
             self.expo_url = match.group(0)
-            self.expo_qr_label.setPixmap(generate_qr_pixmap(self.expo_url, 180))
+            pix = generate_apple_qr(self.expo_url, 170)
+            self._animate_qr_update(self.expo_qr_label, pix)
             self.expo_info_label.setText(self.expo_url)
 
     def _on_expo_stderr(self):
@@ -697,7 +857,7 @@ class ControllerWindow(QMainWindow):
 
     def _on_expo_finished(self):
         self.append_log("expo", "Expo Server process exited.")
-        self.expo_status_badge.setText("STOPPED")
+        self.expo_status_badge.setText("OFFLINE")
         self.expo_status_badge.setProperty("class", "statusBadge statusStopped")
         self.expo_status_badge.style().unpolish(self.expo_status_badge)
         self.expo_status_badge.style().polish(self.expo_status_badge)
