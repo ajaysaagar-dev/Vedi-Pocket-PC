@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 title Vedi Pocket PC - One-Click Installer
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo ========================================================
 echo           Vedi Pocket PC - Master Setup
@@ -37,7 +37,7 @@ echo.
 echo ========================================================
 echo [1/4] Installing agent-core (editable) ...
 echo ========================================================
-python -m pip install -e packages\agent-core
+python -m pip install -e Packages\agent-core
 if %ERRORLEVEL% NEQ 0 (
     echo [WARNING] agent-core editable install returned non-zero.
 )
@@ -56,9 +56,9 @@ echo.
 echo ========================================================
 echo [3/4] Installing Desktop App (Electron) Dependencies...
 echo ========================================================
-call npm install --legacy-peer-deps
+call pnpm install
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Failed to install desktop dependencies.
+    echo [ERROR] Failed to install desktop dependencies via pnpm.
     pause
     exit /b 1
 )
@@ -71,12 +71,12 @@ echo.
 echo ========================================================
 echo [4/4] Installing Mobile App (Expo) Dependencies...
 echo ========================================================
-cd veddi-pocketpc
-call npm install --legacy-peer-deps
+cd Vedi-PocketPC-Mobile
+call pnpm install
 set "MOBILE_ERR=%ERRORLEVEL%"
 cd ..
 if !MOBILE_ERR! NEQ 0 (
-    echo [ERROR] Failed to install mobile app dependencies.
+    echo [ERROR] Failed to install mobile app dependencies via pnpm.
     pause
     exit /b 1
 )
@@ -85,7 +85,7 @@ echo.
 echo ========================================================
 echo [5/5] Creating / Verifying .env Configuration...
 echo ========================================================
-if not exist "%~dp0.env" (
+if not exist "%~dp0..\.env" (
     echo [INFO] Creating default .env file...
     (
         echo # ========================================================
@@ -108,7 +108,7 @@ if not exist "%~dp0.env" (
         echo BACKEND_HOST=0.0.0.0
         echo BACKEND_PORT=8000
         echo EXPO_PORT=8088
-    ) > "%~dp0.env"
+    ) > "%~dp0..\.env"
     echo [OK] Created .env file successfully.
 ) else (
     echo [OK] .env file already present.
@@ -123,10 +123,10 @@ set /p LAUNCH="Would you like to start Vedi Pocket PC now? (Y/N): "
 if /i "%LAUNCH%"=="Y" (
     echo.
     echo Starting Vedi Pocket PC...
-    npm start
+    pnpm start
 ) else (
     echo.
-    echo You can start the app anytime by double-clicking 'start.bat' or running 'npm start'.
+    echo You can start the app anytime by running 'Scripts\start.bat' or 'pnpm start'.
 )
 
 pause

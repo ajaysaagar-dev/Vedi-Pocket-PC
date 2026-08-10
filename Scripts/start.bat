@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 title Vedi Pocket PC - Launcher
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo ========================================================
 echo           Vedi Pocket PC - Launcher
@@ -28,7 +28,7 @@ echo ========================================================
 echo     Reloading Expo Mobile App ^& Clearing Metro Cache...
 echo ========================================================
 echo.
-cd veddi-pocketpc
+cd Vedi-PocketPC-Mobile
 call npx expo start -c
 pause
 exit /b 0
@@ -58,7 +58,7 @@ pause
 exit /b 0
 
 :RUN_SETUP
-call setup.bat
+call "%~dp0setup.bat"
 exit /b 0
 
 :MAIN_PREFLIGHT
@@ -83,8 +83,8 @@ if %ERRORLEVEL% NEQ 0 (
 for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
 echo   [OK] Node.js  !NODE_VER!
 
-if exist "%~dp0.venv\Scripts\python.exe" (
-    set "PATH=%~dp0.venv\Scripts;!PATH!"
+if exist "%~dp0..\.venv\Scripts\python.exe" (
+    set "PATH=%~dp0..\.venv\Scripts;!PATH!"
 )
 
 where python >nul 2>&1
@@ -142,10 +142,10 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo [5/6] Verifying Node dependencies...
 if not exist node_modules\electron\package.json (
-    echo   [INFO] Installing root Electron deps...
-    call npm install --legacy-peer-deps
+    echo   [INFO] Installing root Electron deps via pnpm...
+    call pnpm install
     if !ERRORLEVEL! NEQ 0 (
-        echo   [ERROR] Root npm install failed.
+        echo   [ERROR] Root pnpm install failed.
         pause
         exit /b 1
     )
@@ -153,14 +153,14 @@ if not exist node_modules\electron\package.json (
     echo   [OK] Root deps present.
 )
 
-if not exist veddi-pocketpc\node_modules\expo\package.json (
+if not exist Vedi-PocketPC-Mobile\node_modules\expo\package.json (
     echo   [INFO] Installing mobile app deps ^(this can take a few minutes^)...
-    cd veddi-pocketpc
-    call npm install --legacy-peer-deps
+    cd Vedi-PocketPC-Mobile
+    call pnpm install
     set "MOBILE_ERR=!ERRORLEVEL!"
     cd ..
     if !MOBILE_ERR! NEQ 0 (
-        echo   [ERROR] Mobile app npm install failed.
+        echo   [ERROR] Mobile app pnpm install failed.
         pause
         exit /b 1
     )
@@ -202,7 +202,7 @@ echo [6/6] Launching Vedi Pocket PC...
 echo   (Close the window or press Ctrl+C inside the app to quit.)
 echo.
 
-npm start
+pnpm start
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   [ERROR] Electron exited with code %ERRORLEVEL%.
@@ -221,9 +221,9 @@ exit /b 0
 :: ================================================================
 
 :ENSURE_ENV_FILE
-if exist "%~dp0.env" (
+if exist "%~dp0..\.env" (
     if "%~1"=="1" (
-        echo   .env file already exists at "%~dp0.env".
+        echo   .env file already exists at "%~dp0..\.env".
         set /p OVERWRITE="Do you want to overwrite .env with default values? (Y/N): "
         if /i "!OVERWRITE!" NEQ "Y" (
             echo   Skipped overwriting .env file.
@@ -257,14 +257,14 @@ echo   [INFO] Creating .env file with default configuration...
     echo BACKEND_HOST=0.0.0.0
     echo BACKEND_PORT=8000
     echo EXPO_PORT=8088
-) > "%~dp0.env"
+) > "%~dp0..\.env"
 echo   [OK] Created .env file successfully.
 goto :EOF
 
 :DOWNLOAD_PYTHON_DEPS
 echo   [INFO] Installing Python dependencies...
 python -m pip install --upgrade pip
-python -m pip install -e packages\agent-core
+python -m pip install -e Packages\agent-core
 python -m pip install -r requirements.txt
 if !ERRORLEVEL! NEQ 0 (
     echo.
@@ -276,20 +276,20 @@ goto :EOF
 
 :DOWNLOAD_NODE_DEPS
 echo   [INFO] Installing Desktop App ^(Electron^) dependencies...
-call npm install --legacy-peer-deps
+call pnpm install
 if !ERRORLEVEL! NEQ 0 (
-    echo   [ERROR] Root npm install failed.
+    echo   [ERROR] Root pnpm install failed.
     if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
 )
 
 echo.
 echo   [INFO] Installing Mobile App ^(Expo^) dependencies...
-cd veddi-pocketpc
-call npm install --legacy-peer-deps
+cd Vedi-PocketPC-Mobile
+call pnpm install
 set "MOBILE_ERR=!ERRORLEVEL!"
 cd ..
 if !MOBILE_ERR! NEQ 0 (
-    echo   [ERROR] Mobile app npm install failed.
+    echo   [ERROR] Mobile app pnpm install failed.
     if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
 )
 echo   [OK] Node.js dependencies installed.

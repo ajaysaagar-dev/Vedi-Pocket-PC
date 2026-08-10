@@ -75,18 +75,18 @@ Lock · Sleep · Shutdown · Mute · Volume Control
 | **Network** | Local Wi-Fi (LAN) | Phone & PC must be on the same local Wi-Fi router |
 | **Mobile** | Expo Go App | Available free on iOS App Store & Android Google Play |
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
+<img src="https://raw.githubusercontent.com/andreasbm/rainbow.gif" width="100%">
 
 ## 🚀 Quick Start Guide
 
 ### ⚡ Option A — 1-Click Automated Setup (Recommended)
 
 1. **Install All Dependencies**:
-   Double-click **[`setup.bat`](file:///P:/Vedi-Pocket-PC/setup.bat)** (or run `.\setup.bat` in PowerShell).
+   Run **[`scripts/setup.bat`](file:///C:/Projects/Vedi-Pocket-PC/scripts/setup.bat)** (or double-click `scripts\setup.bat` in File Explorer).
    > *This script automatically checks Node & Python, installs Python packages, root Electron packages, and mobile Expo app packages in one step.*
 
 2. **Launch the Application**:
-   Double-click **[`start.bat`](file:///P:/Vedi-Pocket-PC/start.bat)** (or run `npm start`).
+   Run **[`scripts/start.bat`](file:///C:/Projects/Vedi-Pocket-PC/scripts/start.bat)** (or run `pnpm start`).
    > *Launches the Electron desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
 
 3. **Connect Mobile App**:
@@ -112,17 +112,17 @@ pip install -r requirements.txt
 #### 2️⃣ Install Desktop & Mobile Node Dependencies
 ```powershell
 # Install root Electron controller dependencies
-npm install
+pnpm install
 
 # Install mobile client dependencies
-cd veddi-pocketpc
-npm install
+cd vedi-pocketpc-mobile
+pnpm install
 cd ..
 ```
 
 #### 3️⃣ Launch Desktop Controller
 ```powershell
-npm start
+pnpm start
 ```
 
 #### 4️⃣ Running Individual Services Separately (Without Electron)
@@ -142,7 +142,7 @@ If you prefer running backends manually in individual PowerShell windows:
 
 - **Mobile Client Expo App** (Port `8088`):
   ```powershell
-  cd veddi-pocketpc
+  cd vedi-pocketpc-mobile
   npx expo start -c
   ```
 
@@ -160,7 +160,7 @@ sequenceDiagram
     participant S as 📡 Stream Server (:8080)
     participant M as 📱 Mobile App
 
-    U->>E: Run start.bat / npm start
+    U->>E: Run scripts/start.bat / pnpm start
     E->>B: Spawn FastAPI Agent process
     E->>S: Spawn Stream Server process
     B->>B: Generate Pairing PIN & QR Code
@@ -174,7 +174,7 @@ sequenceDiagram
 ```
 
 1. Make sure your **Phone and PC are connected to the same Wi-Fi**.
-2. Run `start.bat` on your PC.
+2. Run `scripts\start.bat` on your PC.
 3. Open **Expo Go** on your phone:
    - **Android**: Scan the terminal QR code inside Expo Go.
    - **iOS**: Scan the terminal QR code with your default Camera app, then tap "Open in Expo Go".
@@ -214,27 +214,39 @@ flowchart TB
 
 ```text
 Vedi-Pocket-PC/
-├── setup.bat                          ⚡ One-click installer (Node + Python dependencies)
-├── start.bat                          🚀 One-click launcher (Desktop + Backends + Expo)
+├── .env                               ⚙️ Environment settings file
+├── package.json                       ⚙️ Node & Electron configuration
+├── pnpm-lock.yaml                     ⚙️ PNPM dependency lockfile
 ├── requirements.txt                   📦 Master Python dependencies file
 ├── .npmrc                             ⚙️ Config for legacy peer dependency resolution
-├── controller/                        ⚡ Electron desktop controller & IPC handlers
+├── .gitignore                         ⚙️ Git ignore file
+├── Scripts/                           📜 Utility and launcher scripts
+│   ├── start.bat                      🚀 One-click launcher (Desktop + Backends + Expo)
+│   ├── setup.bat                      ⚡ One-click installer (Node + Python dependencies)
+│   └── reload_expo.bat                🔄 Metro cache reset script
+├── Docs/                              📚 Documentation
+│   ├── README.md                      📖 Repository documentation
+│   └── AGENTS.md                      🤖 Agent Directives & Behavior Guidelines
+├── Controller/                        ⚡ Electron desktop controller & IPC handlers
 │   ├── main.js                        Central entry point for Electron
+│   ├── preload.js                     IPC context bridge script
+│   ├── ipc/                           IPC bridge between UI & system services
 │   ├── services/                      Process manager, binary resolver & network tools
-│   └── ipc/                           IPC bridge between UI & system services
-├── screen-stream-server/              📡 High-performance screen capture & trackpad server (:8080)
-│   ├── capture/                       Fast screen grabber using `mss` & `Pillow`
-│   ├── mouse/                         Low-latency mouse input injection
-│   └── server.py                      aiohttp WebSocket server
-├── vedi-pocketpc-backend/             🔧 FastAPI remote management agent (:8000)
-│   ├── routes/                        Pairing, system info, power & media routes
-│   ├── discovery.py                   mDNS local network discovery broadcast
-│   └── main.py                        FastAPI app entry point
-├── veddi-pocketpc/                    📱 Expo / React Native mobile application (:8088)
+│   └── renderer/                      Desktop UI interface (index.html, renderer.js, styles.css)
+├── Vedi-PocketPC-Mobile/              📱 Expo / React Native mobile application (:8088)
 │   ├── app/(tabs)/                    Screens: Home, Screen Mirror, Trackpad, Keyboard, Controls
 │   ├── app/pairing.tsx                Camera QR code scanner screen
+│   ├── src/domain/                    Clean Architecture entities & use-cases
 │   └── package.json                   Mobile app dependencies (React 19, Lucide, Navigation)
-└── packages/agent-core/               🧠 Shared Python domain models & utilities
+├── Screen-Stream-Server/              📡 High-performance screen capture & trackpad server (:8080)
+│   ├── domain/                        Capture engines & frame streaming logic
+│   ├── presentation/                  WebSocket router & API handlers
+│   └── main.py                        aiohttp WebSocket server entry point
+├── Vedi-PocketPC-Backend/             🔧 FastAPI remote management agent (:8000)
+│   ├── infrastructure/                mDNS discovery & logging configuration
+│   ├── presentation/                  HTTP & WebSocket routers
+│   └── main.py                        FastAPI app entry point
+└── Packages/agent-core/               🧠 Shared Python domain models & utilities
 ```
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
@@ -245,8 +257,8 @@ Vedi-Pocket-PC/
 To package the desktop application into a standalone Windows installer:
 
 ```powershell
-npm run build   # Generates NSIS installer + ZIP in /dist
-npm run pack    # Builds unpacked executable directory for quick testing
+pnpm run build   # Generates NSIS installer + ZIP in /dist
+pnpm run pack    # Builds unpacked executable directory for quick testing
 ```
 
 ### PyInstaller Standalone Backend
@@ -271,13 +283,13 @@ New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direct
 ```
 
 ### 2. `Port 8088 is being used by another process`
-This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `start.bat` or `npm start`.
+This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `scripts\start.bat` or `pnpm start`.
 
-### 3. `npm install` Peer Dependency Error (`ERESOLVE`)
-Expo 57 / React Native 0.86 uses React 19. Both the root directory and `veddi-pocketpc/` contain `.npmrc` with `legacy-peer-deps=true` to automatically bypass strict peer dependency checks.
+### 3. Peer Dependencies
+Expo 57 / React Native 0.86 uses React 19. Both the root directory and `vedi-pocketpc-mobile/` are configured with `.npmrc` to handle peer dependency resolutions smoothly.
 
 ### 4. `electron is not recognized as an internal or external command`
-Run `setup.bat` or run `npm install` in the root directory to install Electron into `node_modules`.
+Run `scripts\setup.bat` or run `pnpm install` in the root directory to install Electron into `node_modules`.
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
 
