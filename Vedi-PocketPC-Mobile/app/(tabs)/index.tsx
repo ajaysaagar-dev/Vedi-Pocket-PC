@@ -58,7 +58,6 @@ export default function IndexScreen() {
         await addDevice(result.device);
         setPin('');
         setShowManualForm(false);
-        Alert.alert('Paired', `Connected to ${result.hostname}.`);
         wsClient.connect(result.device);
       } else if (result.kind === 'unreachable') {
         const directDevice = {
@@ -70,10 +69,7 @@ export default function IndexScreen() {
         await addDevice(directDevice);
         setPin('');
         setShowManualForm(false);
-        Alert.alert(
-          'Added Device',
-          `Backend didn't respond on port ${port}. Configured direct stream at ${safeIp}:8080.`
-        );
+        wsClient.connect(directDevice);
       } else {
         const { title, body } = describePairError(result);
         Alert.alert(title, body);

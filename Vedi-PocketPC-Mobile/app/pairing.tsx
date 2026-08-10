@@ -132,6 +132,7 @@ export default function PairingScreen() {
 
       if (result.kind === 'ok') {
         await addDevice(result.device);
+        wsClient.connect(result.device);
         router.back();
       } else {
         // If probing failed on backend port, fallback to adding direct device for screen streaming
@@ -143,6 +144,7 @@ export default function PairingScreen() {
             hostname: `PC (${ip})`,
           };
           await addDevice(directDevice);
+          wsClient.connect(directDevice);
           router.back();
           return;
         }
