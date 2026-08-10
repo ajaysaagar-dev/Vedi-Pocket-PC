@@ -3373,3 +3373,33 @@
 {"_e":"metro:config","_t":1786371391370,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
 {"_e":"expo:dev-tools-plugin:load","_t":1786371391674,"plugins":[]}
 {"_e":"metro:instantiate","_t":1786371399719,"atlas":false,"workers":8,"host":"::","port":8088}
+{"_e":"root:init","_t":1786371681460,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786371681461,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786371681464,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786371682029,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786371682488,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786371683010,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786371697734,"atlas":false,"workers":8,"host":"::","port":8088}
+{"_e":"metro:bundling:started","_t":1786371797151,"id":"4","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786371797252,"id":"4","total":1,"ms":99.0668}
+{"_e":"metro:client_log","_t":1786371809349,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1786371811245,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=17c010f35f43562e7a4f3e6193addfd07a47f1ecc38625cd579c1da317a48922"]}
+{"_e":"metro:client_log","_t":1786371811327,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786371811375,"level":"warn","data":["[WS] Auth failed:","Invalid token"]}
+{"_e":"metro:client_log","_t":1786371811422,"level":"log","data":["[WS] Old socket closed (replaced)."]}
+{"_e":"metro:client_log","_t":1786371814402,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=fab09e32144b9017be90bf29cbb15401d939f28f6865932556fcc212771ce4cd"]}
+{"_e":"metro:client_log","_t":1786371814526,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786371820212,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=22feeabfb320501532d6dd71b7341ade531532ece018deae728811319daed8d2"]}
+{"_e":"metro:client_log","_t":1786371820272,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786371829645,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=a9461dc13f5a57e5d28ded8e582942cb6c0ca65ec556177eb57e1ca100c4f752"]}
+{"_e":"metro:client_log","_t":1786371829702,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786371834221,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=b4de90c029e6e9ccee2a2dfae1d57dfef552d29b63466db66619c976383b9226"]}
+{"_e":"metro:client_log","_t":1786371834309,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786371846970,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786371850007,"level":"log","data":["[ScreenViewport] Auto-reconnecting to stream..."]}
+{"_e":"metro:client_log","_t":1786371850285,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=228b9a5679f143d7cf5613662178ecf565a4db68c3ee1285c95a576df35d9727"]}
+{"_e":"metro:client_log","_t":1786371850352,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786371856219,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786371859269,"level":"log","data":["[ScreenViewport] Auto-reconnecting to stream..."]}
+{"_e":"metro:client_log","_t":1786371859604,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=7539a59ddad1e52c3ede0a2519540c75fe2ee0e11dde5113a6fb215f0708cf19"]}
+{"_e":"metro:client_log","_t":1786371859653,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
