@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { X, Camera, RefreshCcw } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
 import { pairWithHost, describePairError } from '../src/ws/pairing';
+import wsClient from '../src/ws/client';
 import { palette, Spacing, Radius, Typography, Elevation } from '../constants/theme-m3';
 import { AppLogo } from '../constants/assets';
 
