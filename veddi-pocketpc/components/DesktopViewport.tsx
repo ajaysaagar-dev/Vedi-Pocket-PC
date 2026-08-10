@@ -77,14 +77,22 @@ export default function DesktopViewport({
   const [customPort, setCustomPort] = useState(String(streamPort));
 
   const [selectedRes, setSelectedRes] = useState({ label: '360p', w: 640, h: 360 });
-  const [selectedFps, setSelectedFps] = useState<number>(30);
+  // Default FPS is 20 (not 30) — at 30 FPS, a 640x360 JPEG stream lands in the
+  // 700-1200 kbps range on a typical desktop, which stutters badly on cellular.
+  // 20 FPS keeps responsiveness for cursor tracking while halving the bitrate.
+  const [selectedFps, setSelectedFps] = useState<number>(20);
+  // JPEG quality (10-95) maps to Low / Medium / High presets below.
+  // The server clamps to 10-100 and applies it to the *next* captured frame,
+  // so this is what actually controls bitrate per-frame.
+  const [selectedQuality, setSelectedQuality] = useState<number>(45);
 
-  const sendStreamSettings = (w: number, h: number, fps: number) => {
+  const sendStreamSettings = (w: number, h: number, fps: number, quality: number) => {
     const payloadObj = {
       type: 'set_stream_settings',
       max_width: w,
       max_height: h,
       fps: fps,
+      jpeg_quality: quality,
     };
 
     // Send over control client
@@ -164,9 +172,6 @@ export default function DesktopViewport({
   }, []);
 
   const [frontUri, setFrontUri] = useState<string | null>(null);
-  const [backUri, setBackUri] = useState<string | null>(null);
-  const activeBufferRef = useRef<'front' | 'back'>('front');
-  const [activeBuffer, setActiveBuffer] = useState<'front' | 'back'>('front');
 
   const stopStream = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -179,7 +184,6 @@ export default function DesktopViewport({
     }
     setIsStreaming(false);
     setFrontUri(null);
-    setBackUri(null);
   }, []);
 
   const startStream = useCallback(() => {
@@ -240,6 +244,7 @@ export default function DesktopViewport({
                   max_width: selectedRes.w,
                   max_height: selectedRes.h,
                   fps: selectedFps,
+                  jpeg_quality: selectedQuality,
                 })
               );
             }
@@ -268,15 +273,10 @@ export default function DesktopViewport({
               const base64 = arrayBufferToBase64(buffer);
               const nextUri = `data:image/jpeg;base64,${base64}`;
 
-              if (activeBufferRef.current === 'front') {
-                setBackUri(nextUri);
-                activeBufferRef.current = 'back';
-                setActiveBuffer('back');
-              } else {
-                setFrontUri(nextUri);
-                activeBufferRef.current = 'front';
-                setActiveBuffer('front');
-              }
+              // Single buffer — RN's <Image> keeps the old frame visible
+              // until the new source is decoded, so we get the same effect
+              // without paying for two simultaneous JPEG decodes.
+              setFrontUri(nextUri);
             }
           } catch (err) {
             console.warn('[ScreenViewport] Frame processing error:', err);
@@ -339,8 +339,6 @@ export default function DesktopViewport({
       stopStreamRef.current();
     };
   }, [targetIp, targetPort]);
-
-  const hasFrame = Boolean(frontUri || backUri);
 
   return (
     <View style={[styles.container, isFullscreen && styles.fullscreenContainer]}>
@@ -410,45 +408,18 @@ export default function DesktopViewport({
         {...panResponder.panHandlers}
         style={[styles.viewportFrame, isFullscreen && styles.fullscreenFrame]}
       >
-        {hasFrame ? (
-          <View style={StyleSheet.absoluteFill}>
-            {frontUri && (
-              <Image
-                source={{ uri: frontUri }}
-                style={[
-                  styles.screenImage,
-                  StyleSheet.absoluteFill,
-                  { opacity: activeBuffer === 'front' ? 1 : 0 },
-                ]}
-                resizeMode="contain"
-                fadeDuration={0}
-                onLoad={() => {
-                  if (activeBufferRef.current === 'back') {
-                    activeBufferRef.current = 'front';
-                    setActiveBuffer('front');
-                  }
-                }}
-              />
-            )}
-            {backUri && (
-              <Image
-                source={{ uri: backUri }}
-                style={[
-                  styles.screenImage,
-                  StyleSheet.absoluteFill,
-                  { opacity: activeBuffer === 'back' ? 1 : 0 },
-                ]}
-                resizeMode="contain"
-                fadeDuration={0}
-                onLoad={() => {
-                  if (activeBufferRef.current === 'front') {
-                    activeBufferRef.current = 'back';
-                    setActiveBuffer('back');
-                  }
-                }}
-              />
-            )}
-          </View>
+        {frontUri ? (
+          // Single Image — React Native's Image keeps the old frame visible
+          // until the new source is decoded, so we don't need explicit
+          // double-buffering. Rendering both buffers (the previous design)
+          // doubled JPEG decode work every frame and caused the visible
+          // stutter at higher bitrates.
+          <Image
+            source={{ uri: frontUri }}
+            style={[styles.screenImage, StyleSheet.absoluteFill]}
+            resizeMode="contain"
+            fadeDuration={0}
+          />
         ) : (
           <View style={styles.placeholderContainer}>
             {isStreaming ? (
@@ -526,10 +497,10 @@ export default function DesktopViewport({
               </Text>
               <View style={styles.segmented}>
                 {[
-                  { label: '1080p', w: 1920, h: 1080 },
                   { label: '720p', w: 1280, h: 720 },
                   { label: '480p', w: 854, h: 480 },
                   { label: '360p', w: 640, h: 360 },
+                  { label: '240p', w: 426, h: 240 },
                 ].map(res => {
                   const active = selectedRes.w === res.w;
                   return (
@@ -538,7 +509,7 @@ export default function DesktopViewport({
                       style={[styles.segment, active && styles.segmentActive]}
                       onPress={() => {
                         setSelectedRes(res);
-                        sendStreamSettings(res.w, res.h, selectedFps);
+                        sendStreamSettings(res.w, res.h, selectedFps, selectedQuality);
                       }}
                     >
                       <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
@@ -553,7 +524,7 @@ export default function DesktopViewport({
                 Stream Frame Rate (FPS)
               </Text>
               <View style={styles.segmented}>
-                {[15, 30, 60].map(f => {
+                {[15, 20, 30].map(f => {
                   const active = selectedFps === f;
                   return (
                     <TouchableOpacity
@@ -561,7 +532,7 @@ export default function DesktopViewport({
                       style={[styles.segment, active && styles.segmentActive]}
                       onPress={() => {
                         setSelectedFps(f);
-                        sendStreamSettings(selectedRes.w, selectedRes.h, f);
+                        sendStreamSettings(selectedRes.w, selectedRes.h, f, selectedQuality);
                       }}
                     >
                       <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
@@ -571,6 +542,38 @@ export default function DesktopViewport({
                   );
                 })}
               </View>
+
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>
+                JPEG Quality — biggest impact on bitrate
+              </Text>
+              <View style={styles.segmented}>
+                {[
+                  { label: 'Low (35)', q: 35 },
+                  { label: 'Medium (55)', q: 55 },
+                  { label: 'High (80)', q: 80 },
+                ].map(opt => {
+                  const active = selectedQuality === opt.q;
+                  return (
+                    <TouchableOpacity
+                      key={opt.label}
+                      style={[styles.segment, active && styles.segmentActive]}
+                      onPress={() => {
+                        setSelectedQuality(opt.q);
+                        sendStreamSettings(selectedRes.w, selectedRes.h, selectedFps, opt.q);
+                      }}
+                    >
+                      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {kbps > 1500 && (
+                <Text style={styles.qualityWarn}>
+                  Stream is {kbps} kbps — try Low quality or 360p to reduce stutter.
+                </Text>
+              )}
 
               <TouchableOpacity
                 style={styles.modalSaveBtn}
@@ -810,4 +813,11 @@ const styles = StyleSheet.create({
   },
   segmentText: { ...Typography.labelMedium, color: palette.onSurfaceVariant },
   segmentTextActive: { color: palette.onPrimary },
+
+  qualityWarn: {
+    ...Typography.bodySmall,
+    color: palette.error,
+    marginTop: Spacing.xs,
+    textAlign: 'center',
+  },
 });

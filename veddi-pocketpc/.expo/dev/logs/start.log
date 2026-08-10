@@ -3403,3 +3403,76 @@
 {"_e":"metro:client_log","_t":1786371859269,"level":"log","data":["[ScreenViewport] Auto-reconnecting to stream..."]}
 {"_e":"metro:client_log","_t":1786371859604,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=7539a59ddad1e52c3ede0a2519540c75fe2ee0e11dde5113a6fb215f0708cf19"]}
 {"_e":"metro:client_log","_t":1786371859653,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"root:init","_t":1786372461497,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786372461498,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786372461501,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786372462320,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786372463159,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786372463842,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786372472955,"atlas":false,"workers":8,"host":"::","port":8088}
+{"_e":"metro:bundling:started","_t":1786372489065,"id":"4","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786372515614,"id":"4","total":3408,"ms":26548.2188}
+{"_e":"metro:client_log","_t":1786372528195,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1786372530257,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=fab09e32144b9017be90bf29cbb15401d939f28f6865932556fcc212771ce4cd"]}
+{"_e":"metro:client_log","_t":1786372530380,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786372530434,"level":"warn","data":["[WS] Auth failed:","Invalid token"]}
+{"_e":"metro:client_log","_t":1786372530523,"level":"log","data":["[WS] Old socket closed (replaced)."]}
+{"_e":"metro:client_log","_t":1786372534177,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=9bb88438da5ef26956a7c77300f58460ca9658c5561e01a9f4ed527d5d98f65e"]}
+{"_e":"metro:client_log","_t":1786372534317,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786372540796,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=9628fffe7990503b2e8ed2d0e4dc2cd796a5f574db0b69711aba250863a30cf7"]}
+{"_e":"metro:client_log","_t":1786372540852,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786372549252,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786372549319,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=7ab2976ea4a006cd53d2876f32bbafc4acf07bed1954776a1d12ab1a703d1059"]}
+{"_e":"metro:client_log","_t":1786372549391,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786372607408,"level":"log","data":["[WS] Old socket closed (replaced)."]}
+{"_e":"metro:bundling:started","_t":1786372610259,"id":"9","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786372610336,"id":"9","total":1,"ms":77.4677}
+{"_e":"metro:client_log","_t":1786372621310,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1786372625213,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=9bb88438da5ef26956a7c77300f58460ca9658c5561e01a9f4ed527d5d98f65e"]}
+{"_e":"metro:client_log","_t":1786372625290,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"root:init","_t":1786373135403,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786373135403,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786373135405,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786373135803,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786373136368,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786373136981,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786373146718,"atlas":false,"workers":8,"host":"::","port":8089}
+{"_e":"metro:bundling:started","_t":1786373152785,"id":"d","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786373192315,"id":"d","total":1,"ms":39529.6688}
+{"_e":"root:init","_t":1786373219111,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786373219113,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786373219118,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786373219955,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786373220598,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786373221105,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786373229707,"atlas":false,"workers":8,"host":"::","port":8088}
+{"_e":"metro:bundling:started","_t":1786373244129,"id":"1","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786373271104,"id":"1","total":3408,"ms":26974.3888}
+{"_e":"metro:client_log","_t":1786373285506,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1786373287137,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=9bb88438da5ef26956a7c77300f58460ca9658c5561e01a9f4ed527d5d98f65e"]}
+{"_e":"metro:client_log","_t":1786373287205,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786373287259,"level":"warn","data":["[WS] Auth failed:","Invalid token"]}
+{"_e":"metro:client_log","_t":1786373287305,"level":"log","data":["[WS] Old socket closed (replaced)."]}
+{"_e":"metro:client_log","_t":1786373291314,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=5a10eed1c3c01b9dd34eee6c292d4a73f3151dabb27270ec666a84e86b064db2"]}
+{"_e":"metro:client_log","_t":1786373291466,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786373303907,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=0164a0177e47bc2eb289fbb0d5b7d49aadaa74163d516a4b4eab73c07954fa96"]}
+{"_e":"metro:client_log","_t":1786373303962,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373540465,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373540531,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=601ad21d2b8f350aa0e5bd9fcc13cd58ea33d38f8397168b92009cd60d5f83cc"]}
+{"_e":"metro:client_log","_t":1786373540583,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373543083,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373543185,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=3a1b852327c1b7ee2b2d8fd9302b14f377b8454b833d38c83bbcbeed5c05b94d"]}
+{"_e":"metro:client_log","_t":1786373543260,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373551540,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373551717,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=59ad65764e89f5e50b9904e9be94847ccd6eabb38de39f264d0b97eab002aa97"]}
+{"_e":"metro:client_log","_t":1786373551763,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373586738,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373586807,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=7150421079f5c8dad9791434c6e175291f7f03d135d14dda35d90d54bde598f9"]}
+{"_e":"metro:client_log","_t":1786373586864,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373595314,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373595403,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8082/ws?token=be9d866ddcc9f5b9c0f38926652f1fe956f01b1910339e23b740b959f57c1e9e"]}
+{"_e":"metro:client_log","_t":1786373595458,"level":"log","data":["[ScreenViewport] Connected to screen stream"]}
+{"_e":"metro:client_log","_t":1786373600156,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786373600158,"level":"error","data":["[ReferenceError: Property 'backUri' doesn't exist]","\n\nCode: DesktopViewport.tsx\n\u001b[0m \u001b[90m 347 |\u001b[39m   }\u001b[33m,\u001b[39m [targetIp\u001b[33m,\u001b[39m targetPort])\u001b[33m;\u001b[39m\n \u001b[90m 348 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 349 |\u001b[39m   \u001b[36mconst\u001b[39m hasFrame \u001b[33m=\u001b[39m \u001b[33mBoolean\u001b[39m(frontUri \u001b[33m||\u001b[39m backUri)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 350 |\u001b[39m\n \u001b[90m 351 |\u001b[39m   \u001b[36mreturn\u001b[39m (\n \u001b[90m 352 |\u001b[39m     \u001b[33m<\u001b[39m\u001b[33mView\u001b[39m style\u001b[33m=\u001b[39m{[styles\u001b[33m.\u001b[39mcontainer\u001b[33m,\u001b[39m isFullscreen \u001b[33m&&\u001b[39m styles\u001b[33m.\u001b[39mfullscreenContainer]}\u001b[33m>\u001b[39m\u001b[0m\nCall Stack\n  DesktopViewport (components\\DesktopViewport.tsx:349:40)","\n\nCode: trackpad.tsx\n\u001b[0m \u001b[90m 185 |\u001b[39m         \u001b[33m<\u001b[39m\u001b[33m/\u001b[39m\u001b[33mTouchableOpacity\u001b[39m\u001b[33m>\u001b[39m\n \u001b[90m 186 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 187 |\u001b[39m         \u001b[33m<\u001b[39m\u001b[33mTouchableOpacity\u001b[39m style\u001b[33m=\u001b[39m{styles\u001b[33m.\u001b[39miconBtn} onPress\u001b[33m=\u001b[39m{() \u001b[33m=>\u001b[39m setShowHelp(\u001b[33m!\u001b[39mshowHelp)}\u001b[33m>\u001b[39m\n \u001b[90m     |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 188 |\u001b[39m           \u001b[33m<\u001b[39m\u001b[33mCircleHelp\u001b[39m color\u001b[33m=\u001b[39m{palette\u001b[33m.\u001b[39monSurfaceVariant} size\u001b[33m=\u001b[39m{\u001b[35m20\u001b[39m} \u001b[33m/\u001b[39m\u001b[33m>\u001b[39m\n \u001b[90m 189 |\u001b[39m         \u001b[33m<\u001b[39m\u001b[33m/\u001b[39m\u001b[33mTouchableOpacity\u001b[39m\u001b[33m>\u001b[39m\n \u001b[90m 190 |\u001b[39m       \u001b[33m<\u001b[39m\u001b[33m/\u001b[39m\u001b[33mView\u001b[39m\u001b[33m>\u001b[39m\u001b[0m\nCall Stack\n  TrackpadScreen (app\\(tabs)\\trackpad.tsx:187:26)\n  TabsLayout (app\\(tabs)\\_layout.tsx:7:5)\n  RootLayout (app\\_layout.tsx:33:37)"]}
+{"_e":"metro:bundling:failed","_t":1786373629721,"id":null,"message":"SyntaxError: P:\\Vedi-Pocket-PC\\veddi-pocketpc\\components\\DesktopViewport.tsx: Unexpected token (345:12)\n\n  343 |   const hasFrame = Boolean(frontUri);\n  344 |\n> 345 |   return (  return (\n      |             ^\n  346 |     <View style={[styles.container, isFullscreen && styles.fullscreenContainer]}>\n  347 |       {/* Header bar / Toolbar */}\n  348 |       {!isFullscreen && (","importStack":null,"filename":"components\\DesktopViewport.tsx","targetModuleName":null,"originModulePath":null}
+{"_e":"metro:bundling:failed","_t":1786373629934,"id":null,"message":"SyntaxError: P:\\Vedi-Pocket-PC\\veddi-pocketpc\\components\\DesktopViewport.tsx: Unexpected token (345:12)\n\n  343 |   const hasFrame = Boolean(frontUri);\n  344 |\n> 345 |   return (  return (\n      |             ^\n  346 |     <View style={[styles.container, isFullscreen && styles.fullscreenContainer]}>\n  347 |       {/* Header bar / Toolbar */}\n  348 |       {!isFullscreen && (","importStack":null,"filename":"components\\DesktopViewport.tsx","targetModuleName":null,"originModulePath":null}

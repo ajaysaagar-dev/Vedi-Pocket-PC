@@ -1,3 +1,13 @@
+// Reanimated prints a dev-only warning when the OS-level "Reduce Motion"
+// accessibility setting is on. We don't gate animations on it, so silence
+// the noise. Must run BEFORE `react-native-gesture-handler` is required,
+// since that's what pulls reanimated in and triggers the module-load
+// reduced-motion check. Using `require` (not `import`) ensures this call
+// is not hoisted past the gesture-handler import below.
+require('react-native').LogBox.ignoreLogs([
+  '[Reanimated] Reduced motion setting is enabled on this device.',
+]);
+
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
