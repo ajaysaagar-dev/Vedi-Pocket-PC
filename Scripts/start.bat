@@ -123,7 +123,7 @@ echo   [OK] Port check complete.
 :: ----------------------------------------------------------------
 echo.
 echo [4/5] Verifying Python dependencies...
-python -c "import mss, aiohttp, fastapi, pyautogui, websockets, PySide6" >nul 2>&1
+python -c "import mss, aiohttp, fastapi, pyautogui, websockets, webview" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [INFO] Missing Python / PySide6 deps. Running pip install...
     call :DOWNLOAD_PYTHON_DEPS 0
