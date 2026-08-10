@@ -11,6 +11,10 @@ import re
 import socket
 import base64
 import subprocess
+import queue
+import time
+import json
+import threading
 from typing import Optional
 
 import webview
@@ -426,14 +430,14 @@ HTML_CONTENT = """
       expo: []
     };
 
-    function appendLog(target, message) {
-      if (!message) return;
-      const line = `[${target.toUpperCase()}] ${message}`;
-      
-      logs.combined.push(line);
-      if (target === 'python') logs.python.push(message);
-      if (target === 'expo') logs.expo.push(message);
-
+    function appendLogsBatch(items) {
+      if (!items || !items.length) return;
+      items.forEach(item => {
+        const line = `[${item.target.toUpperCase()}] ${item.message}`;
+        logs.combined.push(line);
+        if (item.target === 'python') logs.python.push(item.message);
+        if (item.target === 'expo') logs.expo.push(item.message);
+      });
       renderLogs();
     }
 
@@ -532,24 +536,51 @@ class ControllerManager:
         self.expo_proc: Optional[subprocess.Popen] = None
 
         self.window = None
+        self.is_running = True
+        self.log_queue = queue.Queue()
+        self.last_ui_update = 0
+
+        # Start background log flusher thread
+        self.flusher_thread = threading.Thread(target=self._log_flusher, daemon=True)
+        self.flusher_thread.start()
 
     def set_window(self, window):
         self.window = window
 
     def push_js(self, js_code: str):
-        if self.window:
+        if self.window and self.is_running:
             try:
                 self.window.evaluate_js(js_code)
             except Exception:
                 pass
 
     def append_log(self, target: str, text: str):
-        if not text:
+        if not text or not self.is_running:
             return
-        clean_text = text.replace("'", "\\'").replace("\n", "\\n").replace("\r", "")
-        self.push_js(f"appendLog('{target}', '{clean_text}')")
+        self.log_queue.put((target, text))
+
+    def _log_flusher(self):
+        while self.is_running:
+            batch = []
+            while len(batch) < 30:
+                try:
+                    target, text = self.log_queue.get_nowait()
+                    batch.append({"target": target, "message": text})
+                except queue.Empty:
+                    break
+            
+            if batch and self.window:
+                js = f"appendLogsBatch({json.dumps(batch)})"
+                self.push_js(js)
+            
+            time.sleep(0.08)
 
     def update_ui_state(self):
+        now = time.time()
+        if now - self.last_ui_update < 0.2:
+            return
+        self.last_ui_update = now
+
         pc_payload = f"{self.lan_ip}:{self.backend_port}:{self.pairing_pin or '0000'}"
         expo_payload = self.expo_url or f"exp://{self.lan_ip}:{self.expo_port}"
 
@@ -567,7 +598,6 @@ class ControllerManager:
             "expo_qr": expo_qr,
         }
         
-        import json
         js = f"updateState({json.dumps(state)})"
         self.push_js(js)
 
@@ -685,10 +715,9 @@ class ControllerManager:
             self.expo_proc = None
 
     def _start_log_thread(self, proc, target: str, parse_pin=False, parse_expo=False):
-        import threading
         def reader():
             for line in iter(proc.stdout.readline, ''):
-                if not line:
+                if not line or not self.is_running:
                     break
                 text = line.strip()
                 self.append_log(target, text)
@@ -734,6 +763,7 @@ def main():
     window.events.loaded += on_loaded
 
     def on_closing():
+        manager.is_running = False
         manager.stop_all_services()
 
     window.events.closing += on_closing
