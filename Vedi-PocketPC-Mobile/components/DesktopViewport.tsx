@@ -31,6 +31,24 @@ import { palette, Spacing, Radius, Typography, Elevation } from '../constants/th
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
+  const len = bytes.length;
+  let binary = '';
+  const chunkSize = 8192;
+  try {
+    for (let i = 0; i < len; i += chunkSize) {
+      const sub = bytes.subarray(i, Math.min(i + chunkSize, len));
+      binary += String.fromCharCode.apply(null, sub as unknown as number[]);
+    }
+    if (typeof btoa === 'function') {
+      return btoa(binary);
+    }
+  } catch {
+    // Fallback on stack size exception
+  }
+  return base64Fallback(bytes);
+}
+
+function base64Fallback(bytes: Uint8Array): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let base64 = '';
   const len = bytes.length;
@@ -52,6 +70,17 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
   return base64;
 }
+
+const ScreenImage = React.memo(function ScreenImage({ uri }: { uri: string }) {
+  return (
+    <Image
+      source={{ uri }}
+      style={[styles.screenImage, StyleSheet.absoluteFill]}
+      resizeMode="contain"
+      fadeDuration={0}
+    />
+  );
+});
 
 interface DesktopViewportProps {
   streamPort?: number;
@@ -116,6 +145,21 @@ export default function DesktopViewport({
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPanDx = useRef(0);
   const lastPanDy = useRef(0);
+  const panAccumulator = useRef({ dx: 0, dy: 0 });
+  const panRafId = useRef<number | null>(null);
+
+  const flushPanMove = () => {
+    const { dx, dy } = panAccumulator.current;
+    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+      wsClient.send({
+        type: 'mouse_move',
+        dx,
+        dy,
+      });
+      panAccumulator.current = { dx: 0, dy: 0 };
+    }
+    panRafId.current = null;
+  };
 
   // PanResponder to handle dragging finger on Desktop Viewport to move PC cursor
   const panResponder = useRef(
@@ -125,6 +169,7 @@ export default function DesktopViewport({
       onPanResponderGrant: () => {
         lastPanDx.current = 0;
         lastPanDy.current = 0;
+        panAccumulator.current = { dx: 0, dy: 0 };
       },
       onPanResponderMove: (evt, gestureState) => {
         const dx = gestureState.dx - lastPanDx.current;
@@ -132,15 +177,19 @@ export default function DesktopViewport({
         lastPanDx.current = gestureState.dx;
         lastPanDy.current = gestureState.dy;
 
-        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-          wsClient.send({
-            type: 'mouse_move',
-            dx,
-            dy,
-          });
+        panAccumulator.current.dx += dx;
+        panAccumulator.current.dy += dy;
+
+        if (!panRafId.current) {
+          panRafId.current = requestAnimationFrame(flushPanMove);
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
+        if (panRafId.current) {
+          cancelAnimationFrame(panRafId.current);
+          panRafId.current = null;
+        }
+        flushPanMove();
         if (Math.abs(gestureState.dx) < 3 && Math.abs(gestureState.dy) < 3) {
           wsClient.send({
             type: 'mouse_click',
@@ -414,12 +463,7 @@ export default function DesktopViewport({
           // double-buffering. Rendering both buffers (the previous design)
           // doubled JPEG decode work every frame and caused the visible
           // stutter at higher bitrates.
-          <Image
-            source={{ uri: frontUri }}
-            style={[styles.screenImage, StyleSheet.absoluteFill]}
-            resizeMode="contain"
-            fadeDuration={0}
-          />
+          <ScreenImage uri={frontUri} />
         ) : (
           <View style={styles.placeholderContainer}>
             {isStreaming ? (

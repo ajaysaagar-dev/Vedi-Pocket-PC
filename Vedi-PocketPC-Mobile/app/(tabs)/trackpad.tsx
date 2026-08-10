@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -37,6 +37,33 @@ export default function TrackpadScreen() {
   const [inputText, setInputText] = useState('');
   const [showKeyboardInput, setShowKeyboardInput] = useState(false);
 
+  const moveAccumulator = useRef({ dx: 0, dy: 0 });
+  const scrollAccumulator = useRef({ dy: 0 });
+  const moveRafId = useRef<number | null>(null);
+  const scrollRafId = useRef<number | null>(null);
+
+  const flushTrackpadMove = () => {
+    const { dx, dy } = moveAccumulator.current;
+    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+      wsClient.send({
+        type: 'mouse_move',
+        dx,
+        dy,
+      });
+      moveAccumulator.current = { dx: 0, dy: 0 };
+    }
+    moveRafId.current = null;
+  };
+
+  const flushTrackpadScroll = () => {
+    const { dy } = scrollAccumulator.current;
+    if (Math.abs(dy) > 0.05) {
+      wsClient.send({ type: 'scroll', dy: -dy / 3 });
+      scrollAccumulator.current = { dy: 0 };
+    }
+    scrollRafId.current = null;
+  };
+
   const handleSendText = () => {
     if (!inputText) return;
     wsClient.send({ type: 'text_input', text: inputText });
@@ -68,6 +95,7 @@ export default function TrackpadScreen() {
       touchY.value = event.y;
       lastTranslationX.value = event.translationX;
       lastTranslationY.value = event.translationY;
+      moveAccumulator.current = { dx: 0, dy: 0 };
     })
     .onUpdate(event => {
       touchX.value = event.x;
@@ -79,16 +107,20 @@ export default function TrackpadScreen() {
       lastTranslationX.value = event.translationX;
       lastTranslationY.value = event.translationY;
 
-      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
-        wsClient.send({
-          type: 'mouse_move',
-          dx,
-          dy,
-        });
+      moveAccumulator.current.dx += dx;
+      moveAccumulator.current.dy += dy;
+
+      if (!moveRafId.current) {
+        moveRafId.current = requestAnimationFrame(flushTrackpadMove);
       }
     })
     .onEnd(() => {
       isPressing.value = withSpring(0, { reduceMotion: ReduceMotion.Never });
+      if (moveRafId.current) {
+        cancelAnimationFrame(moveRafId.current);
+        moveRafId.current = null;
+      }
+      flushTrackpadMove();
       lastTranslationX.value = 0;
       lastTranslationY.value = 0;
     });
@@ -99,16 +131,24 @@ export default function TrackpadScreen() {
     .runOnJS(true)
     .onStart(event => {
       lastScrollY.value = event.translationY;
+      scrollAccumulator.current = { dy: 0 };
     })
     .onUpdate(event => {
       const dy = event.translationY - lastScrollY.value;
       lastScrollY.value = event.translationY;
 
-      if (Math.abs(dy) > 0.01) {
-        wsClient.send({ type: 'scroll', dy: -dy / 3 });
+      scrollAccumulator.current.dy += dy;
+
+      if (!scrollRafId.current) {
+        scrollRafId.current = requestAnimationFrame(flushTrackpadScroll);
       }
     })
     .onEnd(() => {
+      if (scrollRafId.current) {
+        cancelAnimationFrame(scrollRafId.current);
+        scrollRafId.current = null;
+      }
+      flushTrackpadScroll();
       lastScrollY.value = 0;
     });
 
