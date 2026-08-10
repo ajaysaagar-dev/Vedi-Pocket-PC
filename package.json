@@ -2,7 +2,7 @@
   "name": "vedi-pocketpc-desktop",
   "version": "1.0.0",
   "description": "VediPocketPC Desktop Controller",
-  "main": "controller/main.js",
+  "main": "Controller/main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
@@ -41,24 +41,21 @@
       "createStartMenuShortcut": true
     },
     "files": [
-      "controller/**/*",
-      "index.html",
-      "renderer.js",
-      "styles.css"
+      "Controller/**/*"
     ],
     "extraResources": [
       {
-        "from": "screen-stream-server",
+        "from": "Screen-Stream-Server",
         "to": "screen-stream-server",
         "filter": ["**/*"]
       },
       {
-        "from": "veddi-pocketpc",
-        "to": "veddi-pocketpc",
+        "from": "Vedi-PocketPC-Mobile",
+        "to": "vedi-pocketpc-mobile",
         "filter": ["**/*", "!node_modules/.cache/**", "!.git/**"]
       },
       {
-        "from": "vedi-pocketpc-backend",
+        "from": "Vedi-PocketPC-Backend",
         "to": "vedi-pocketpc-backend",
         "filter": ["**/*"]
       }
