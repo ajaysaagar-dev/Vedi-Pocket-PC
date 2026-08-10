@@ -40,33 +40,39 @@ class ScreenCapturer:
 
     def __init__(self) -> None:
         self._last_resolution: Tuple[int, int] = (0, 0)
+        self._sct_instance = None
 
     @property
     def last_resolution(self) -> Tuple[int, int]:
         return self._last_resolution
 
+    def _get_sct(self):
+        if self._sct_instance is None:
+            if mss is None:
+                return None
+            mss_factory = getattr(mss, "MSS", getattr(mss, "mss", None))
+            if mss_factory:
+                self._sct_instance = mss_factory()
+        return self._sct_instance
+
     def get_monitors(self) -> List[Dict[str, Any]]:
         _ensure_windows_desktop_access()
-        if mss is None:
+        sct = self._get_sct()
+        if not sct:
             return []
 
-        mss_factory = getattr(mss, "MSS", getattr(mss, "mss", None))
-        if not mss_factory:
-            return []
-
-        with mss_factory() as sct:
-            monitors_list = []
-            for idx, mon in enumerate(sct.monitors):
-                monitors_list.append({
-                    "index": idx,
-                    "left": mon.get("left", 0),
-                    "top": mon.get("top", 0),
-                    "width": mon.get("width", 0),
-                    "height": mon.get("height", 0),
-                    "is_primary": mon.get("is_primary", False) if idx > 0 else (idx == 0 and len(sct.monitors) == 1),
-                    "name": mon.get("name", "All Monitors" if idx == 0 else f"Monitor {idx}"),
-                })
-            return monitors_list
+        monitors_list = []
+        for idx, mon in enumerate(sct.monitors):
+            monitors_list.append({
+                "index": idx,
+                "left": mon.get("left", 0),
+                "top": mon.get("top", 0),
+                "width": mon.get("width", 0),
+                "height": mon.get("height", 0),
+                "is_primary": mon.get("is_primary", False) if idx > 0 else (idx == 0 and len(sct.monitors) == 1),
+                "name": mon.get("name", "All Monitors" if idx == 0 else f"Monitor {idx}"),
+            })
+        return monitors_list
 
     def capture_frame(
         self,
@@ -76,11 +82,11 @@ class ScreenCapturer:
         jpeg_quality: int = 70,
     ) -> Tuple[bytes, Tuple[int, int]]:
         _ensure_windows_desktop_access()
-        if mss is None:
+        sct = self._get_sct()
+        if sct is None:
             raise RuntimeError("mss package is not installed.")
 
-        mss_factory = getattr(mss, "MSS", getattr(mss, "mss", None))
-        with mss_factory() as sct:
+        try:
             available_monitors = sct.monitors
             if not available_monitors:
                 raise RuntimeError("No monitors detected by MSS.")
@@ -116,13 +122,7 @@ class ScreenCapturer:
                         cx = ci.ptScreenPos.x - mon.get("left", 0)
                         cy = ci.ptScreenPos.y - mon.get("top", 0)
 
-                        scale_x = (min(max_width / orig_w, max_height / orig_h) if (orig_w > max_width or orig_h > max_height) else 1.0)
-                        scale_y = scale_x
-
-                        mcx = int(cx * scale_x)
-                        mcy = int(cy * scale_y)
-
-                        if 0 <= mcx < (orig_w * scale_x) and 0 <= mcy < (orig_h * scale_y):
+                        if 0 <= cx < orig_w and 0 <= cy < orig_h:
                             draw = ImageDraw.Draw(img)
                             arrow = [
                                 (cx, cy),
@@ -146,7 +146,11 @@ class ScreenCapturer:
             self._last_resolution = (img.width, img.height)
 
             buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=jpeg_quality)
+            img.save(buf, format="JPEG", quality=jpeg_quality, optimize=False)
             jpeg_bytes = buf.getvalue()
 
             return jpeg_bytes, (img.width, img.height)
+        except Exception as err:
+            # Reset sct instance on error to allow recovery on next capture
+            self._sct_instance = None
+            raise err
