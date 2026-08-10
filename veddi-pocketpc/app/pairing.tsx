@@ -3,6 +3,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -17,6 +18,7 @@ import { X, Camera, RefreshCcw } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
 import { pairWithHost, describePairError } from '../src/ws/pairing';
 import { palette, Spacing, Radius, Typography, Elevation } from '../constants/theme-m3';
+import { AppLogo } from '../constants/assets';
 
 export default function PairingScreen() {
   const router = useRouter();
@@ -158,7 +160,9 @@ export default function PairingScreen() {
     } finally {
       setPairingInProgress(false);
     }
-  };  return (
+  };
+
+  return (
     <View style={styles.cameraRoot}>
       <StatusBar style="light" />
       <CameraView
@@ -181,11 +185,17 @@ export default function PairingScreen() {
 
       {/* Overlay UI — Top Close Button, Perfectly Centered Reticle & Bottom Status */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        {/* Top bar — close */}
+        {/* Top bar — close and brand logo */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + Spacing.xs }]}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
             <X color={palette.onSurface} size={22} />
           </TouchableOpacity>
+          <View style={styles.topBrandGroup}>
+            <View style={styles.topLogoBadge}>
+              <Image source={AppLogo} style={styles.topLogoImage} resizeMode="cover" />
+            </View>
+            <Text style={styles.topBrandText}>Pair Device</Text>
+          </View>
         </View>
 
         {/* Center reticle — EXACT geometric center of the screen */}
@@ -437,5 +447,34 @@ const styles = StyleSheet.create({
   textBtnText: {
     ...Typography.labelLarge,
     color: palette.primary,
+  },
+
+  topBrandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  topLogoBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  topLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  topBrandText: {
+    ...Typography.titleSmall,
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });

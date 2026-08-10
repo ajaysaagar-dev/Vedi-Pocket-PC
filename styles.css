@@ -97,21 +97,45 @@ body {
   gap: 14px;
 }
 
-.logo-badge {
-  width: 44px;
-  height: 44px;
-
-  border-radius: var(--radius-md);
-
-  background-color: #ffffff;
-
+.logo-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.05));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
 
-  color: #000000;
+.logo-wrapper:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.18);
+}
 
-  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12);
+.app-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.logo-status-glow {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--surface-dark);
+  box-shadow: 0 0 8px var(--success);
 }
 
 .header-title {

@@ -162,15 +162,15 @@ for %%P in (8080 8000 8088) do (
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
         "try { if (-not (Get-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Direction Inbound -LocalPort %%P -Protocol TCP -Action Allow -Profile Private,Domain | Out-Null }; exit 0 } catch { exit 1 }" >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
-        echo   [OK]  VediPocketPC-%%P (port %%P)
+        echo   [OK]  VediPocketPC-%%P ^(port %%P^)
     ) else (
-        echo   [WARN] Could not add VediPocketPC-%%P (port %%P).
+        echo   [WARN] Could not add VediPocketPC-%%P ^(port %%P^).
         echo          Re-run this window as Administrator if your phone
         echo          can't reach the controller.
         set "FW_OK=0"
     )
 )
-if "%FW_OK%"=="0" (
+if "!FW_OK!"=="0" (
     echo.
     echo   Phones may not be able to connect. Re-run start.bat as
     echo   Administrator ^(right-click start.bat ^> Run as administrator^)

@@ -23,7 +23,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.background }}>
-      <StatusBar style="dark" backgroundColor={palette.background} />
+      {/* expo-status-bar doesn't accept `backgroundColor` — on Android the
+          app is edge-to-edge (`edgeToEdgeEnabled: true` in app.json), so the
+          content draws behind a transparent status bar and the palette color
+          shows through naturally. `backgroundColor` here was a no-op. */}
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: palette.surface },
