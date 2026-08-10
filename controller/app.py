@@ -466,9 +466,27 @@ HTML_CONTENT = """<!DOCTYPE html>
 """
 
 
+def find_root_dir() -> str:
+    candidates = [
+        os.path.dirname(os.path.abspath(__file__)),
+        os.path.dirname(os.path.abspath(sys.executable)),
+        os.getcwd()
+    ]
+    for start in candidates:
+        curr = start
+        for _ in range(6):
+            if os.path.exists(os.path.join(curr, "Screen-Stream-Server")):
+                return os.path.abspath(curr)
+            parent = os.path.dirname(curr)
+            if parent == curr:
+                break
+            curr = parent
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+
 class ControllerManager:
     def __init__(self):
-        self.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.root_dir = find_root_dir()
         self.server_dir = os.path.join(self.root_dir, "Screen-Stream-Server")
         self.backend_dir = os.path.join(self.root_dir, "Vedi-PocketPC-Backend")
         self.mobile_dir = os.path.join(self.root_dir, "Vedi-PocketPC-Mobile")

@@ -5,7 +5,7 @@ a = Analysis(
     ['Controller/app.py'],
     pathex=[],
     binaries=[],
-    datas=[('Vedi-PocketPC-Mobile/assets/images', 'Vedi-PocketPC-Mobile/assets/images')],
+    datas=[('Screen-Stream-Server', 'Screen-Stream-Server'), ('Vedi-PocketPC-Backend', 'Vedi-PocketPC-Backend'), ('Vedi-PocketPC-Mobile', 'Vedi-PocketPC-Mobile')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

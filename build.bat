@@ -22,7 +22,7 @@ python -m pip install pyinstaller pillow pywebview qrcode bottle --quiet
 echo.
 echo [2/3] Building standalone Windows executable with PyInstaller...
 
-python -m PyInstaller --noconfirm --onedir --windowed --name "VediPocketPCController" --icon "Vedi-PocketPC-Mobile\assets\images\icon.png" --add-data "Vedi-PocketPC-Mobile\assets\images;Vedi-PocketPC-Mobile\assets\images" Controller\app.py
+python -m PyInstaller --noconfirm --onedir --windowed --name "VediPocketPCController" --icon "Vedi-PocketPC-Mobile\assets\images\icon.png" --add-data "Screen-Stream-Server;Screen-Stream-Server" --add-data "Vedi-PocketPC-Backend;Vedi-PocketPC-Backend" --add-data "Vedi-PocketPC-Mobile;Vedi-PocketPC-Mobile" Controller\app.py
 
 if %ERRORLEVEL% neq 0 (
     echo.
