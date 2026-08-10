@@ -87,7 +87,7 @@ Lock · Sleep · Shutdown · Mute · Volume Control
 
 2. **Launch the Application**:
    Double-click **[`start.bat`](file:///P:/Vedi-Pocket-PC/start.bat)** (or run `npm start`).
-   > *Launches the Electron desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8081).*
+   > *Launches the Electron desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
 
 3. **Connect Mobile App**:
    - Open **Expo Go** on your phone.
@@ -140,7 +140,7 @@ If you prefer running backends manually in individual PowerShell windows:
   python main.py
   ```
 
-- **Mobile Client Expo App** (Port `8081`):
+- **Mobile Client Expo App** (Port `8088`):
   ```powershell
   cd veddi-pocketpc
   npx expo start -c
@@ -230,7 +230,7 @@ Vedi-Pocket-PC/
 │   ├── routes/                        Pairing, system info, power & media routes
 │   ├── discovery.py                   mDNS local network discovery broadcast
 │   └── main.py                        FastAPI app entry point
-├── veddi-pocketpc/                    📱 Expo / React Native mobile application (:8081)
+├── veddi-pocketpc/                    📱 Expo / React Native mobile application (:8088)
 │   ├── app/(tabs)/                    Screens: Home, Screen Mirror, Trackpad, Keyboard, Controls
 │   ├── app/pairing.tsx                Camera QR code scanner screen
 │   └── package.json                   Mobile app dependencies (React 19, Lucide, Navigation)
@@ -270,7 +270,7 @@ New-NetFirewallRule -DisplayName "Vedi Pocket PC - Screen Stream (8080)" -Direct
 New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Private,Domain
 ```
 
-### 2. `Port 8081 is being used by another process`
+### 2. `Port 8088 is being used by another process`
 This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `start.bat` or `npm start`.
 
 ### 3. `npm install` Peer Dependency Error (`ERESOLVE`)

@@ -50,17 +50,17 @@ for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
 echo   [OK] Python    !PY_VER!
 
 :: ----------------------------------------------------------------
-:: 2. Auto-clear occupied ports (8080, 8000, 8081)
+:: 2. Non-destructive port check (8080, 8000, 8088)
 :: ----------------------------------------------------------------
 echo.
-echo [2/5] Checking and preparing required ports ^(8080, 8000, 8081^)...
-for %%P in (8080 8000 8081) do (
-    for /f "tokens=5" %%A in ('netstat -aon ^| findstr "LISTENING" ^| findstr ":%%P " 2^>nul') do (
-        echo   [INFO] Port %%P is in use by PID %%A. Auto-terminating stale process...
-        taskkill /f /pid %%A /t >nul 2>&1
+echo [2/5] Checking required ports ^(8080, 8000, 8088^)...
+for %%P in (8080 8000 8088) do (
+    netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo   [INFO] Port %%P is in use by another app. Controller will auto-bind to next free port.
     )
 )
-echo   [OK] All ports clear.
+echo   [OK] Port check complete.
 
 :: ----------------------------------------------------------------
 :: 3. Install Python deps if missing — a fresh checkout won't have
@@ -120,6 +120,36 @@ if not exist veddi-pocketpc\node_modules\expo\package.json (
     )
 ) else (
     echo   [OK] Mobile deps present.
+)
+
+:: ----------------------------------------------------------------
+:: 4b. Firewall rules — without these, your phone shows
+::     "packager is not running at 8088" even though the controller
+::     is happily listening (Windows blocks inbound by default).
+::     Run as Administrator OR we'll try via PowerShell; either way
+::     you see a clear pass/fail per rule.
+:: ----------------------------------------------------------------
+echo.
+echo [4b] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
+set "FW_OK=1"
+for %%P in (8080 8000 8088) do (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+        "try { if (-not (Get-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Direction Inbound -LocalPort %%P -Protocol TCP -Action Allow -Profile Private,Domain | Out-Null }; exit 0 } catch { exit 1 }" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo   [OK]  VediPocketPC-%%P (port %%P)
+    ) else (
+        echo   [WARN] Could not add VediPocketPC-%%P (port %%P).
+        echo          Re-run this window as Administrator if your phone
+        echo          can't reach the controller.
+        set "FW_OK=0"
+    )
+)
+if "%FW_OK%"=="0" (
+    echo.
+    echo   Phones may not be able to connect. Re-run start.bat as
+    echo   Administrator ^(right-click start.bat ^> Run as administrator^)
+    echo   to install the firewall rules automatically.
+    echo.
 )
 
 :: ----------------------------------------------------------------

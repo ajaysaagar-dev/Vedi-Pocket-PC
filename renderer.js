@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnCopyExpoUrl = document.getElementById('btnCopyExpoUrl');
   const btnCopyIp = document.getElementById('btnCopyIp');
   const btnRefreshInfo = document.getElementById('btnRefreshInfo');
+  const btnReloadMetro = document.getElementById('btnReloadMetro');
 
   const tabPython = document.getElementById('tabPython');
   const tabExpo = document.getElementById('tabExpo');
@@ -194,6 +195,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   btnRefreshInfo.addEventListener('click', refreshServerInfo);
+
+  // "Reload Metro" — taps the existing restart-servers IPC, which
+  // restarts Expo with `-c` (cleared Metro cache). This is the fix
+  // for the phone's "Failed to download remote update" error: the
+  // previous bundle download was interrupted mid-stream; restarting
+  // Metro clears its cache and re-emits a clean bundle so the next
+  // download succeeds.
+  if (btnReloadMetro) {
+    btnReloadMetro.addEventListener('click', async () => {
+      btnReloadMetro.disabled = true;
+      btnReloadMetro.textContent = 'Reloading…';
+      try {
+        await window.electronAPI.restartServers();
+        showToast('Metro reloading — re-scan the QR in a few seconds.');
+      } finally {
+        setTimeout(() => {
+          btnReloadMetro.disabled = false;
+          btnReloadMetro.textContent = 'Reload Metro';
+        }, 4000);
+      }
+    });
+  }
 
   btnCopyServerUrl.addEventListener('click', () => {
     const textToCopy = txtPairingUrl ? txtPairingUrl.textContent : (txtWsUrl ? txtWsUrl.textContent : '');

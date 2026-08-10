@@ -20,10 +20,28 @@ function resolveSubdir(dirName) {
   const inResources = path.join(process.resourcesPath || '', dirName);
   const inApp = path.join(__dirname, '..', '..', dirName);
 
-  if (app.isPackaged && fs.existsSync(inResources)) {
+  if (app && app.isPackaged && fs.existsSync(inResources)) {
     return inResources;
   }
   return inApp;
+}
+
+function isPortInUse(port) {
+  if (process.platform !== 'win32') return false;
+  try {
+    const stdout = execSync(`netstat -ano | findstr LISTENING | findstr ":${port} "`, { encoding: 'utf8', timeout: 3000 });
+    return !!(stdout && stdout.trim().length > 0);
+  } catch (e) {
+    return false;
+  }
+}
+
+function findFreePort(preferredPort) {
+  let p = preferredPort;
+  while (isPortInUse(p)) {
+    p++;
+  }
+  return p;
 }
 
 class ProcessManager {
@@ -36,64 +54,17 @@ class ProcessManager {
     this.isPythonRunning = false;
     this.isBackendRunning = false;
 
-    this.currentExpoPort = 8081;
+    this.streamPort = 8080;
+    this.backendPort = 8000;
+    this.currentExpoPort = 8088;
     this.currentExpoUrl = '';
     this.lanIp = network.getLanIp();
 
-    // Backend pairing credentials parsed from its stdout. The
-    // backend prints `Pairing PIN: NNNN` on startup — we capture it
-    // here so the controller can render a proper `ip:port:pin`
-    // QR that the mobile app's QR scanner already understands.
+    // Backend pairing credentials parsed from its stdout.
     this.pairingPin = '';
-    this.backendPort = 8000;
 
     this._statusListeners = new Set();
     this._logListeners = new Set();
-  }
-
-  _freePort(port) {
-    if (process.platform !== 'win32') return;
-    try {
-      // `findstr ":PORT>"` is anchored to a non-digit so we don't
-      // accidentally match `:80801` or `:8080X` — the trailing `>`
-      // (or end-of-line, if findstr supports it) ensures we only get
-      // exact-port matches. `findstr LISTENING` filters out
-      // ESTABLISHED / TIME_WAIT lines that also bind a port locally.
-      const stdout = execSync(
-        `netstat -ano | findstr LISTENING | findstr ":${port} "`,
-        { encoding: 'utf8', timeout: 4000 }
-      );
-      if (!stdout) return;
-      const lines = stdout.trim().split(/[\r\n]+/);
-      const myPid = String(process.pid);
-      const killed = new Set();
-      for (const line of lines) {
-        // netstat row: "<Proto> <Local> <Remote> <State> <PID>"
-        // matches both IPv4 ("0.0.0.0:8080") and IPv6 ("[::]:8080").
-        const parts = line.trim().split(/\s+/);
-        const pid = parts[parts.length - 1];
-        if (!pid || !/^\d+$/.test(pid) || pid === '0' || pid === myPid) continue;
-        if (killed.has(pid)) continue;
-        killed.add(pid);
-        console.log(`[Desktop] Auto-clearing port ${port} occupied by PID ${pid}`);
-        try {
-          // Synchronous kill + timeout so the OS actually releases
-          // the socket before we return. Asynchronous `exec` would
-          // race with the subsequent `spawn()`.
-          execSync(`taskkill /pid ${pid} /F /T`, {
-            stdio: 'ignore',
-            timeout: 4000,
-          });
-        } catch (_) {
-          // Non-zero exit usually means the process is already gone
-          // by the time we got here — that's still success for our
-          // purposes, the port is free.
-        }
-      }
-    } catch (_) {
-      // netstat / findstr returning nothing is the happy path —
-      // port is already free, nothing to do.
-    }
   }
 
   onStatusUpdate(cb) {
@@ -109,7 +80,7 @@ class ProcessManager {
   _emitStatus() {
     const payload = {
       lanIp: this.lanIp,
-      serverPort: 8080,
+      serverPort: this.streamPort,
       backendPort: this.backendPort,
       expoPort: this.currentExpoPort,
       isPythonRunning: this.isPythonRunning,
@@ -117,10 +88,6 @@ class ProcessManager {
       isExpoRunning: this.isExpoRunning,
       expoUrl: this.currentExpoUrl || `exp://${this.lanIp}:${this.currentExpoPort}`,
       pairingPin: this.pairingPin,
-      // `pairingUrl` is the canonical `ip:port:pin` payload the mobile
-      // app's QR scanner parses. Built from whatever credentials we
-      // have so far; the renderer fills in blanks with the LAN IP
-      // default if the backend isn't up yet.
       pairingUrl:
         this.pairingPin && this.lanIp
           ? `${this.lanIp}:${this.backendPort}:${this.pairingPin}`
@@ -141,14 +108,13 @@ class ProcessManager {
   startExpo() {
     if (this.expoProcess) return;
 
-    this._freePort(8081);
+    this.currentExpoPort = findFreePort(8088);
 
     const expoDir = resolveSubdir('veddi-pocketpc');
     const expoPkg = path.join(expoDir, 'node_modules', 'expo');
 
     if (!fs.existsSync(expoPkg)) {
       console.log(`[Desktop] Expo module not found in ${expoDir}.`);
-      // Notify renderer (if a window exists yet) so it can show a tip.
       this._emitLog('expo-log', '[Desktop] Expo dev server skipped (mobile app source not installed). Stream Server active.');
       return;
     }
@@ -156,7 +122,7 @@ class ProcessManager {
     const lanIp = network.getLanIp();
     this.lanIp = lanIp;
     this.currentExpoUrl = `exp://${lanIp}:${this.currentExpoPort}`;
-    console.log(`[Desktop] Starting Expo Mobile Server on LAN IP (${lanIp}) in ${expoDir}...`);
+    console.log(`[Desktop] Starting Expo Mobile Server on LAN IP (${lanIp}:${this.currentExpoPort}) in ${expoDir}...`);
 
     const { env } = network.getSpawnEnv();
     const nodeCmd = getNodePath();
@@ -166,7 +132,7 @@ class ProcessManager {
     const localExpoBin = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli');
     const localExpoJs = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli.js');
 
-    const expoArgs = ['start', '-c', '--host', 'lan', '--port', '8081'];
+    const expoArgs = ['start', '-c', '--host', 'lan', '--port', String(this.currentExpoPort)];
     const useLocalJs = fs.existsSync(localExpoJs);
     const cliPath = useLocalJs ? localExpoJs : localExpoBin;
 
@@ -249,22 +215,20 @@ class ProcessManager {
   startStreamServer() {
     if (this.pythonProcess) return;
 
-    this._freePort(8080);
+    this.streamPort = findFreePort(8080);
 
     const serverDir = resolveSubdir('screen-stream-server');
-    const { env } = network.getSpawnEnv();
+    const { env: spawnEnv } = network.getSpawnEnv();
+    const env = { ...spawnEnv, STREAM_PORT: String(this.streamPort) };
     const pythonCmd = getPythonPath();
 
-    // Log the resolved binary up-front so a wrong / missing Python
-    // interpreter is immediately visible in the log panel — without
-    // this, "Python Stream Server: Stopped" was the only symptom.
     console.log(`[Desktop] Starting Python Stream Server`);
     console.log(`[Desktop]   cwd     = ${serverDir}`);
     console.log(`[Desktop]   python  = ${pythonCmd}`);
-    console.log(`[Desktop]   port    = 8080`);
+    console.log(`[Desktop]   port    = ${this.streamPort}`);
     this._emitLog(
       'python-log',
-      `[Desktop] Starting screen-stream-server\n  cwd:    ${serverDir}\n  python: ${pythonCmd}\n`
+      `[Desktop] Starting screen-stream-server on port ${this.streamPort}\n  cwd:    ${serverDir}\n  python: ${pythonCmd}\n`
     );
 
     let child;
@@ -272,15 +236,9 @@ class ProcessManager {
       child = spawn(pythonCmd, ['main.py'], {
         cwd: serverDir,
         env,
-        // Explicit stdio — guarantees `pipe` so we never miss a
-        // first-chunk stderr (the original code relied on defaults
-        // which on some Node builds silently inherit `inherit` for
-        // stderr in console-mode Electron, hiding tracebacks).
         stdio: ['ignore', 'pipe', 'pipe'],
       });
     } catch (err) {
-      // Synchronous spawn failure (rare, but happens when the path
-      // resolves to something Node refuses to exec).
       console.error(`[Python Spawn Error] ${err.message}`);
       this._emitLog('python-log', `[SPAWN ERROR] ${err.message}`);
       this.pythonProcess = null;
@@ -290,18 +248,9 @@ class ProcessManager {
     }
 
     this.pythonProcess = child;
-    // Attach listeners IMMEDIATELY (in the same tick as spawn) so we
-    // never lose the first chunk — the previous code's
-    // `isPythonRunning = true` line raced with the early-exit case
-    // and could miss a 10-line traceback that fired before listeners
-    // were wired.
     child.stdout.on('data', (data) => this._emitLog('python-log', data.toString()));
     child.stderr.on('data', (data) => this._emitLog('python-log', `[ERROR] ${data.toString()}`));
 
-    // Don't flip `isPythonRunning = true` until we've actually seen
-    // output OR a 1-second grace timer expires. This eliminates the
-    // "Running but actually dead" UI flicker when the child crashes
-    // inside the import phase (e.g. missing `mss`).
     this._markStartedWhenReady(this, child, 'isPythonRunning');
 
     child.on('error', (err) => {
@@ -323,21 +272,20 @@ class ProcessManager {
   startBackend() {
     if (this.backendProcess) return;
 
-    this._freePort(8000);
+    this.backendPort = findFreePort(8000);
 
     const backendDir = resolveSubdir('vedi-pocketpc-backend');
-    const { env } = network.getSpawnEnv();
+    const { env: spawnEnv } = network.getSpawnEnv();
+    const env = { ...spawnEnv, BACKEND_PORT: String(this.backendPort) };
     const pythonCmd = getPythonPath();
 
-    // Same up-front diagnostic logging as the stream server so an
-    // obvious misconfiguration isn't a mystery.
     console.log(`[Desktop] Starting FastAPI Backend`);
     console.log(`[Desktop]   cwd     = ${backendDir}`);
     console.log(`[Desktop]   python  = ${pythonCmd}`);
-    console.log(`[Desktop]   port    = 8000`);
+    console.log(`[Desktop]   port    = ${this.backendPort}`);
     this._emitLog(
       'python-log',
-      `[Desktop] Starting vedi-pocketpc-backend\n  cwd:    ${backendDir}\n  python: ${pythonCmd}\n`
+      `[Desktop] Starting vedi-pocketpc-backend on port ${this.backendPort}\n  cwd:    ${backendDir}\n  python: ${pythonCmd}\n`
     );
 
     let child;

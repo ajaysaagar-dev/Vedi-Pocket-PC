@@ -9,8 +9,10 @@ const qr = require('../services/qr');
 
 function statusPayload(processes) {
   const lanIp = network.getLanIp();
-  const serverUrl = `http://${lanIp}:8080`;
-  const wsUrl = `ws://${lanIp}:8080/ws`;
+  const streamPort = processes.streamPort || 8080;
+  const backendPort = processes.backendPort || 8000;
+  const serverUrl = `http://${lanIp}:${streamPort}`;
+  const wsUrl = `ws://${lanIp}:${streamPort}/ws`;
   const expoUrl = processes.currentExpoUrl || `exp://${lanIp}:${processes.currentExpoPort}`;
 
   // The mobile app's QR scanner parses two formats:
@@ -21,13 +23,13 @@ function statusPayload(processes) {
   // is shown as a fallback when the backend is offline.
   const pairingPin = processes.pairingPin || '';
   const pairingUrl = pairingPin && lanIp
-    ? `${lanIp}:${processes.backendPort}:${pairingPin}`
+    ? `${lanIp}:${backendPort}:${pairingPin}`
     : serverUrl;
 
   return {
     lanIp,
-    serverPort: 8080,
-    backendPort: processes.backendPort,
+    serverPort: streamPort,
+    backendPort: backendPort,
     expoPort: processes.currentExpoPort,
     isPythonRunning: processes.isPythonRunning,
     isBackendRunning: processes.isBackendRunning,
@@ -67,13 +69,15 @@ function registerIpcHandlers({ getWindow, processes }) {
   // the UI can show "actually up" even when the Node-side spawn
   // race leaves isRunning flags stale. The Electron renderer's
   // fetch() goes straight to the LAN IP — same network path the
-  // mobile app uses — so a port 8080 collision / process death
+  // mobile app uses — so a port collision / process death
   // surfaces immediately.
   ipcMain.handle('probe-health', async (_event) => {
     const lanIp = network.getLanIp();
+    const streamPort = processes.streamPort || 8080;
+    const backendPort = processes.backendPort || 8000;
     const targets = {
-      streamReachable: `http://${lanIp}:8080/health`,
-      backendReachable: `http://${lanIp}:8000/health`,
+      streamReachable: `http://${lanIp}:${streamPort}/health`,
+      backendReachable: `http://${lanIp}:${backendPort}/health`,
     };
     const out = { streamReachable: false, backendReachable: false };
     await Promise.all(
