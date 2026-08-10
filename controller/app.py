@@ -1,7 +1,7 @@
 """
 Vedi Pocket PC — pywebview Desktop Controller
-Native Python GUI control panel built with pywebview & HTML/CSS Apple Glassmorphism UI.
-Manages Screen Stream Server, FastAPI Backend Agent, and Mobile Expo Dev Server.
+Exact Apple Glassmorphic GUI implementation based on ref/dark.html and ref/other.html
+with Theme Switcher (Dark Default vs Cyber Neon).
 """
 
 import sys
@@ -64,7 +64,7 @@ def generate_qr_base64(data: str) -> str:
         )
         qr.add_data(data)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="#ffffff", back_color="#0a0a0f").convert("RGBA")
+        img = qr.make_image(fill_color="#000000", back_color="#ffffff").convert("RGBA")
         
         buf = io.BytesIO()
         img.save(buf, format="PNG")
@@ -91,409 +91,394 @@ def kill_process_tree(pid: int):
             pass
 
 
-# --- Apple Glassmorphism Dark UI (HTML / CSS / JS) ---
 HTML_CONTENT = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Vedi Pocket PC</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    
-    body {
-      background-color: #000000;
-      color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-      padding: 20px;
-      overflow-x: hidden;
-      min-height: 100vh;
-    }
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vedi Pocket PC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
 
-    /* Apple Glass Card */
-    .glass-card {
-      background: rgba(22, 22, 26, 0.75);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      transition: border-color 0.3s ease;
-    }
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-primary-fixed-variant": "#454747",
+                        "surface-dim": "#131313",
+                        "on-secondary-fixed": "#002113",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#00311f",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-container": "#636565",
+                        "inverse-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#1a1c1c",
+                        "primary-container": "#e2e2e2",
+                        "surface": "#131313",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-tertiary-container": "#c22229",
+                        "secondary": "#4edea3",
+                        "on-background": "#e5e2e1",
+                        "secondary-container": "#00a572",
+                        "surface-container-low": "#1c1b1b",
+                        "error": "#ffb4ab",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary": "#003824",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#5d5f5f",
+                        "outline-variant": "#444748",
+                        "on-primary": "#2f3131",
+                        "outline": "#8e9192",
+                        "primary-fixed": "#e2e2e2",
+                        "surface-bright": "#393939",
+                        "surface-tint": "#c6c6c7",
+                        "tertiary": "#ffffff",
+                        "tertiary-container": "#ffdad7",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary-fixed": "#410004",
+                        "on-tertiary": "#68000a",
+                        "secondary-fixed": "#6ffbbe",
+                        "primary": "#ffffff",
+                        "surface-container-highest": "#353534",
+                        "surface-container": "#201f1f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max-width": "1440px",
+                        "gutter": "16px",
+                        "unit": "4px",
+                        "margin": "24px"
+                    },
+                    "fontFamily": {
+                        "code-log": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "code-log": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Common Glass Styling */
+        .glass-panel {
+            transition: all 0.3s ease;
+        }
+        
+        /* Dark Minimal Glass (ref/dark.html - Default) */
+        body.theme-dark {
+            background-color: #131313;
+            color: #e5e2e1;
+        }
+        body.theme-dark .glass-panel {
+            background-color: rgba(19, 19, 19, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid #2C2C2E;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        body.theme-dark .text-accent-primary { color: #ffffff; }
+        body.theme-dark .text-accent-secondary { color: #4edea3; }
+        body.theme-dark .badge-active {
+            background-color: rgba(78, 222, 163, 0.1);
+            color: #4edea3;
+            border: 1px solid rgba(78, 222, 163, 0.2);
+        }
+        body.theme-dark .btn-start {
+            background-color: #ffffff;
+            color: #2f3131;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+        body.theme-dark .btn-start:hover { background-color: rgba(255, 255, 255, 0.9); }
+        body.theme-dark .qr-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        body.theme-dark .term-border { border-color: #2C2C2E; }
+        body.theme-dark .term-bg { background-color: #000000; }
+        body.theme-dark .term-text { color: #4edea3; }
 
-    /* Header */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
-    }
+        /* Cyber Neon Glass (ref/other.html) */
+        body.theme-cyber {
+            background: linear-gradient(to bottom right, #0A0C10, #0F172A);
+            color: #F3F4F6;
+        }
+        body.theme-cyber .glass-panel {
+            background-color: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        body.theme-cyber .text-accent-primary { color: #06B6D4; }
+        body.theme-cyber .text-accent-secondary { color: #A855F7; }
+        body.theme-cyber .badge-active {
+            background-color: rgba(6, 182, 212, 0.2);
+            color: #06B6D4;
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            box-shadow: 0 0 5px rgba(6, 182, 212, 0.5);
+        }
+        body.theme-cyber .btn-start {
+            background-color: #06B6D4;
+            color: #0A0C10;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+        }
+        body.theme-cyber .btn-start:hover { background-color: rgba(6, 182, 212, 0.9); }
+        body.theme-cyber .qr-shadow { box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+        body.theme-cyber .term-border { border-color: rgba(6, 182, 212, 0.5); }
+        body.theme-cyber .term-bg { background-color: #050608; }
+        body.theme-cyber .term-text { color: #06B6D4; }
 
-    .brand-title {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .brand-sub {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      margin-top: 2px;
-    }
-
-    .lan-pill {
-      font-size: 13px;
-      font-weight: 700;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      padding: 6px 16px;
-      border-radius: 14px;
-    }
-
-    /* Grid System */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1.3fr 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 18px;
-    }
-
-    .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.45);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 14px;
-    }
-
-    /* Services List */
-    .service-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .service-row:last-child {
-      border-bottom: none;
-    }
-    .service-name {
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .badge {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 12px;
-      letter-spacing: 0.5px;
-    }
-    .badge-active {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.35);
-    }
-    .badge-offline {
-      background: rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    /* Controls */
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .btn {
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 20px;
-      padding: 10px 16px;
-      cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      background: rgba(255, 255, 255, 0.08);
-      color: #ffffff;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .btn:hover {
-      background: rgba(255, 255, 255, 0.18);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-1px);
-    }
-    .btn:active {
-      transform: translateY(0);
-    }
-
-    .btn-primary {
-      background: #ffffff;
-      color: #000000;
-      border: 1px solid #ffffff;
-      font-weight: 700;
-    }
-    .btn-primary:hover {
-      background: rgba(255, 255, 255, 0.88);
-    }
-
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.16);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.4);
-    }
-    .btn-danger:hover {
-      background: rgba(239, 68, 68, 0.28);
-    }
-
-    /* QR Code Card Alignment */
-    .qr-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-
-    .qr-img-box {
-      width: 155px;
-      height: 155px;
-      background: #0a0a0f;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 10px 0;
-    }
-
-    .qr-img-box img {
-      width: 145px;
-      height: 145px;
-      border-radius: 6px;
-    }
-
-    .pin-label {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: #ffffff;
-    }
-
-    .url-label {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.45);
-      word-break: break-all;
-    }
-
-    /* Terminal Console Logs */
-    .tabs-bar {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-
-    .tab {
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 16px;
-      border-radius: 12px;
-      cursor: pointer;
-      color: rgba(255, 255, 255, 0.45);
-      background: transparent;
-      border: none;
-    }
-    .tab.active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #ffffff;
-    }
-
-    .log-box {
-      background: #050508;
-      border-radius: 12px;
-      padding: 12px;
-      height: 180px;
-      overflow-y: auto;
-      font-family: 'SF Mono', Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.6;
-      color: #34d399;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .log-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .clear-btn {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.5);
-      background: transparent;
-      border: none;
-      cursor: pointer;
-    }
-    .clear-btn:hover {
-      color: #ffffff;
-    }
-  </style>
+        /* Custom Scrollbar */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #000;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+</style>
 </head>
-<body>
+<body class="theme-dark font-body-md min-h-screen flex flex-col items-center pt-8 pb-12 px-margin transition-colors duration-300">
 
-  <!-- Header -->
-  <div class="glass-card header">
-    <div>
-      <div class="brand-title">Vedi Pocket PC</div>
-      <div class="brand-sub">pywebview Apple Glassmorphism Desktop Controller</div>
-    </div>
-    <div class="lan-pill" id="lanIpDisplay">🌐 127.0.0.1</div>
+<!-- Top Navigation Container -->
+<header class="glass-panel w-full max-w-container-max-width rounded-xl p-6 flex justify-between items-center mb-6">
+  <div>
+    <h1 class="font-headline-lg text-headline-lg text-accent-primary">Vedi Pocket PC</h1>
+    <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">pywebview Apple Glassmorphism Desktop Controller</p>
   </div>
 
-  <!-- Dashboard Grid -->
-  <div class="dashboard-grid">
+  <div class="flex items-center gap-3">
+    <!-- LAN IP Pill -->
+    <div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded-full border border-outline-variant shadow-sm">
+      <span class="material-symbols-outlined text-[18px] text-accent-secondary">language</span>
+      <span class="font-label-mono text-label-mono text-on-surface" id="lanIpDisplay">127.0.0.1</span>
+    </div>
 
-    <!-- Column 1: Services & Controls -->
-    <div class="glass-card">
-      <div class="section-title">System Services</div>
-      
-      <div class="service-row">
-        <span class="service-name">📡 Screen Stream (:8080)</span>
-        <span class="badge badge-offline" id="streamBadge">OFFLINE</span>
-      </div>
-      <div class="service-row">
-        <span class="service-name">🔧 Remote Agent (:8000)</span>
-        <span class="badge badge-offline" id="backendBadge">OFFLINE</span>
-      </div>
-      <div class="service-row">
-        <span class="service-name">📱 Mobile Client (:8088)</span>
-        <span class="badge badge-offline" id="expoBadge">OFFLINE</span>
+    <!-- Theme Switcher Button (Top Right) -->
+    <button onclick="toggleTheme()" class="flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-variant transition-all cursor-pointer">
+      <span class="material-symbols-outlined text-[18px] text-accent-secondary" id="themeIcon">palette</span>
+      <span id="themeName" class="font-label-mono text-label-mono text-on-surface">Cyber Mode</span>
+    </button>
+  </div>
+</header>
+
+<!-- Main Content Area Grid -->
+<main class="w-full max-w-container-max-width grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+  <!-- Left Panel: System Services (Spans 4 cols) -->
+  <section class="glass-panel rounded-xl p-6 lg:col-span-4 flex flex-col h-full">
+    <h2 class="font-label-mono text-label-mono text-accent-primary mb-4 uppercase tracking-wider">System Services</h2>
+    <div class="flex flex-col gap-3 flex-1">
+      <!-- Service Items -->
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px] text-accent-primary">monitor</span>
+          <span class="font-body-md text-on-surface font-medium">Screen Stream (:8080)</span>
+        </div>
+        <span class="badge-active px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="streamBadge">ACTIVE</span>
       </div>
 
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="pywebview.api.start_all_services()">Start All Services</button>
-        <button class="btn btn-danger" onclick="pywebview.api.stop_all_services()">Stop All Services</button>
-        <button class="btn" onclick="pywebview.api.restart_all_services()">Restart All Services</button>
-        <button class="btn" onclick="pywebview.api.reload_expo()">Reload Mobile App</button>
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px] text-accent-primary">router</span>
+          <span class="font-body-md text-on-surface font-medium">Remote Agent (:8000)</span>
+        </div>
+        <span class="badge-active px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="backendBadge">ACTIVE</span>
+      </div>
+
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px] text-accent-primary">smartphone</span>
+          <span class="font-body-md text-on-surface font-medium">Mobile Client (:8088)</span>
+        </div>
+        <span class="badge-active px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="expoBadge">ACTIVE</span>
       </div>
     </div>
 
-    <!-- Column 2: PC Pairing QR -->
-    <div class="glass-card qr-card">
-      <div class="section-title">1. Scan PC Pairing QR</div>
-      <div class="qr-img-box">
-        <img id="pcQrImg" src="" alt="PC Pairing QR" />
-      </div>
-      <div class="pin-label" id="pinDisplay">PIN: ----</div>
+    <!-- Action Buttons -->
+    <div class="flex flex-col gap-3 mt-6">
+      <button onclick="pywebview.api.start_all_services()" class="btn-start w-full font-body-md font-semibold py-3 rounded-lg transition-all cursor-pointer">
+        Start All Services
+      </button>
+      <button onclick="pywebview.api.stop_all_services()" class="w-full bg-error-container/30 text-error border border-error/50 font-body-md font-semibold py-3 rounded-lg hover:bg-error-container/50 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer">
+        Stop All Services
+      </button>
+      <button onclick="pywebview.api.restart_all_services()" class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer">
+        Restart All Services
+      </button>
+      <button onclick="pywebview.api.reload_expo()" class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer">
+        Reload Mobile App
+      </button>
     </div>
+  </section>
 
-    <!-- Column 3: Expo Go QR -->
-    <div class="glass-card qr-card">
-      <div class="section-title">2. Scan Expo Go QR</div>
-      <div class="qr-img-box">
-        <img id="expoQrImg" src="" alt="Expo Go QR" />
+  <!-- Right Panel Container (Spans 8 cols) -->
+  <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+    <!-- QR Card 1 -->
+    <section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+      <h3 class="font-label-mono text-label-mono text-accent-primary mb-6 uppercase tracking-wider text-center">1. Scan PC Pairing QR</h3>
+      <div class="bg-white p-4 rounded-lg mb-6 qr-shadow flex items-center justify-center">
+        <img id="pcQrImg" class="w-48 h-48 rounded" src="" alt="PC Pairing QR" />
       </div>
-      <div class="url-label" id="expoUrlDisplay">Initializing Expo...</div>
-    </div>
+      <p class="font-headline-md text-headline-md text-accent-secondary tracking-widest" id="pinDisplay">PIN: ----</p>
+    </section>
 
+    <!-- QR Card 2 -->
+    <section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+      <h3 class="font-label-mono text-label-mono text-accent-primary mb-6 uppercase tracking-wider text-center">2. Scan Expo Go QR</h3>
+      <div class="bg-white p-4 rounded-lg mb-6 qr-shadow flex items-center justify-center">
+        <img id="expoQrImg" class="w-48 h-48 rounded" src="" alt="Expo Go QR" />
+      </div>
+      <p class="font-label-mono text-label-mono text-on-surface-variant lowercase" id="expoUrlDisplay">Initializing Expo...</p>
+    </section>
   </div>
 
-  <!-- Terminal Logs -->
-  <div class="glass-card">
-    <div class="log-header">
-      <div class="tabs-bar">
-        <button class="tab active" onclick="switchTab('combined')">Combined Logs</button>
-        <button class="tab" onclick="switchTab('python')">Python Backend Logs</button>
-        <button class="tab" onclick="switchTab('expo')">Expo Mobile Logs</button>
+  <!-- Terminal Logs Panel (Spans full width, 12 cols) -->
+  <section class="glass-panel term-border rounded-xl lg:col-span-12 flex flex-col mt-2 h-80 overflow-hidden">
+    <!-- Terminal Header / Tabs -->
+    <div class="flex justify-between items-center bg-surface-container-lowest/80 border-b border-outline-variant px-4 py-3">
+      <div class="flex gap-4">
+        <button id="tab-combined" onclick="switchTab('combined')" class="bg-surface-variant/50 text-on-surface px-4 py-1.5 rounded-full font-label-mono text-label-mono border border-outline-variant shadow-sm transition-colors hover:bg-surface-variant cursor-pointer">Combined Logs</button>
+        <button id="tab-python" onclick="switchTab('python')" class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer">Python Backend Logs</button>
+        <button id="tab-expo" onclick="switchTab('expo')" class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer">Expo Mobile Logs</button>
       </div>
-      <button class="clear-btn" onclick="clearLogs()">🧹 Clear</button>
+      <button onclick="clearLogs()" class="flex items-center gap-1 text-on-surface-variant hover:text-accent-primary transition-colors text-xs font-label-mono cursor-pointer">
+        <span class="material-symbols-outlined text-[14px]">cleaning_services</span>
+        Clear
+      </button>
     </div>
 
-    <div class="log-box" id="logBox"></div>
-  </div>
+    <!-- Terminal Output Area -->
+    <div class="term-bg flex-1 p-4 overflow-y-auto terminal-scroll">
+      <pre class="font-code-log text-code-log term-text whitespace-pre-wrap break-all" id="logBox"></pre>
+    </div>
+  </section>
+</main>
 
-  <script>
-    let activeTab = 'combined';
-    const logs = {
-      combined: [],
-      python: [],
-      expo: []
+<script>
+  let currentTheme = 'theme-dark';
+  let activeTab = 'combined';
+  const logs = {
+    combined: [],
+    python: [],
+    expo: []
+  };
+
+  function toggleTheme() {
+    const body = document.body;
+    const themeName = document.getElementById('themeName');
+    
+    if (currentTheme === 'theme-dark') {
+      body.classList.remove('theme-dark');
+      body.classList.add('theme-cyber');
+      currentTheme = 'theme-cyber';
+      themeName.innerText = 'Dark Mode';
+    } else {
+      body.classList.remove('theme-cyber');
+      body.classList.add('theme-dark');
+      currentTheme = 'theme-dark';
+      themeName.innerText = 'Cyber Mode';
+    }
+  }
+
+  function appendLogsBatch(items) {
+    if (!items || !items.length) return;
+    items.forEach(item => {
+      const line = `[${item.target.toUpperCase()}] ${item.message}`;
+      logs.combined.push(line);
+      if (item.target === 'python') logs.python.push(item.message);
+      if (item.target === 'expo') logs.expo.push(item.message);
+    });
+    renderLogs();
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    ['combined', 'python', 'expo'].forEach(t => {
+      const el = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        el.className = "bg-surface-variant/50 text-on-surface px-4 py-1.5 rounded-full font-label-mono text-label-mono border border-outline-variant shadow-sm transition-colors cursor-pointer";
+      } else {
+        el.className = "text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer";
+      }
+    });
+    renderLogs();
+  }
+
+  function renderLogs() {
+    const logBox = document.getElementById('logBox');
+    const lines = logs[activeTab] || [];
+    logBox.innerText = lines.join('\\n');
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function clearLogs() {
+    logs.combined = [];
+    logs.python = [];
+    logs.expo = [];
+    renderLogs();
+  }
+
+  function updateState(data) {
+    if (data.lan_ip) {
+      document.getElementById('lanIpDisplay').innerText = data.lan_ip;
+    }
+
+    const setBadge = (id, active) => {
+      const el = document.getElementById(id);
+      el.innerText = active ? 'ACTIVE' : 'OFFLINE';
+      if (active) {
+        el.className = 'badge-active px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest';
+      } else {
+        el.className = 'bg-error-container/20 text-error border border-error/30 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest';
+      }
     };
+    setBadge('streamBadge', data.stream_running);
+    setBadge('backendBadge', data.backend_running);
+    setBadge('expoBadge', data.expo_running);
 
-    function appendLogsBatch(items) {
-      if (!items || !items.length) return;
-      items.forEach(item => {
-        const line = `[${item.target.toUpperCase()}] ${item.message}`;
-        logs.combined.push(line);
-        if (item.target === 'python') logs.python.push(item.message);
-        if (item.target === 'expo') logs.expo.push(item.message);
-      });
-      renderLogs();
+    if (data.pairing_pin) {
+      document.getElementById('pinDisplay').innerText = `PIN: ${data.pairing_pin}`;
+    }
+    if (data.expo_url) {
+      document.getElementById('expoUrlDisplay').innerText = data.expo_url;
     }
 
-    function switchTab(tab) {
-      activeTab = tab;
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
-      renderLogs();
+    if (data.pc_qr) {
+      document.getElementById('pcQrImg').src = data.pc_qr;
     }
-
-    function renderLogs() {
-      const logBox = document.getElementById('logBox');
-      const lines = logs[activeTab] || [];
-      logBox.innerText = lines.join('\\n');
-      logBox.scrollTop = logBox.scrollHeight;
+    if (data.expo_qr) {
+      document.getElementById('expoQrImg').src = data.expo_qr;
     }
-
-    function clearLogs() {
-      logs.combined = [];
-      logs.python = [];
-      logs.expo = [];
-      renderLogs();
-    }
-
-    function updateState(data) {
-      if (data.lan_ip) {
-        document.getElementById('lanIpDisplay').innerText = `🌐 ${data.lan_ip}`;
-      }
-
-      // Badges
-      const setBadge = (id, active) => {
-        const el = document.getElementById(id);
-        el.innerText = active ? 'ACTIVE' : 'OFFLINE';
-        el.className = `badge ${active ? 'badge-active' : 'badge-offline'}`;
-      };
-      setBadge('streamBadge', data.stream_running);
-      setBadge('backendBadge', data.backend_running);
-      setBadge('expoBadge', data.expo_running);
-
-      // PIN & URL
-      if (data.pairing_pin) {
-        document.getElementById('pinDisplay').innerText = `PIN: ${data.pairing_pin}`;
-      }
-      if (data.expo_url) {
-        document.getElementById('expoUrlDisplay').innerText = data.expo_url;
-      }
-
-      // QR Images
-      if (data.pc_qr) {
-        document.getElementById('pcQrImg').src = data.pc_qr;
-      }
-      if (data.expo_qr) {
-        document.getElementById('expoQrImg').src = data.expo_qr;
-      }
-    }
-  </script>
+  }
+</script>
 </body>
 </html>
 """
@@ -749,10 +734,10 @@ def main():
         title="Vedi Pocket PC",
         html=HTML_CONTENT,
         js_api=api,
-        width=980,
-        height=720,
+        width=1120,
+        height=820,
         resizable=True,
-        background_color="#000000"
+        background_color="#131313"
     )
     
     manager.set_window(window)

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vedi Pocket PC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-primary-fixed-variant": "#454747",
+                        "surface-dim": "#131313",
+                        "on-secondary-fixed": "#002113",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#00311f",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "on-surface": "#e5e2e1",
+                        "on-primary-container": "#636565",
+                        "inverse-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#1a1c1c",
+                        "primary-container": "#e2e2e2",
+                        "surface": "#131313",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "secondary-fixed-dim": "#4edea3",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-tertiary-container": "#c22229",
+                        "secondary": "#4edea3",
+                        "on-background": "#e5e2e1",
+                        "secondary-container": "#00a572",
+                        "surface-container-low": "#1c1b1b",
+                        "error": "#ffb4ab",
+                        "inverse-on-surface": "#313030",
+                        "on-secondary": "#003824",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#5d5f5f",
+                        "outline-variant": "#444748",
+                        "on-primary": "#2f3131",
+                        "outline": "#8e9192",
+                        "primary-fixed": "#e2e2e2",
+                        "surface-bright": "#393939",
+                        "surface-tint": "#c6c6c7",
+                        "tertiary": "#ffffff",
+                        "tertiary-container": "#ffdad7",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary-fixed": "#410004",
+                        "on-tertiary": "#68000a",
+                        "secondary-fixed": "#6ffbbe",
+                        "primary": "#ffffff",
+                        "surface-container-highest": "#353534",
+                        "surface-container": "#201f1f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max-width": "1440px",
+                        "gutter": "16px",
+                        "unit": "4px",
+                        "margin": "24px"
+                    },
+                    "fontFamily": {
+                        "code-log": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "code-log": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background-color: rgba(19, 19, 19, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid #2C2C2E;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #000;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col items-center pt-8 pb-12 px-margin">
+<!-- Top Navigation Container (Using Design Tokens) -->
+<header class="glass-panel w-full max-w-container-max-width rounded-xl p-6 flex justify-between items-center mb-6">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary">Vedi Pocket PC</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">pywebview Apple Glassmorphism Desktop Controller</p>
+</div>
+<div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded-full border border-outline-variant shadow-sm">
+<span class="material-symbols-outlined text-[18px] text-secondary">language</span>
+<span class="font-label-mono text-label-mono text-on-surface">10.242.210.183</span>
+</div>
+</header>
+<!-- Main Content Area Grid -->
+<main class="w-full max-w-container-max-width grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+<!-- Left Panel: System Services (Spans 4 cols) -->
+<section class="glass-panel rounded-xl p-6 lg:col-span-4 flex flex-col h-full">
+<h2 class="font-label-mono text-label-mono text-on-surface-variant mb-4 uppercase tracking-wider">System Services</h2>
+<div class="flex flex-col gap-3 flex-1">
+<!-- Service Items -->
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">monitor</span>
+<span class="font-body-md text-on-surface font-medium">Screen Stream (:8080)</span>
+</div>
+<span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest">ACTIVE</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">router</span>
+<span class="font-body-md text-on-surface font-medium">Remote Agent (:8000)</span>
+</div>
+<span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest">ACTIVE</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">smartphone</span>
+<span class="font-body-md text-on-surface font-medium">Mobile Client (:8088)</span>
+</div>
+<span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest">ACTIVE</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3 mt-6">
+<button class="w-full bg-primary text-on-primary font-body-md font-semibold py-3 rounded-lg hover:bg-primary/90 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
+                    Start All Services
+                </button>
+<button class="w-full bg-error-container/30 text-error border border-error/50 font-body-md font-semibold py-3 rounded-lg hover:bg-error-container/50 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+                    Stop All Services
+                </button>
+<button class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors">
+                    Restart All Services
+                </button>
+<button class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors">
+                    Reload Mobile App
+                </button>
+</div>
+</section>
+<!-- Right Panel Container (Spans 8 cols) -->
+<div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+<!-- QR Card 1 -->
+<section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+<h3 class="font-label-mono text-label-mono text-on-surface-variant mb-6 uppercase tracking-wider text-center">1. Scan PC Pairing QR</h3>
+<div class="bg-white p-4 rounded-lg mb-6 shadow-xl">
+<!-- Placeholder for QR Code 1 -->
+<svg class="w-48 h-48 text-black" fill="currentColor" viewbox="0 0 24 24">
+<path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2z"></path>
+</svg>
+</div>
+<p class="font-headline-md text-headline-md text-primary tracking-widest">PIN: 1519</p>
+</section>
+<!-- QR Card 2 -->
+<section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+<h3 class="font-label-mono text-label-mono text-on-surface-variant mb-6 uppercase tracking-wider text-center">2. Scan Expo Go QR</h3>
+<div class="bg-white p-4 rounded-lg mb-6 shadow-xl">
+<!-- Placeholder for QR Code 2 -->
+<svg class="w-48 h-48 text-black" fill="currentColor" viewbox="0 0 24 24">
+<path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2z"></path>
+</svg>
+</div>
+<p class="font-label-mono text-label-mono text-on-surface-variant lowercase">exp://10.242.210.183:8088</p>
+</section>
+</div>
+<!-- Terminal Logs Panel (Spans full width, 12 cols) -->
+<section class="glass-panel rounded-xl lg:col-span-12 flex flex-col mt-2 h-80 overflow-hidden">
+<!-- Terminal Header / Tabs -->
+<div class="flex justify-between items-center bg-surface-container-lowest/80 border-b border-outline-variant px-4 py-3">
+<div class="flex gap-4">
+<button class="bg-surface-variant/50 text-on-surface px-4 py-1.5 rounded-full font-label-mono text-label-mono border border-outline-variant shadow-sm transition-colors hover:bg-surface-variant">Combined Logs</button>
+<button class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20">Python Backend Logs</button>
+<button class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20">Expo Mobile Logs</button>
+</div>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-xs font-label-mono">
+<span class="material-symbols-outlined text-[14px]">cleaning_services</span>
+                    Clear
+                </button>
+</div>
+<!-- Terminal Output Area -->
+<div class="bg-black flex-1 p-4 overflow-y-auto terminal-scroll">
+<pre class="font-code-log text-code-log text-secondary whitespace-pre-wrap break-all"><span class="text-secondary/70">[EXPO] React Compiler enabled</span>
+<span class="text-secondary/70">[EXPO] Starting Metro Bundler</span>
+<span class="text-secondary/70">[EXPO] warning: Bundler cache is empty, rebuilding (this may take a minute)</span>
+<span class="text-secondary">[PYTHON] [DISCOVERY] Advertising mDNS service: DESKTOP-E7TC29F PC Remote._pcremote._tcp.local. at 10.242.210.183:8000</span>
+<span class="text-secondary">[PYTHON] =========================================================</span>
+<span class="text-secondary">[PYTHON] PC REMOTE SERVER ACTIVE</span>
+<span class="text-secondary">[PYTHON] =========================================================</span>
+<span class="text-secondary">[PYTHON] Hostname: DESKTOP-E7TC29F</span>
+<span class="text-secondary">[PYTHON] Primary IP: 10.242.210.183</span>
+<span class="text-secondary">[PYTHON] All IPs: 10.242.210.183, 169.254.50.66, 169.254.24.159, 169.254.26.132</span>
+                </pre>
+</div>
+</section>
+</main>
+</body></html>
