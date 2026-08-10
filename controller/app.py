@@ -391,9 +391,9 @@ class ControllerWindow(QMainWindow):
 
         main_layout.addWidget(header_frame)
 
-        # --- Middle Split Layout: Controls + QR Displays ---
-        middle_layout = QHBoxLayout()
-        middle_layout.setSpacing(18)
+        # --- Middle Section: Grid Layout for Services & QR Cards ---
+        middle_grid = QGridLayout()
+        middle_grid.setSpacing(18)
 
         # Left Column: Service Status & Controls Card
         status_card = QFrame()
@@ -472,60 +472,61 @@ class ControllerWindow(QMainWindow):
         status_layout.addLayout(btn_layout)
         status_layout.addStretch()
 
-        middle_layout.addWidget(status_card, stretch=1)
+        middle_grid.addWidget(status_card, 0, 0)
 
-        # Right Column: Apple Glass QR Code Cards (PC Pairing & Expo Client)
-        qr_card = QFrame()
-        qr_card.setProperty("class", "glassCard")
-        apply_glass_shadow(qr_card)
-
-        qr_layout = QHBoxLayout(qr_card)
-        qr_layout.setSpacing(20)
-
-        # PC Pairing QR Column
-        pc_qr_box = QVBoxLayout()
-        pc_qr_box.setSpacing(10)
+        # Right Column: Sub-Grid for PC & Expo QR Cards
+        pc_card = QFrame()
+        pc_card.setProperty("class", "glassCard")
+        apply_glass_shadow(pc_card)
+        pc_layout = QVBoxLayout(pc_card)
+        pc_layout.setContentsMargins(14, 14, 14, 14)
+        pc_layout.setSpacing(10)
+        pc_layout.setAlignment(Qt.AlignCenter)
 
         pc_title = QLabel("1. Scan PC Pairing QR")
         pc_title.setProperty("class", "sectionTitle")
         pc_title.setAlignment(Qt.AlignCenter)
-        
+
         self.pc_qr_label = QLabel()
-        self.pc_qr_label.setFixedSize(170, 170)
+        self.pc_qr_label.setFixedSize(160, 160)
         self.pc_qr_label.setAlignment(Qt.AlignCenter)
         self.pc_qr_label.setStyleSheet(
             "background-color: #0a0a0f; border-radius: 14px; "
             "border: 1px solid rgba(255,255,255,0.12);"
         )
-        self.pc_qr_label.setPixmap(generate_apple_qr(f"{self.lan_ip}:8000:0000", 170))
+        self.pc_qr_label.setPixmap(generate_apple_qr(f"{self.lan_ip}:8000:0000", 160))
 
         self.pin_info_label = QLabel("PIN: ----")
         self.pin_info_label.setAlignment(Qt.AlignCenter)
         self.pin_info_label.setStyleSheet(
-            "font-size: 15px; font-weight: 700; color: #ffffff; "
+            "font-size: 14px; font-weight: 700; color: #ffffff; "
             "letter-spacing: 2px;"
         )
 
-        pc_qr_box.addWidget(pc_title)
-        pc_qr_box.addWidget(self.pc_qr_label, alignment=Qt.AlignCenter)
-        pc_qr_box.addWidget(self.pin_info_label)
+        pc_layout.addWidget(pc_title)
+        pc_layout.addWidget(self.pc_qr_label, alignment=Qt.AlignCenter)
+        pc_layout.addWidget(self.pin_info_label)
 
-        # Expo App QR Column
-        expo_qr_box = QVBoxLayout()
-        expo_qr_box.setSpacing(10)
+        expo_card = QFrame()
+        expo_card.setProperty("class", "glassCard")
+        apply_glass_shadow(expo_card)
+        expo_layout = QVBoxLayout(expo_card)
+        expo_layout.setContentsMargins(14, 14, 14, 14)
+        expo_layout.setSpacing(10)
+        expo_layout.setAlignment(Qt.AlignCenter)
 
         expo_title = QLabel("2. Scan Expo Go QR")
         expo_title.setProperty("class", "sectionTitle")
         expo_title.setAlignment(Qt.AlignCenter)
 
         self.expo_qr_label = QLabel()
-        self.expo_qr_label.setFixedSize(170, 170)
+        self.expo_qr_label.setFixedSize(160, 160)
         self.expo_qr_label.setAlignment(Qt.AlignCenter)
         self.expo_qr_label.setStyleSheet(
             "background-color: #0a0a0f; border-radius: 14px; "
             "border: 1px solid rgba(255,255,255,0.12);"
         )
-        self.expo_qr_label.setPixmap(generate_apple_qr(f"exp://{self.lan_ip}:8088", 170))
+        self.expo_qr_label.setPixmap(generate_apple_qr(f"exp://{self.lan_ip}:8088", 160))
 
         self.expo_info_label = QLabel("Initializing Expo...")
         self.expo_info_label.setAlignment(Qt.AlignCenter)
@@ -533,15 +534,18 @@ class ControllerWindow(QMainWindow):
             "font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 500;"
         )
 
-        expo_qr_box.addWidget(expo_title)
-        expo_qr_box.addWidget(self.expo_qr_label, alignment=Qt.AlignCenter)
-        expo_qr_box.addWidget(self.expo_info_label)
+        expo_layout.addWidget(expo_title)
+        expo_layout.addWidget(self.expo_qr_label, alignment=Qt.AlignCenter)
+        expo_layout.addWidget(self.expo_info_label)
 
-        qr_layout.addLayout(pc_qr_box)
-        qr_layout.addLayout(expo_qr_box)
+        middle_grid.addWidget(pc_card, 0, 1)
+        middle_grid.addWidget(expo_card, 0, 2)
 
-        middle_layout.addWidget(qr_card, stretch=2)
-        main_layout.addLayout(middle_layout)
+        middle_grid.setColumnStretch(0, 3)
+        middle_grid.setColumnStretch(1, 2)
+        middle_grid.setColumnStretch(2, 2)
+
+        main_layout.addLayout(middle_grid)
 
         # --- Bottom Logs Glass Card Section ---
         logs_card = QFrame()
@@ -777,7 +781,7 @@ class ControllerWindow(QMainWindow):
             self.pairing_pin = match.group(1)
             self.pin_info_label.setText(f"PIN: {self.pairing_pin}")
             qr_payload = f"{self.lan_ip}:{self.backend_port}:{self.pairing_pin}"
-            pix = generate_apple_qr(qr_payload, 170)
+            pix = generate_apple_qr(qr_payload, 160)
             self._animate_qr_update(self.pc_qr_label, pix)
             self.append_log("python", f"Captured PC Pairing PIN: {self.pairing_pin}")
 
@@ -827,7 +831,7 @@ class ControllerWindow(QMainWindow):
         self.expo_status_badge.style().unpolish(self.expo_status_badge)
         self.expo_status_badge.style().polish(self.expo_status_badge)
 
-        pix = generate_apple_qr(self.expo_url, 170)
+        pix = generate_apple_qr(self.expo_url, 160)
         self._animate_qr_update(self.expo_qr_label, pix)
         self.expo_info_label.setText(f"exp://{self.lan_ip}:{self.expo_port}")
 
@@ -843,7 +847,7 @@ class ControllerWindow(QMainWindow):
         match = re.search(r"exp://[\w.\-]+(?::\d+)?[^\s]*", clean_text)
         if match:
             self.expo_url = match.group(0)
-            pix = generate_apple_qr(self.expo_url, 170)
+            pix = generate_apple_qr(self.expo_url, 160)
             self._animate_qr_update(self.expo_qr_label, pix)
             self.expo_info_label.setText(self.expo_url)
 
