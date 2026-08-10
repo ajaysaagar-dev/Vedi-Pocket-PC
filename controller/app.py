@@ -62,9 +62,7 @@ def find_free_port(preferred: int) -> int:
 def generate_apple_qr(data: str, size: int = 170) -> QPixmap:
     """Generate an Apple-style crisp white QR code on dark glass background."""
     if not data:
-        pix = QPixmap(size, size)
-        pix.fill(Qt.transparent)
-        return pix
+        data = "VediPocketPC"
     try:
         qr = qrcode.QRCode(
             version=1,
@@ -77,13 +75,13 @@ def generate_apple_qr(data: str, size: int = 170) -> QPixmap:
         img = qr.make_image(fill_color="#ffffff", back_color="#0a0a0f").convert("RGBA")
         
         im_bytes = img.tobytes("raw", "RGBA")
-        qimg = QImage(im_bytes, img.width, img.height, QImage.Format_RGBA8888)
+        qimg = QImage(im_bytes, img.width, img.height, img.width * 4, QImage.Format_RGBA8888).copy()
         pixmap = QPixmap.fromImage(qimg)
         return pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     except Exception as e:
         print(f"[QR Error] Failed to generate QR: {e}")
         pix = QPixmap(size, size)
-        pix.fill(Qt.transparent)
+        pix.fill(QColor("#0a0a0f"))
         return pix
 
 
@@ -499,7 +497,7 @@ class ControllerWindow(QMainWindow):
             "background-color: #0a0a0f; border-radius: 14px; "
             "border: 1px solid rgba(255,255,255,0.12);"
         )
-        self.pc_qr_label.setPixmap(generate_apple_qr("", 170))
+        self.pc_qr_label.setPixmap(generate_apple_qr(f"{self.lan_ip}:8000:0000", 170))
 
         self.pin_info_label = QLabel("PIN: ----")
         self.pin_info_label.setAlignment(Qt.AlignCenter)
@@ -527,7 +525,7 @@ class ControllerWindow(QMainWindow):
             "background-color: #0a0a0f; border-radius: 14px; "
             "border: 1px solid rgba(255,255,255,0.12);"
         )
-        self.expo_qr_label.setPixmap(generate_apple_qr("", 170))
+        self.expo_qr_label.setPixmap(generate_apple_qr(f"exp://{self.lan_ip}:8088", 170))
 
         self.expo_info_label = QLabel("Initializing Expo...")
         self.expo_info_label.setAlignment(Qt.AlignCenter)
