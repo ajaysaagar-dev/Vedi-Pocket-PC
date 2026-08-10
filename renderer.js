@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const txtWsUrl = document.getElementById('txtWsUrl');
   const txtExpoUrl = document.getElementById('txtExpoUrl');
   const txtLanIp = document.getElementById('txtLanIp');
+  const txtPairingUrl = document.getElementById('txtPairingUrl');
+  const txtPairingPin = document.getElementById('txtPairingPin');
 
   const pillPythonStatus = document.getElementById('pillPythonStatus');
   const pillExpoStatus = document.getElementById('pillExpoStatus');
@@ -56,10 +58,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       txtLanIp.textContent = info.lanIp;
       txtWsUrl.textContent = info.wsUrl;
       txtExpoUrl.textContent = info.expoUrl;
+      if (txtPairingUrl) {
+        // Show the encoded QR payload, not the URL the WebSocket uses.
+        // That's what the mobile scanner parses.
+        txtPairingUrl.textContent = info.pairingUrl || info.wsUrl;
+      }
+      if (txtPairingPin) {
+        txtPairingPin.textContent = info.pairingPin || '----';
+      }
 
-      // Render Server Connect QR (Requires BOTH Stream Server & Main Server running)
-      const bothServersRunning = info.isPythonRunning && (info.isBackendRunning !== false);
-      if (bothServersRunning && info.serverQr) {
+      // Render Server Connect QR — show as soon as we have a pairing
+      // payload (either the real `ip:port:pin` from the backend, or
+      // the http://ip:8080 fallback from the stream server). We no
+      // longer require both Python servers running — the stream server
+      // alone is enough to grant a session token via its /pair endpoint.
+      const hasQrPayload = !!(info.pairingUrl || info.serverQr);
+      if (hasQrPayload && info.serverQr) {
         imgServerQr.src = info.serverQr;
         imgServerQr.style.display = 'block';
         serverQrLoader.style.display = 'none';
@@ -80,8 +94,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         expoQrLoader.classList.add('loading');
       }
 
-      // Update status badges
-      if (info.isPythonRunning) {
+      // Update status badges. The spawn flags are the optimistic view;
+// the reachability probe (data-probe-stream / data-probe-backend
+// on the pill) is the truth — it actually fetched /health. When
+// they disagree we mark the pill as "stalled" so the user knows
+// the Node process says "running" but the network disagrees.
+      const probeStream = pillPythonStatus.dataset.probeStream;
+      const probeBackend = pillPythonStatus.dataset.probeBackend;
+      const streamReachable = probeStream === 'true';
+      const backendReachable = probeBackend === 'true';
+
+      if (info.isPythonRunning && !streamReachable) {
+        pillPythonStatus.textContent = 'Stalled';
+        pillPythonStatus.className = 'status-pill stalled';
+      } else if (streamReachable) {
         pillPythonStatus.textContent = 'Running';
         pillPythonStatus.className = 'status-pill online';
       } else {
@@ -97,10 +123,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         pillExpoStatus.className = 'status-pill';
       }
 
-      if (bothServersRunning && info.isExpoRunning) {
+      // We also surface backend reachability — if the backend says
+      // "Running" but /health on port 8000 is unreachable, that's a
+      // strong indicator the listening port never bound (port
+      // collision, missing dep, etc.).
+      const backendPill = document.getElementById('pillBackendStatus');
+      if (backendPill) {
+        if (info.isBackendRunning && !backendReachable) {
+          backendPill.textContent = 'Stalled';
+          backendPill.className = 'status-pill stalled';
+        } else if (backendReachable || info.isBackendRunning) {
+          backendPill.textContent = 'Running';
+          backendPill.className = 'status-pill online';
+        } else {
+          backendPill.textContent = 'Stopped';
+          backendPill.className = 'status-pill';
+        }
+      }
+
+      if (hasQrPayload && info.isExpoRunning) {
         globalStatusDot.className = 'status-dot active';
         globalStatusText.textContent = `All Servers Active (${info.lanIp})`;
-      } else if (bothServersRunning || info.isExpoRunning) {
+      } else if (hasQrPayload || info.isExpoRunning) {
         globalStatusDot.className = 'status-dot active';
         globalStatusText.textContent = `Partial Active (${info.lanIp})`;
       } else {
@@ -186,6 +230,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.electronAPI.onStatusUpdate((data) => {
     refreshServerInfo();
   });
+
+  // Reachability probe — every 2 seconds, ask the Electron main
+  // process to fetch /health on the actual LAN IP:port. If the probe
+  // disagrees with the controller's spawn-tracked flags, we treat
+  // the probe as authoritative (the renderer can see what the mobile
+  // phone sees on the network). We surface the disagreement with a
+  // subtle dot color so the user notices a process that's "Running"
+  // according to Node but unreachable in practice.
+  let probeInFlight = false;
+  setInterval(async () => {
+    if (probeInFlight) return;
+    probeInFlight = true;
+    try {
+      const reach = await window.electronAPI.probeHealth();
+      // Update pill colors based on *real* reachability.
+      pillPythonStatus.dataset.probeStream = String(reach.streamReachable);
+      pillPythonStatus.dataset.probeBackend = String(reach.backendReachable);
+      // Re-run the status render so the badges use the probe.
+      refreshServerInfo();
+    } catch (e) {
+      // Silent — the next tick will retry.
+    } finally {
+      probeInFlight = false;
+    }
+  }, 2000);
 
   // Initial load
   refreshServerInfo();

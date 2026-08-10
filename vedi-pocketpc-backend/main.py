@@ -20,6 +20,15 @@ import sys
 import threading
 import time
 
+# Make the shared `agent_core` package importable without requiring
+# `pip install -e ../packages/agent-core`. The packaged build does
+# not always have agent-core installed editable, so we add the path
+# here explicitly.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_AGENT_CORE_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, "packages", "agent-core"))
+if os.path.isdir(_AGENT_CORE_ROOT) and _AGENT_CORE_ROOT not in sys.path:
+    sys.path.insert(0, _AGENT_CORE_ROOT)
+
 import qrcode
 import uvicorn
 from fastapi import FastAPI
@@ -125,6 +134,15 @@ def print_banner(container: Container) -> None:
         qr = qrcode.QRCode(version=1, box_size=1, border=2)
         qr.add_data(qr_data)
         qr.make(fit=True)
+        # The default ASCII renderer uses Unicode block characters
+        # (U+2588 etc.). On Windows consoles configured with cp1252
+        # this raises `UnicodeEncodeError: 'charmap' codec`. Reconfigure
+        # stdout to UTF-8 for the duration of the print so it works
+        # regardless of the host's default codepage.
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")  # py3.7+
+        except Exception:
+            pass
         qr.print_ascii(out=sys.stdout, invert=True)
     except Exception as e:
         print(f"Could not print QR Code: {e}")

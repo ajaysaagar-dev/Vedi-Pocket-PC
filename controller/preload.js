@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restartServers: () => ipcRenderer.invoke('restart-servers'),
   generateQR: (text) => ipcRenderer.invoke('generate-qr', text),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  probeHealth: () => ipcRenderer.invoke('probe-health'),
 
   onPythonLog: (callback) => {
     const sub = (_event, data) => callback(data);

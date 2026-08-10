@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 title Vedi Pocket PC - One-Click Installer
 cd /d "%~dp0"
 
@@ -11,7 +12,7 @@ echo.
 where node >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Node.js is not found in PATH.
-    echo Please download and install Node.js (v18+) from: https://nodejs.org/
+    echo Please download and install Node.js v18+ from: https://nodejs.org/
     echo.
     pause
     exit /b 1
@@ -34,7 +35,16 @@ echo [OK] Python version:  %PY_VER%
 
 echo.
 echo ========================================================
-echo [1/3] Installing Python Dependencies (Requirements)...
+echo [1/4] Installing agent-core (editable) ...
+echo ========================================================
+python -m pip install -e packages\agent-core
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] agent-core editable install returned non-zero.
+)
+
+echo.
+echo ========================================================
+echo [2/4] Installing Python Dependencies (Requirements)...
 echo ========================================================
 python -m pip install --upgrade pip
 pip install -r requirements.txt
@@ -44,23 +54,28 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo ========================================================
-echo [2/3] Installing Desktop App (Electron) Dependencies...
+echo [3/4] Installing Desktop App (Electron) Dependencies...
 echo ========================================================
-call npm install
+call npm install --legacy-peer-deps
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Failed to install desktop dependencies.
     pause
     exit /b 1
 )
+if exist node_modules\electron\install.js (
+    echo [INFO] Ensuring Electron binary download...
+    node node_modules\electron\install.js
+)
 
 echo.
 echo ========================================================
-echo [3/3] Installing Mobile App (Expo) Dependencies...
+echo [4/4] Installing Mobile App (Expo) Dependencies...
 echo ========================================================
 cd veddi-pocketpc
-call npm install
+call npm install --legacy-peer-deps
+set "MOBILE_ERR=%ERRORLEVEL%"
 cd ..
-if %ERRORLEVEL% NEQ 0 (
+if !MOBILE_ERR! NEQ 0 (
     echo [ERROR] Failed to install mobile app dependencies.
     pause
     exit /b 1
@@ -68,7 +83,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo.
 echo ========================================================
-echo        🎉 ALL DEPENDENCIES INSTALLED SUCCESSFULLY!       
+echo        ALL DEPENDENCIES INSTALLED SUCCESSFULLY!
 echo ========================================================
 echo.
 set /p LAUNCH="Would you like to start Vedi Pocket PC now? (Y/N): "

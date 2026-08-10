@@ -2727,3 +2727,175 @@
 {"_e":"metro:client_log","_t":1786289023968,"level":"warn","data":["[WS] Connection pending or offline."]}
 {"_e":"metro:client_log","_t":1786289024027,"level":"log","data":["[WS] Connection closed:","1006","Connection reset"]}
 {"_e":"metro:client_log","_t":1786289024028,"level":"log","data":["[WS] Reconnecting in 2000ms (attempt 1/5)"]}
+{"_e":"root:init","_t":1786361760073,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786361760148,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786361760271,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786361793256,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786361825013,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786361839281,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786361866215,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1786362960236,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786362960300,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786362960430,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786362982626,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786362982873,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786362983080,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786362988053,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1786362991865,"id":"4","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786363044356,"id":"4","total":3405,"ms":52491.2012}
+{"_e":"metro:bundling:started","_t":1786363125881,"id":"5","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786363125953,"id":"5","total":1,"ms":71.6828}
+{"_e":"metro:client_log","_t":1786363136708,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1786363138779,"level":"log","data":["[WS] Connecting to ws://192.168.1.35:8080/ws?token=stream_paired_token"]}
+{"_e":"metro:client_log","_t":1786363141115,"level":"warn","data":["[WS] Connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363141165,"level":"log","data":["[WS] Connection closed:","1006","Failed to connect to /192.168.1.35:8080"]}
+{"_e":"metro:client_log","_t":1786363175247,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=9b5593340e91a303fe97934beea7e89e9ce8ef376a21ec157ed4982224d015e3"]}
+{"_e":"metro:client_log","_t":1786363175325,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786363178997,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363179094,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363179140,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363183043,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363183096,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363183096,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363183944,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363183999,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363184000,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363184513,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363184563,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363184563,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363185003,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363185108,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363185108,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363193486,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363193588,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363193588,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363199256,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363199322,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363199368,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363204995,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363205043,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363205043,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363205157,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363205214,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363205214,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363205666,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363205720,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363205819,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363206296,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363206352,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363206353,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363209211,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363209261,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363209261,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363209536,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363209581,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363209582,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363209702,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363209753,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363209753,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363210058,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363210112,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363210113,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363210385,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363210444,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363210444,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363210708,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363210765,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363210765,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363212286,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363212334,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363212334,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363212896,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363212978,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363212979,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363213522,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363213581,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363213581,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"metro:client_log","_t":1786363213817,"level":"log","data":["[ScreenViewport] Connecting to ws://192.168.1.33:8080/ws"]}
+{"_e":"metro:client_log","_t":1786363213877,"level":"warn","data":["[ScreenViewport] Stream socket connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363213877,"level":"log","data":["[ScreenViewport] Stream disconnected"]}
+{"_e":"root:init","_t":1786363773274,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786363773274,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786363773276,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786363774677,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786363774913,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786363775098,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786363780771,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1786363835936,"id":"4","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363835937,"id":"5","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363873519,"id":"4","total":2850,"ms":37583.0147}
+{"_e":"metro:bundling:done","_t":1786363873689,"id":"5","total":2907,"ms":37752.0277}
+{"_e":"metro:bundling:started","_t":1786363888422,"id":"d","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1786363888486,"id":"d","total":1,"ms":63.7629}
+{"_e":"metro:client_log","_t":1786363898407,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:bundling:started","_t":1786363907616,"id":"g","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363907616,"id":"h","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363907669,"id":"h","total":1,"ms":53.1086}
+{"_e":"metro:bundling:started","_t":1786363907919,"id":"j","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363907919,"id":"k","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363908018,"id":"k","total":1,"ms":98.4356}
+{"_e":"metro:bundling:done","_t":1786363908269,"id":"g","total":1,"ms":652.5243}
+{"_e":"metro:bundling:done","_t":1786363908287,"id":"j","total":1,"ms":368.3144}
+{"_e":"metro:bundling:started","_t":1786363908350,"id":"m","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363908350,"id":"n","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363908392,"id":"n","total":1,"ms":41.7752}
+{"_e":"metro:bundling:started","_t":1786363908698,"id":"p","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363908698,"id":"q","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363908747,"id":"q","total":1,"ms":49.6946}
+{"_e":"metro:bundling:done","_t":1786363909067,"id":"m","total":1,"ms":717.2836}
+{"_e":"metro:bundling:done","_t":1786363909085,"id":"p","total":1,"ms":387.9087}
+{"_e":"metro:client_log","_t":1786363909316,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8081/ws?token=stream_paired_token"]}
+{"_e":"metro:client_log","_t":1786363909462,"level":"warn","data":["[WS] Connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363909513,"level":"log","data":["[WS] Connection closed:","1006","unexpected end of stream on http://192.168.1.33:8081/..."]}
+{"_e":"metro:client_log","_t":1786363909559,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8081/ws?token=stream_paired_token"]}
+{"_e":"metro:client_log","_t":1786363909642,"level":"error","data":["The action 'GO_BACK' was not handled by any navigator.\n\nIs there any screen to go back to?\n\nThis is a development-only warning and won't be shown in production.","\n\nCode: metroServerLogs.native.ts\n\u001b[0m \u001b[90m 103 |\u001b[39m }\n \u001b[90m 104 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 105 |\u001b[39m \u001b[36mclass\u001b[39m \u001b[33mNamelessError\u001b[39m \u001b[36mextends\u001b[39m \u001b[33mError\u001b[39m {\n \u001b[90m     |\u001b[39m \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 106 |\u001b[39m   name \u001b[33m=\u001b[39m \u001b[32m''\u001b[39m\u001b[33m;\u001b[39m\n \u001b[90m 107 |\u001b[39m }\n \u001b[90m 108 |\u001b[39m \u001b[36mfunction\u001b[39m captureCurrentStack() {\u001b[0m\nCall Stack\n  apply (<native>)\n  NamelessError (node_modules\\@expo\\metro-runtime\\src\\metroServerLogs.native.ts:105)\n  captureCurrentStack (node_modules\\@expo\\metro-runtime\\src\\metroServerLogs.native.ts:110:27)\n  HMRClient.log (node_modules\\@expo\\metro-runtime\\src\\metroServerLogs.native.ts:42:79)\n  console.level (node_modules\\react-native\\Libraries\\Core\\setUpDeveloperTools.js:41:24)\n  onUnhandledAction (node_modules\\expo-router\\build\\ExpoRoot.js:183:22)\n  <anonymous> (node_modules\\expo-router\\build\\react-navigation\\core\\useNavigationBuilder.js:611:32)\n  apply (<native>)\n  latestCallback (node_modules\\expo-router\\build\\utils\\useLatestCallback.js:52:33)\n  dispatch (node_modules\\expo-router\\build\\react-navigation\\core\\useNavigationHelpers.js:57:34)\n  listeners.focus._$argument_0 (node_modules\\expo-router\\build\\react-navigation\\core\\BaseNavigationContainer.js:120:67)\n  listener (node_modules\\expo-router\\build\\react-navigation\\core\\useFocusedListenersChildrenAdapter.js:54:53)\n  listener (node_modules\\expo-router\\build\\react-navigation\\core\\useFocusedListenersChildrenAdapter.js:49:53)\n  listener (node_modules\\expo-router\\build\\react-navigation\\core\\useFocusedListenersChildrenAdapter.js:49:53)\n  <anonymous> (node_modules\\expo-router\\build\\react-navigation\\core\\BaseNavigationContainer.js:120:31)\n  apply (<native>)\n  latestCallback (node_modules\\expo-router\\build\\utils\\useLatestCallback.js:52:33)\n  exports.routingQueue.run (node_modules\\expo-router\\build\\global-state\\routingQueue.js:40:41)\n  <anonymous> (node_modules\\expo-router\\build\\imperative-api.js:12:35)\n  callCreate.react_stack_bottom_frame (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:17215:26)\n  run (<native>)\n  runWithFiberInDEV (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:697:33)\n  commitHookEffectListMount (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:10563:46)\n  commitHookPassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:10650:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12049:42)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12293:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12293:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12293:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12293:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12041:49)\n  recursivelyTraversePassiveMountEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12004:36)\n  commitPassiveMountOnFiber (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:12084:49)\n  flushPassiveEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:14844:34)\n  flushPendingEffects (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:14751:33)\n  flushSpawnedWork (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:14716:30)\n  commitRoot (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:14447:25)\n  commitRootWhenReady (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:13352:17)\n  performWorkOnRoot (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:13299:34)\n  performSyncWorkOnRoot (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:3688:24)\n  flushSyncWorkAcrossRoots_impl (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:3538:42)\n  processRootScheduleInMicrotask (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:3570:38)\n  scheduleMicrotask$argument_0 (node_modules\\react-native\\Libraries\\Renderer\\implementations\\ReactFabric-dev.js:3708:47)","\n\nCode: ExpoRoot.js\n\u001b[0m \u001b[90m 133 |\u001b[39m         }\n \u001b[90m 134 |\u001b[39m     }\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 135 |\u001b[39m     \u001b[36mreturn\u001b[39m ((\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(storeContext_1\u001b[33m.\u001b[39m\u001b[33mStoreContext\u001b[39m\u001b[33m.\u001b[39m\u001b[33mProvider\u001b[39m\u001b[33m,\u001b[39m { value\u001b[33m:\u001b[39m store\u001b[33m,\u001b[39m children\u001b[33m:\u001b[39m (\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(\u001b[33mNavigationContainer_1\u001b[39m\u001b[33m.\u001b[39m\u001b[33mNavigationContainer\u001b[39m\u001b[33m,\u001b[39m { ref\u001b[33m:\u001b[39m store\u001b[33m.\u001b[39mnavigationRef\u001b[33m,\u001b[39m initialState\u001b[33m:\u001b[39m store\u001b[33m.\u001b[39mstate\u001b[33m,\u001b[39m linking\u001b[33m:\u001b[39m store\u001b[33m.\u001b[39mlinking\u001b[33m,\u001b[39m onUnhandledAction\u001b[33m:\u001b[39m onUnhandledAction\u001b[33m,\u001b[39m onStateChange\u001b[33m:\u001b[39m store\u001b[33m.\u001b[39monStateChange\u001b[33m,\u001b[39m documentTitle\u001b[33m:\u001b[39m documentTitle\u001b[33m,\u001b[39m onReady\u001b[33m:\u001b[39m onNavigationReady\u001b[33m,\u001b[39m children\u001b[33m:\u001b[39m (\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(serverLocationContext_1\u001b[33m.\u001b[39m\u001b[33mServerContext\u001b[39m\u001b[33m.\u001b[39m\u001b[33mProvider\u001b[39m\u001b[33m,\u001b[39m { value\u001b[33m:\u001b[39m serverContext\u001b[33m,\u001b[39m children\u001b[33m:\u001b[39m (\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(\u001b[33mWrapperComponent\u001b[39m\u001b[33m,\u001b[39m { children\u001b[33m:\u001b[39m (\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(\u001b[33mContent\u001b[39m\u001b[33m,\u001b[39m {}) }) }) }) }))\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                                                                         \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 136 |\u001b[39m }\n \u001b[90m 137 |\u001b[39m \u001b[36mfunction\u001b[39m \u001b[33mContent\u001b[39m() {\n \u001b[90m 138 |\u001b[39m     \u001b[36mconst\u001b[39m children \u001b[33m=\u001b[39m [(\u001b[35m0\u001b[39m\u001b[33m,\u001b[39m jsx_runtime_1\u001b[33m.\u001b[39mjsx)(primitives_1\u001b[33m.\u001b[39m\u001b[33mScreen\u001b[39m\u001b[33m,\u001b[39m { name\u001b[33m:\u001b[39m constants_1\u001b[33m.\u001b[39m\u001b[33mINTERNAL_SLOT_NAME\u001b[39m\u001b[33m,\u001b[39m component\u001b[33m:\u001b[39m router_store_1\u001b[33m.\u001b[39mstore\u001b[33m.\u001b[39mrootComponent })]\u001b[33m;\u001b[39m\u001b[0m\nCall Stack\n  ContextNavigator (node_modules\\expo-router\\build\\ExpoRoot.js:135:121)\n  ExpoRoot (node_modules\\expo-router\\build\\ExpoRoot.js:85:33)\n  App (node_modules\\expo-router\\build\\qualified-entry.js:20:91)\n  WithDevTools (node_modules\\expo\\src\\launch\\withDevTools.tsx:21:12)"]}
+{"_e":"metro:client_log","_t":1786363909659,"level":"warn","data":["[WS] Connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363909747,"level":"log","data":["[WS] Connection closed:","1006","unexpected end of stream on http://192.168.1.33:8081/..."]}
+{"_e":"metro:bundling:started","_t":1786363915798,"id":"10","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363915798,"id":"11","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363915855,"id":"11","total":1,"ms":57.5964}
+{"_e":"metro:bundling:done","_t":1786363916145,"id":"10","total":1,"ms":347.7105}
+{"_e":"metro:bundling:started","_t":1786363916210,"id":"13","platform":"web","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:started","_t":1786363916210,"id":"14","platform":"web","environment":"node","entry":"node_modules\\@expo\\router-server\\node\\render.js"}
+{"_e":"metro:bundling:done","_t":1786363916250,"id":"14","total":1,"ms":40.2784}
+{"_e":"metro:bundling:done","_t":1786363916567,"id":"13","total":1,"ms":356.4599}
+{"_e":"metro:client_log","_t":1786363916727,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8081/ws?token=stream_paired_token"]}
+{"_e":"metro:client_log","_t":1786363916835,"level":"warn","data":["[WS] Connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786363916899,"level":"log","data":["[WS] Connection closed:","1006","unexpected end of stream on http://192.168.1.33:8081/..."]}
+{"_e":"root:init","_t":1786364092683,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364092684,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364092686,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786364093049,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786364093319,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786364093569,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786364100101,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1786364262497,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364262499,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364262502,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786364262892,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786364263182,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786364263490,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786364269245,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1786364496061,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364496062,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364496064,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786364496465,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786364496743,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786364497015,"plugins":[]}
+{"_e":"root:init","_t":1786364612831,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364612832,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364612834,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786364613263,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786364613553,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786364613823,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786364618967,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1786364676443,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364676444,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364676446,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786364676811,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786364677104,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786364677369,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786364682591,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1786364920779,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786364920779,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786364920781,"mode":"development","files":[],"env":{}}

@@ -68,26 +68,37 @@ function getLanIp() {
  * Expo's Metro bundler advertises the same LAN IP we do.
  */
 function getSpawnEnv() {
-  const sysRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
-  const comSpec = process.env.ComSpec || process.env.COMSPEC || path.join(sysRoot, 'System32', 'cmd.exe');
-  const system32 = path.join(sysRoot, 'System32');
+  const isWin = process.platform === 'win32';
+  // On Windows we add System32 / ComSpec so .cmd batch files resolve
+  // correctly when child processes are spawned. On non-Windows hosts
+  // those env vars would point at bogus paths, so we leave them alone.
+  let sysRoot = process.env.SystemRoot || process.env.SYSTEMROOT || '';
+  let comSpec = process.env.ComSpec || process.env.COMSPEC || '';
+  let system32 = '';
+
+  if (isWin) {
+    if (!sysRoot) sysRoot = 'C:\\Windows';
+    if (!comSpec) comSpec = path.join(sysRoot, 'System32', 'cmd.exe');
+    system32 = path.join(sysRoot, 'System32');
+  }
 
   const currentPath = process.env.PATH || process.env.Path || '';
-  const extendedPath = `${system32};${sysRoot};${currentPath}`;
+  const extendedPath = system32 ? `${system32};${sysRoot};${currentPath}` : currentPath;
   const lanIp = getLanIp();
 
-  return {
-    env: {
-      ...process.env,
-      SystemRoot: sysRoot,
-      ComSpec: comSpec,
-      PATH: extendedPath,
-      Path: extendedPath,
-      PYTHONUNBUFFERED: '1',
-      REACT_NATIVE_PACKAGER_HOSTNAME: lanIp,
-    },
-    comSpec,
+  const env = {
+    ...process.env,
+    PATH: extendedPath,
+    Path: extendedPath,
+    PYTHONUNBUFFERED: '1',
+    REACT_NATIVE_PACKAGER_HOSTNAME: lanIp,
   };
+  if (isWin) {
+    env.SystemRoot = sysRoot;
+    env.ComSpec = comSpec;
+  }
+
+  return { env, comSpec };
 }
 
 module.exports = { getLanIp, getSpawnEnv };

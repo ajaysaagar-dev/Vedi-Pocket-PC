@@ -40,6 +40,13 @@ class ProcessManager {
     this.currentExpoUrl = '';
     this.lanIp = network.getLanIp();
 
+    // Backend pairing credentials parsed from its stdout. The
+    // backend prints `Pairing PIN: NNNN` on startup — we capture it
+    // here so the controller can render a proper `ip:port:pin`
+    // QR that the mobile app's QR scanner already understands.
+    this.pairingPin = '';
+    this.backendPort = 8000;
+
     this._statusListeners = new Set();
     this._logListeners = new Set();
   }
@@ -58,12 +65,21 @@ class ProcessManager {
     const payload = {
       lanIp: this.lanIp,
       serverPort: 8080,
-      backendPort: 8000,
+      backendPort: this.backendPort,
       expoPort: this.currentExpoPort,
       isPythonRunning: this.isPythonRunning,
       isBackendRunning: this.isBackendRunning,
       isExpoRunning: this.isExpoRunning,
       expoUrl: this.currentExpoUrl || `exp://${this.lanIp}:${this.currentExpoPort}`,
+      pairingPin: this.pairingPin,
+      // `pairingUrl` is the canonical `ip:port:pin` payload the mobile
+      // app's QR scanner parses. Built from whatever credentials we
+      // have so far; the renderer fills in blanks with the LAN IP
+      // default if the backend isn't up yet.
+      pairingUrl:
+        this.pairingPin && this.lanIp
+          ? `${this.lanIp}:${this.backendPort}:${this.pairingPin}`
+          : '',
     };
     for (const cb of this._statusListeners) {
       try { cb(payload); } catch (e) { /* swallow */ }
@@ -104,10 +120,10 @@ class ProcessManager {
     const localExpoJs = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli.js');
 
     const expoArgs = ['start', '-c', '--host', 'lan'];
-    const useLocal = fs.existsSync(localExpoBin) || fs.existsSync(localExpoJs);
-    const cliPath = fs.existsSync(localExpoBin) ? localExpoBin : localExpoJs;
+    const useLocalJs = fs.existsSync(localExpoJs);
+    const cliPath = useLocalJs ? localExpoJs : localExpoBin;
 
-    if (useLocal) {
+    if (useLocalJs) {
       console.log(`[Desktop] Spawning local Expo CLI with Node (${nodeCmd}): ${cliPath}`);
       this.expoProcess = spawn(nodeCmd, [cliPath, ...expoArgs], { cwd: expoDir, env });
     } else {
@@ -117,6 +133,17 @@ class ProcessManager {
         shell: isWin,
         env,
       });
+    }
+
+    // If spawn itself fails (e.g. ENOENT on a packaged build missing
+    // the node binary), the error event fires asynchronously and the
+    // rest of the code path already handles it. Guard here too so a
+    // partially-initialized `expoProcess` doesn't leak into the next
+    // start attempt.
+    if (!this.expoProcess) {
+      this.isExpoRunning = false;
+      this._emitStatus();
+      return;
     }
 
     this.isExpoRunning = true;
@@ -144,17 +171,20 @@ class ProcessManager {
     this._emitLog('expo-log', text);
 
     // Detect exp:// or http:// LAN URL and refresh the QR payload.
-    const expMatch = text.match(/exp:\/\/[^\s\x1b]+/);
+    // Strip ANSI escape codes (Expo wraps URLs in colour codes) so
+    // the regex below can match the bare URL.
+    const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
+    const expMatch = clean.match(/exp:\/\/[\w.\-]+(?::\d+)?[^\s\x1b]*/);
     if (expMatch) {
       this.currentExpoUrl = expMatch[0];
     } else {
-      const httpMatch = text.match(/http:\/\/[\w.-]+:(\d+)/);
+      const httpMatch = clean.match(/https?:\/\/[\w.\-]+:(\d+)/);
       if (httpMatch) {
         this.currentExpoPort = parseInt(httpMatch[1], 10);
         this.currentExpoUrl = `exp://${this.lanIp}:${this.currentExpoPort}`;
       }
     }
-    const portMatch = (this.currentExpoUrl || '').match(/:(\d+)/);
+    const portMatch = (this.currentExpoUrl || '').match(/:(\d+)(?:\/|$)/);
     if (portMatch) this.currentExpoPort = parseInt(portMatch[1], 10);
     this._emitStatus();
   }
@@ -173,26 +203,66 @@ class ProcessManager {
     if (this.pythonProcess) return;
 
     const serverDir = resolveSubdir('screen-stream-server');
-    console.log(`[Desktop] Starting Python Stream Server in ${serverDir}...`);
-
     const { env } = network.getSpawnEnv();
     const pythonCmd = getPythonPath();
-    console.log(`[Desktop] Using Python executable: ${pythonCmd}`);
 
-    this.pythonProcess = spawn(pythonCmd, ['main.py'], { cwd: serverDir, env });
-    this.isPythonRunning = true;
-    this._emitStatus();
+    // Log the resolved binary up-front so a wrong / missing Python
+    // interpreter is immediately visible in the log panel — without
+    // this, "Python Stream Server: Stopped" was the only symptom.
+    console.log(`[Desktop] Starting Python Stream Server`);
+    console.log(`[Desktop]   cwd     = ${serverDir}`);
+    console.log(`[Desktop]   python  = ${pythonCmd}`);
+    console.log(`[Desktop]   port    = 8080`);
+    this._emitLog(
+      'python-log',
+      `[Desktop] Starting screen-stream-server\n  cwd:    ${serverDir}\n  python: ${pythonCmd}\n`
+    );
 
-    this.pythonProcess.stdout.on('data', (data) => this._emitLog('python-log', data.toString()));
-    this.pythonProcess.stderr.on('data', (data) => this._emitLog('python-log', `[ERROR] ${data.toString()}`));
-    this.pythonProcess.on('error', (err) => {
+    let child;
+    try {
+      child = spawn(pythonCmd, ['main.py'], {
+        cwd: serverDir,
+        env,
+        // Explicit stdio — guarantees `pipe` so we never miss a
+        // first-chunk stderr (the original code relied on defaults
+        // which on some Node builds silently inherit `inherit` for
+        // stderr in console-mode Electron, hiding tracebacks).
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (err) {
+      // Synchronous spawn failure (rare, but happens when the path
+      // resolves to something Node refuses to exec).
+      console.error(`[Python Spawn Error] ${err.message}`);
+      this._emitLog('python-log', `[SPAWN ERROR] ${err.message}`);
+      this.pythonProcess = null;
+      this.isPythonRunning = false;
+      this._emitStatus();
+      return;
+    }
+
+    this.pythonProcess = child;
+    // Attach listeners IMMEDIATELY (in the same tick as spawn) so we
+    // never lose the first chunk — the previous code's
+    // `isPythonRunning = true` line raced with the early-exit case
+    // and could miss a 10-line traceback that fired before listeners
+    // were wired.
+    child.stdout.on('data', (data) => this._emitLog('python-log', data.toString()));
+    child.stderr.on('data', (data) => this._emitLog('python-log', `[ERROR] ${data.toString()}`));
+
+    // Don't flip `isPythonRunning = true` until we've actually seen
+    // output OR a 1-second grace timer expires. This eliminates the
+    // "Running but actually dead" UI flicker when the child crashes
+    // inside the import phase (e.g. missing `mss`).
+    this._markStartedWhenReady(this, child, 'isPythonRunning');
+
+    child.on('error', (err) => {
       console.error(`[Python Spawn Error] ${err.message}`);
       this._emitLog('python-log', `[SPAWN ERROR] ${err.message}`);
       this.isPythonRunning = false;
       this.pythonProcess = null;
       this._emitStatus();
     });
-    this.pythonProcess.on('close', (code) => {
+    child.on('close', (code) => {
       console.log(`[Desktop] Python stream process exited with code ${code}`);
       this.isPythonRunning = false;
       this.pythonProcess = null;
@@ -205,26 +275,102 @@ class ProcessManager {
     if (this.backendProcess) return;
 
     const backendDir = resolveSubdir('vedi-pocketpc-backend');
-    console.log(`[Desktop] Starting FastAPI Backend in ${backendDir}...`);
-
     const { env } = network.getSpawnEnv();
     const pythonCmd = getPythonPath();
 
-    this.backendProcess = spawn(pythonCmd, ['main.py'], { cwd: backendDir, env });
-    this.isBackendRunning = true;
-    this._emitStatus();
+    // Same up-front diagnostic logging as the stream server so an
+    // obvious misconfiguration isn't a mystery.
+    console.log(`[Desktop] Starting FastAPI Backend`);
+    console.log(`[Desktop]   cwd     = ${backendDir}`);
+    console.log(`[Desktop]   python  = ${pythonCmd}`);
+    console.log(`[Desktop]   port    = 8000`);
+    this._emitLog(
+      'python-log',
+      `[Desktop] Starting vedi-pocketpc-backend\n  cwd:    ${backendDir}\n  python: ${pythonCmd}\n`
+    );
 
-    this.backendProcess.stdout.on('data', (data) => this._emitLog('python-log', `[Backend] ${data.toString()}`));
-    this.backendProcess.stderr.on('data', (data) => this._emitLog('python-log', `[Backend Err] ${data.toString()}`));
-    this.backendProcess.on('error', () => {
+    let child;
+    try {
+      child = spawn(pythonCmd, ['main.py'], {
+        cwd: backendDir,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (err) {
+      console.error(`[Backend Spawn Error] ${err.message}`);
+      this._emitLog('python-log', `[BACKEND SPAWN ERROR] ${err.message}`);
+      this.backendProcess = null;
+      this.isBackendRunning = false;
+      this._emitStatus();
+      return;
+    }
+
+    this.backendProcess = child;
+
+    child.stdout.on('data', (data) => {
+      const text = data.toString();
+      this._emitLog('python-log', `[Backend] ${text}`);
+      const match = text.match(/Pairing PIN:\s*(\d{4})/);
+      if (match) {
+        const pin = match[1];
+        if (pin !== this.pairingPin) {
+          this.pairingPin = pin;
+          console.log(`[Desktop] Captured backend pairing PIN: ${pin}`);
+          this._emitStatus();
+        }
+      }
+    });
+    child.stderr.on('data', (data) =>
+      this._emitLog('python-log', `[Backend Err] ${data.toString()}`)
+    );
+
+    this._markStartedWhenReady(this, child, 'isBackendRunning');
+
+    child.on('error', (err) => {
+      console.error(`[Backend Spawn Error] ${err.message}`);
+      this._emitLog('python-log', `[BACKEND SPAWN ERROR] ${err.message}`);
       this.isBackendRunning = false;
       this.backendProcess = null;
       this._emitStatus();
     });
-    this.backendProcess.on('close', () => {
+    child.on('close', (code) => {
+      console.log(`[Desktop] Backend process exited with code ${code}`);
       this.isBackendRunning = false;
       this.backendProcess = null;
+      // Don't clear the PIN here — the user may still need to scan
+      // it from the most recent QR. We only forget it on restart.
       this._emitStatus();
+    });
+  }
+
+  /**
+   * Helper — flips `manager[flag] = true` only once either:
+   *   (a) the child process emits data (real sign it's alive), OR
+   *   (b) a 1-second grace timer expires.
+   * If the child closes/errors before either, the flag stays false
+   * and the UI correctly reports "Stopped".
+   */
+  _markStartedWhenReady(manager, child, flag) {
+    let confirmed = false;
+    const confirm = () => {
+      if (confirmed) return;
+      confirmed = true;
+      if (manager[flag] === false) {
+        manager[flag] = true;
+        manager._emitStatus();
+      }
+    };
+    // The stdout 'data' event fires for any emitted line, so
+    // attach to the stdout stream (not the child) — same stream
+    // the existing logger is reading from.
+    if (child.stdout) child.stdout.once('data', confirm);
+    // Wait briefly so a process that prints its banner immediately
+    // (normal case) still flips to "Running" within ~1s.
+    setTimeout(confirm, 1000);
+    // If the child dies before confirming, leave the flag false and
+    // suppress the timeout's late flip.
+    child.once('close', () => {
+      if (!confirmed) confirmed = true;
     });
   }
 
@@ -239,6 +385,10 @@ class ProcessManager {
       this.backendProcess = null;
       this.isBackendRunning = false;
     }
+    // PIN is no longer valid once the backend is stopped — invalidate
+    // it so the QR can't accidentally grant a token against a stale
+    // PIN if the user scans an old QR.
+    this.pairingPin = '';
     this._emitStatus();
   }
 
@@ -249,11 +399,16 @@ class ProcessManager {
 
   // ------------------------- helpers -------------------------
   _kill(child) {
+    if (!child || child.pid === undefined || child.pid === null) return;
     try {
       if (process.platform === 'win32') {
         exec(`taskkill /pid ${child.pid} /T /F`);
       } else {
-        child.kill('SIGINT');
+        try {
+          child.kill('SIGINT');
+        } catch (_) {
+          /* best effort */
+        }
       }
     } catch (e) {
       /* best effort */

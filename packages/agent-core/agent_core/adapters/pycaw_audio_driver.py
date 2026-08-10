@@ -43,19 +43,95 @@ class PyCawAudioDriver(AudioDriver):
 
     @staticmethod
     def _endpoint():
-        """Return an activated IAudioEndpointVolume, or None on failure."""
+        """Return an activated IAudioEndpointVolume, or None on failure.
+
+        Supports every variant of pycaw shipped in the last few years:
+
+          1. Modern pycaw (>= 20240205): `AudioUtilities.GetSpeakers()`
+             returns an `AudioDevice` whose `EndpointVolume` is a
+             `@property` that internally does `self._dev.Activate(...)`
+             and caches the result. Reading the property is what gives
+             you the activated interface.
+          2. Older pycaw: `AudioDevice` exposes an `Activate(iid, ctx, None)`
+             method that returns the COM interface pointer.
+          3. Oldest pycaw (and many tutorials on the web): `AudioDevice`
+             exposes the raw COM IMMDevice as `_dev`, and you have to
+             call `_dev.Activate(...)` yourself.
+
+        All three paths converge on the same `IAudioEndpointVolume`
+        pointer; we try them in order from "cleanest API" to
+        "lowest-level escape hatch" and return the first one that works.
+        Without this layered lookup the backend spams
+        `'AudioDevice' object has no attribute 'Activate'` on every
+        volume command.
+        """
         if not _IS_WINDOWS:
             return None
         try:
-            from ctypes import cast, POINTER
             from comtypes import CLSCTX_ALL
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(
-                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+            speakers = AudioUtilities.GetSpeakers()
+            if speakers is None:
+                print("[AUDIO] No default speaker endpoint found.")
+                return None
+
+            # ----- 1) modern pycaw: AudioDevice.EndpointVolume (property) -----
+            #
+            # `getattr(speakers, "EndpointVolume", None)` returns the
+            # property descriptor object itself (not its value) — which
+            # is truthy even on devices where the COM Activate call
+            # would fail. We have to *evaluate* the property to know
+            # whether it actually works.
+            has_endpoint_volume_attr = isinstance(
+                getattr(type(speakers), "EndpointVolume", None), property
+            ) or hasattr(speakers, "EndpointVolume")
+
+            if has_endpoint_volume_attr:
+                try:
+                    ep = speakers.EndpointVolume
+                    if ep is not None:
+                        return ep
+                except Exception as prop_exc:
+                    print(f"[AUDIO] EndpointVolume property raised: {prop_exc}")
+
+            # ----- 2) mid-era pycaw: AudioDevice.Activate(iid, ctx, None) -----
+            activate = getattr(speakers, "Activate", None)
+            if callable(activate):
+                try:
+                    from ctypes import cast, POINTER
+
+                    interface = activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+                    if interface is not None:
+                        return cast(interface, POINTER(IAudioEndpointVolume))
+                except Exception as act_exc:
+                    print(f"[AUDIO] AudioDevice.Activate raised: {act_exc}")
+
+            # ----- 3) lowest-level: speakers._dev.Activate(...) -----
+            #
+            # Some tutorials and older pycaw forks expose the underlying
+            # IMMDevice COM pointer as `_dev`. If that's present we can
+            # always Activate from there — it's the same call the
+            # `EndpointVolume` property makes internally.
+            dev = getattr(speakers, "_dev", None)
+            dev_activate = getattr(dev, "Activate", None) if dev is not None else None
+            if callable(dev_activate):
+                try:
+                    from ctypes import cast, POINTER
+
+                    interface = dev_activate(
+                        IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+                    )
+                    if interface is not None:
+                        return cast(interface, POINTER(IAudioEndpointVolume))
+                except Exception as dev_exc:
+                    print(f"[AUDIO] speakers._dev.Activate raised: {dev_exc}")
+
+            print(
+                "[AUDIO] pycaw speaker object has no usable COM entry point "
+                "(no EndpointVolume, no Activate, no _dev.Activate)."
             )
-            return cast(interface, POINTER(IAudioEndpointVolume))
+            return None
         except Exception as exc:  # noqa: BLE001 — pycaw + COM raises many shapes
             print(f"[AUDIO] Failed to acquire endpoint: {exc}")
             return None

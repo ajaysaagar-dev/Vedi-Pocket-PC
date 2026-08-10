@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { X, Camera, RefreshCcw } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
 import { pairWithHost, describePairError } from '../src/ws/pairing';
@@ -16,6 +25,21 @@ export default function PairingScreen() {
   const [scanned, setScanned] = useState(false);
   const [pairingInProgress, setPairingInProgress] = useState(false);
   const addDevice = useDeviceStore(state => state.addDevice);
+
+  // Compute the reticle size from the screen so it scales to phones,
+  // phablets, and tablets. The previous 260px fixed size was hard to
+  // align with on anything but a small phone — users had to fish
+  // for the QR code. Targeting ~72% of the smaller screen dimension
+  // gives the QR roughly half the viewfinder area (the OS "quiet
+  // zone" needs to fit inside that half), which scans reliably
+  // across all our test devices.
+  const reticleSize = useMemo(() => {
+    const { width, height } = Dimensions.get('window');
+    const smaller = Math.min(width, height);
+    const target = Math.round(smaller * 0.72);
+    // Clamp so we don't get an absurdly small or giant cutout.
+    return Math.max(220, Math.min(560, target));
+  }, []);
 
   useEffect(() => {
     if (!permission) requestPermission();
@@ -57,12 +81,23 @@ export default function PairingScreen() {
     setScanned(true);
     setPairingInProgress(true);
 
+    // Haptic + status-bar flash so the user knows the scan succeeded
+    // even before the pairing call returns. Without this, users would
+    // often assume the camera wasn't aligned and move it again,
+    // re-triggering the scan and racing with the in-flight request.
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch {
+      /* haptics are optional */
+    }
+
     const str = (data || '').trim();
     let ip = '';
     let port = '8000';
     let pin = '';
 
-    // Handle Format A: ip:port:pin
+    // Handle Format A: ip:port:pin (preferred — carries the PIN so the
+    // mobile app can auth against the backend agent).
     const colonParts = str.split(':');
     if (colonParts.length === 3 && !str.includes('://')) {
       ip = colonParts[0];
@@ -129,15 +164,25 @@ export default function PairingScreen() {
     <View style={styles.cameraRoot}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={styles.camera}
+        facing="back"
+        // Pin the camera to a 4:3 aspect so the reticle shape matches
+        // the area the QR detector actually scans. Without this, the
+        // sensor's native aspect ratio (often 16:9) would squish the
+        // viewfinder and misalign the on-screen reticle with the area
+        // the OS samples for barcodes.
+        ratio="4:3"
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
-      {/* Overlay UI */}
+      {/* Overlay UI — sit *above* the camera without darkening it.
+          Previous version painted a full-screen `rgba(0,0,0,0.55)` scrim
+          on top of the camera feed, which on Android turned the live
+          viewfinder into a black screen. The reticle corners + hint
+          pill are enough visual scaffolding; we leave the camera
+          feed itself untouched. */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-        <View style={styles.scrim} pointerEvents="none" />
-
         {/* Top bar — close */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + Spacing.xs }]}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
@@ -145,16 +190,29 @@ export default function PairingScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Center reticle */}
+        {/* Center reticle — responsive size, hint above so it doesn't
+            collide with the bottom status pill. */}
         <View style={styles.center} pointerEvents="none">
-          <View style={styles.reticle}>
+          <View style={styles.reticleHintTop}>
+            <Text style={styles.hintText}>Align the QR within the frame</Text>
+          </View>
+          <View
+            style={[
+              styles.reticle,
+              { width: reticleSize, height: reticleSize },
+            ]}
+          >
             <View style={[styles.corner, styles.tl]} />
             <View style={[styles.corner, styles.tr]} />
             <View style={[styles.corner, styles.bl]} />
             <View style={[styles.corner, styles.br]} />
-          </View>
-          <View style={styles.reticleHint}>
-            <Text style={styles.hintText}>Center the agent’s QR code</Text>
+            {/* Centre crosshair — subtle aid for alignment on the
+                second axis. Drawn as two thin guide lines; reads as
+                part of the reticle so it doesn't look like a defect. */}
+            <View style={styles.crossH} />
+            <View style={styles.crossV} />
+            {/* Animated success flash on scan */}
+            {pairingInProgress && <View style={styles.scanFlash} />}
           </View>
         </View>
 
@@ -186,15 +244,24 @@ export default function PairingScreen() {
   );
 }
 
-const RETICLE_SIZE = 260;
-
 const styles = StyleSheet.create({
   cameraRoot: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  scrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  camera: {
+    // Explicit flex fill instead of `absoluteFillObject` — under the
+    // new architecture some Android builds were laying out the
+    // CameraView with zero width/height when only positioned absolute
+    // with no parent flex chain.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: Spacing.xl,
   },
 
   topBar: {
@@ -214,28 +281,60 @@ const styles = StyleSheet.create({
   },
 
   reticle: {
-    width: RETICLE_SIZE,
-    height: RETICLE_SIZE,
+    // Size is set inline from `reticleSize` so it scales with the
+    // screen. The previous hard-coded 260×260 was hard to align
+    // with on tablets.
     position: 'relative',
+    marginTop: Spacing.md,
   },
   corner: {
     position: 'absolute',
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderColor: palette.primary,
   },
-  tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 4 },
-  tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 4 },
-  bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 4 },
-  br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 4 },
+  tl: { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 6 },
+  tr: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 6 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 6 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 6 },
 
-  reticleHint: {
-    marginTop: Spacing.lg,
+  // Faint guide crosshair so users can tell whether the camera is
+  // actually pointing at the code (not a tilted view). 0.4 opacity
+  // keeps it from competing with the corner brackets.
+  crossH: {
+    position: 'absolute',
+    left: '12%',
+    right: '12%',
+    top: '50%',
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  crossV: {
+    position: 'absolute',
+    top: '12%',
+    bottom: '12%',
+    left: '50%',
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+
+  // Brief flash overlay drawn while the pairing request is in flight.
+  // Green is universal "success" — feels good on Android too where
+  // haptics are short.
+  scanFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(46, 125, 50, 0.25)',
+    borderRadius: 8,
+  },
+
+  reticleHintTop: {
     backgroundColor: 'rgba(254, 247, 255, 0.9)',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
+    ...Elevation.level2,
   },
+
   hintText: {
     ...Typography.labelLarge,
     color: palette.onSurface,

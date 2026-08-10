@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
-import { MousePointer, Keyboard, Sliders, Wifi, Tv } from 'lucide-react-native';
-import { palette, Typography } from '../../constants/theme-m3';
+import { MousePointer, Keyboard, Sliders, Wifi } from 'lucide-react-native';
+import { palette, Typography, Spacing } from '../../constants/theme-m3';
 
 export default function TabsLayout() {
   return (
@@ -10,8 +10,8 @@ export default function TabsLayout() {
           backgroundColor: palette.surfaceContainer,
           borderTopWidth: 0,
           height: 72,
-          paddingBottom: SpacingY(),
-          paddingTop: 12,
+          paddingBottom: Spacing.xs,
+          paddingTop: Spacing.xs,
         },
         tabBarActiveTintColor: palette.primary,
         tabBarInactiveTintColor: palette.onSurfaceVariant,
@@ -31,7 +31,9 @@ export default function TabsLayout() {
           fontSize: Typography.titleLarge.fontSize,
           fontWeight: '500',
         },
-        sceneStyle: {
+        // `sceneContainerStyle` is the prop name in expo-router 4+;
+        // older versions used `sceneStyle`. Provide both for safety.
+        sceneContainerStyle: {
           backgroundColor: palette.background,
         },
       }}
@@ -82,10 +84,4 @@ export default function TabsLayout() {
       />
     </Tabs>
   );
-}
-
-/** Local helper — avoids importing the whole Spacing object just for one value. */
-function SpacingY() {
-  // 8dp above safe area for breathing room
-  return 8;
 }

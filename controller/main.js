@@ -7,10 +7,8 @@
  */
 const { app, BrowserWindow } = require('electron');
 
-const network = require('./services/network');
 const { createWindow } = require('./services/window');
 const { ProcessManager } = require('./services/process-manager');
-const { findBinaries } = require('./services/binaries');
 const registerIpcHandlers = require('./ipc/handlers');
 
 // ---------------------------------------------------------------------------
@@ -18,7 +16,14 @@ const registerIpcHandlers = require('./ipc/handlers');
 // ---------------------------------------------------------------------------
 let mainWindow = null;
 const processes = new ProcessManager();
-const binaries = findBinaries(); // resolved once, used by service modules via require
+
+// Resolve node/python binaries up-front so a missing interpreter fails
+// fast (with a clear error in the terminal) instead of dying silently
+// inside `spawn()` later. The values aren't passed around — service
+// modules resolve them on their own — but the call has the side effect
+// of caching PATH lookups and surfacing a clear error if neither node
+// nor python can be found.
+require('./services/binaries').findBinaries();
 
 // ---------------------------------------------------------------------------
 // IPC

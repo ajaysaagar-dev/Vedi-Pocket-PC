@@ -21,6 +21,15 @@ from typing import Any, Dict
 # project's entry point and is expected to run from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Make the shared `agent_core` package importable without requiring
+# `pip install -e ../packages/agent-core`. This is the same trick the
+# previous monolithic `main.py` used, just kept explicit so the path
+# is obvious when running from a packaged build.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_AGENT_CORE_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, "packages", "agent-core"))
+if os.path.isdir(_AGENT_CORE_ROOT) and _AGENT_CORE_ROOT not in sys.path:
+    sys.path.insert(0, _AGENT_CORE_ROOT)
+
 from aiohttp import web
 
 from agent_core.adapters.memory_token_store import MemoryTokenStore
