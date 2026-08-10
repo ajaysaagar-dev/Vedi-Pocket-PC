@@ -3056,3 +3056,10 @@
 {"_e":"metro:client_log","_t":1786368700897,"level":"warn","data":["[WS] Connection pending or offline."]}
 {"_e":"metro:client_log","_t":1786368700948,"level":"log","data":["[WS] Connection closed:","1006","Connection reset"]}
 {"_e":"metro:client_log","_t":1786368701039,"level":"log","data":["[WS] Reconnecting in 2000ms (attempt 1/5)"]}
+{"_e":"root:init","_t":1786369030834,"format":"v0-jsonl","version":"57.0.13"}
+{"_e":"env:mode","_t":1786369030836,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1786369030842,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1786369031963,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":true,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1786369032737,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":true,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1786369033240,"plugins":[]}
+{"_e":"metro:instantiate","_t":1786369042368,"atlas":false,"workers":8,"host":"::","port":8088}

@@ -172,61 +172,100 @@ export default function DesktopViewport({
   const startStream = useCallback(() => {
     stopStream();
 
-    const wsUrl = `ws://${targetIp}:${targetPort}/ws`;
-    console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
-    setIsStreaming(true);
-
-    try {
-      const ws = new WebSocket(wsUrl);
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('[ScreenViewport] Connected to screen stream');
-        try {
-          ws.send(
-            JSON.stringify({
-              type: 'set_stream_settings',
-              max_width: selectedRes.w,
-              max_height: selectedRes.h,
-              fps: selectedFps,
-            })
-          );
-        } catch (e) {
-          console.warn('Failed sending initial settings on connect:', e);
-        }
-      };
-
-      ws.onmessage = event => {
-        if (event.data instanceof ArrayBuffer) {
-          const byteLength = event.data.byteLength;
-          bytesCountRef.current += byteLength;
-          frameCountRef.current += 1;
-
-          const base64 = arrayBufferToBase64(event.data);
-          const nextUri = `data:image/jpeg;base64,${base64}`;
-
-          if (activeBufferRef.current === 'front') {
-            setBackUri(nextUri);
-          } else {
-            setFrontUri(nextUri);
+    // The stream-server's WebSocket endpoint requires a valid token
+    // (either `?token=…` in the URL or an `auth` message after open).
+    // The mobile app only pairs with the BACKEND (port 8000) for the
+    // QR-scan handshake, so we never have a stream-side token yet.
+    // Mint one by POSTing to the stream server's /pair endpoint
+    // (which accepts any PIN and issues a fresh session token from
+    // its own MemoryTokenStore), then connect with that token.
+    const baseHttpUrl = `http://${targetIp}:${targetPort}`;
+    const fetchToken = async (): Promise<string> => {
+      try {
+        const res = await fetch(`${baseHttpUrl}/pair`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: '' }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { token?: string };
+          if (data && typeof data.token === 'string' && data.token) {
+            return data.token;
           }
         }
-      };
+        console.warn('[ScreenViewport] /pair did not return a token; opening WS without one');
+      } catch (err) {
+        console.warn('[ScreenViewport] /pair failed; opening WS without one', err);
+      }
+      return '';
+    };
 
-      ws.onerror = err => {
-        console.warn('[ScreenViewport] Stream socket connection pending or offline.');
-      };
+    const openSocket = (token: string) => {
+      const wsUrl = token
+        ? `ws://${targetIp}:${targetPort}/ws?token=${encodeURIComponent(token)}`
+        : `ws://${targetIp}:${targetPort}/ws`;
+      console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
+      setIsStreaming(true);
 
-      ws.onclose = () => {
-        console.log('[ScreenViewport] Stream disconnected');
+      try {
+        const ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('[ScreenViewport] Connected to screen stream');
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'set_stream_settings',
+                max_width: selectedRes.w,
+                max_height: selectedRes.h,
+                fps: selectedFps,
+              })
+            );
+          } catch (e) {
+            console.warn('Failed sending initial settings on connect:', e);
+          }
+        };
+
+        ws.onmessage = event => {
+          if (event.data instanceof ArrayBuffer) {
+            const byteLength = event.data.byteLength;
+            bytesCountRef.current += byteLength;
+            frameCountRef.current += 1;
+
+            const base64 = arrayBufferToBase64(event.data);
+            const nextUri = `data:image/jpeg;base64,${base64}`;
+
+            if (activeBufferRef.current === 'front') {
+              setBackUri(nextUri);
+            } else {
+              setFrontUri(nextUri);
+            }
+          }
+        };
+
+        ws.onerror = err => {
+          console.warn('[ScreenViewport] Stream socket connection pending or offline.');
+        };
+
+        ws.onclose = () => {
+          console.log('[ScreenViewport] Stream disconnected');
+          setIsStreaming(false);
+          wsRef.current = null;
+        };
+      } catch (e) {
+        console.error('[ScreenViewport] Failed to open stream socket:', e);
         setIsStreaming(false);
-        wsRef.current = null;
-      };
-    } catch (e) {
-      console.error('[ScreenViewport] Failed to open stream socket:', e);
+      }
+    };
+
+    // Async mint + open. The token request happens before the socket
+    // so the WS handshake carries it in the URL.
+    fetchToken().then(openSocket).catch(err => {
+      console.error('[ScreenViewport] Failed to mint stream token:', err);
       setIsStreaming(false);
-    }
+    });
   }, [targetIp, targetPort, stopStream]);
 
   // Auto-start screen stream on component mount & clean up on unmount
