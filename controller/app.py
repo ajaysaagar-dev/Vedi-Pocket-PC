@@ -534,10 +534,12 @@ class ControllerManager:
 
     def push_js(self, js_code: str):
         if self.window and self.is_running:
-            try:
-                self.window.evaluate_js(js_code)
-            except Exception:
-                pass
+            def _exec():
+                try:
+                    self.window.evaluate_js(js_code)
+                except Exception:
+                    pass
+            webview.dispatch(_exec)
 
     def append_log(self, target: str, text: str):
         if not text or not self.is_running:
