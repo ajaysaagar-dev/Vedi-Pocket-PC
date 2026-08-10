@@ -110,7 +110,7 @@ class ProcessManager {
 
     this.currentExpoPort = findFreePort(8088);
 
-    const expoDir = resolveSubdir('veddi-pocketpc');
+    const expoDir = resolveSubdir('Vedi-PocketPC-Mobile');
     const expoPkg = path.join(expoDir, 'node_modules', 'expo');
 
     if (!fs.existsSync(expoPkg)) {
@@ -234,7 +234,7 @@ class ProcessManager {
 
     this.streamPort = findFreePort(8080);
 
-    const serverDir = resolveSubdir('screen-stream-server');
+    const serverDir = resolveSubdir('Screen-Stream-Server');
     const { env: spawnEnv } = network.getSpawnEnv();
     const env = { ...spawnEnv, STREAM_PORT: String(this.streamPort) };
     const pythonCmd = getPythonPath();
@@ -291,7 +291,7 @@ class ProcessManager {
 
     this.backendPort = findFreePort(8000);
 
-    const backendDir = resolveSubdir('vedi-pocketpc-backend');
+    const backendDir = resolveSubdir('Vedi-PocketPC-Backend');
     const { env: spawnEnv } = network.getSpawnEnv();
     const env = { ...spawnEnv, BACKEND_PORT: String(this.backendPort) };
     const pythonCmd = getPythonPath();

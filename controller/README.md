@@ -23,8 +23,8 @@ controller/
 ## Run
 
 ```bash
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 The Electron `main` entry point lives here at `controller/main.js`.

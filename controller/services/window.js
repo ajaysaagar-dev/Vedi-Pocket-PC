@@ -11,7 +11,7 @@ function createWindow() {
     minWidth: 880,
     minHeight: 650,
     title: 'VediPocketPC Controller',
-    icon: path.join(__dirname, '..', '..', 'logo.jpeg'),
+    icon: path.join(__dirname, '..', 'renderer', 'logo.jpeg'),
     backgroundColor: '#0F131A',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
@@ -22,7 +22,7 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
-  win.loadFile(path.join(__dirname, '..', '..', 'index.html'));
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   win.on('closed', () => { /* window is closed by Electron */ });
   return win;
 }

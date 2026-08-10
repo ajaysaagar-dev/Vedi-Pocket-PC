@@ -1,2 +1,32 @@
-dist
-node_modules
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Build and distribution output
+dist/
+build/
+*.egg-info/
+
+# Python cache & test artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Mobile / Expo cache
+.expo/
+.expo-shared/
+
+# Environment configuration (local sensitive secrets)
+# Note: Keep .env tracked if default local settings are required for pre-flight, or keep template.
+
+# OS & IDE metadata
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
