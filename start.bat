@@ -10,12 +10,16 @@ echo.
 echo Launch Options:
 echo   [1] Start Vedi Pocket PC (Normal)
 echo   [2] Reload Expo App (Clear Metro Cache)
-echo   [3] Run Master Setup
+echo   [3] Create / Verify .env File
+echo   [4] Download / Reinstall All Dependencies
+echo   [5] Run Master Setup
 echo.
 set "CHOICE=1"
-choice /c 123 /t 3 /d 1 /m "Select option (Auto-starting option 1 in 3s)... " >nul 2>&1
+choice /c 12345 /t 5 /d 1 /m "Select option (Auto-starting option 1 in 5s)... " >nul 2>&1
 if !ERRORLEVEL! EQU 2 goto RELOAD_EXPO
-if !ERRORLEVEL! EQU 3 goto RUN_SETUP
+if !ERRORLEVEL! EQU 3 goto CREATE_ENV_MENU
+if !ERRORLEVEL! EQU 4 goto DOWNLOAD_DEPS_MENU
+if !ERRORLEVEL! EQU 5 goto RUN_SETUP
 goto MAIN_PREFLIGHT
 
 :RELOAD_EXPO
@@ -29,6 +33,30 @@ call npx expo start -c
 pause
 exit /b 0
 
+:CREATE_ENV_MENU
+echo.
+echo ========================================================
+echo         Creating / Verifying .env File...
+echo ========================================================
+echo.
+call :ENSURE_ENV_FILE 1
+pause
+exit /b 0
+
+:DOWNLOAD_DEPS_MENU
+echo.
+echo ========================================================
+echo         Downloading All Dependencies...
+echo ========================================================
+echo.
+call :DOWNLOAD_PYTHON_DEPS 1
+call :DOWNLOAD_NODE_DEPS 1
+echo.
+echo   [OK] All dependencies successfully downloaded and installed.
+echo.
+pause
+exit /b 0
+
 :RUN_SETUP
 call setup.bat
 exit /b 0
@@ -38,7 +66,7 @@ exit /b 0
 :: 1. Pre-flight checks — fail fast with a clear message if the
 ::    developer's machine is missing a runtime.
 :: ----------------------------------------------------------------
-echo [1/5] Checking prerequisites...
+echo [1/6] Checking prerequisites...
 
 where node >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
@@ -76,10 +104,17 @@ for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
 echo   [OK] Python    !PY_VER!
 
 :: ----------------------------------------------------------------
-:: 2. Non-destructive port check (8080, 8000, 8088)
+:: 2. Check / Create .env configuration file
 :: ----------------------------------------------------------------
 echo.
-echo [2/5] Checking required ports ^(8080, 8000, 8088^)...
+echo [2/6] Verifying environment configuration ^(.env^)...
+call :ENSURE_ENV_FILE 0
+
+:: ----------------------------------------------------------------
+:: 3. Non-destructive port check (8080, 8000, 8088)
+:: ----------------------------------------------------------------
+echo.
+echo [3/6] Checking required ports ^(8080, 8000, 8088^)...
 for %%P in (8080 8000 8088) do (
     netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
@@ -89,38 +124,23 @@ for %%P in (8080 8000 8088) do (
 echo   [OK] Port check complete.
 
 :: ----------------------------------------------------------------
-:: 3. Install Python deps if missing — a fresh checkout won't have
-::    agent-core, mss, pycaw, etc. We do this here so the user
-::    never has to remember to run setup.bat first.
+:: 4. Install Python deps if missing
 :: ----------------------------------------------------------------
 echo.
-echo [3/5] Verifying Python dependencies...
+echo [4/6] Verifying Python dependencies...
 python -c "import mss, aiohttp, fastapi, pyautogui, websockets" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo   [INFO] Missing Python deps. Running pip install...
-    python -m pip install --upgrade pip
-    python -m pip install -e packages\agent-core
-    python -m pip install -r requirements.txt
-    if !ERRORLEVEL! NEQ 0 (
-        echo.
-        echo   [ERROR] pip install failed. Check your network / proxy
-        echo   settings and re-run, or run setup.bat manually for the
-        echo   full installation log.
-        echo.
-        pause
-        exit /b 1
-    )
-    echo   [OK] Python deps installed.
+    call :DOWNLOAD_PYTHON_DEPS 0
 ) else (
     echo   [OK] Python deps present.
 )
 
 :: ----------------------------------------------------------------
-:: 4. Install Node deps if missing — same story for the Electron
-::    controller and the Expo mobile app.
+:: 5. Install Node deps if missing
 :: ----------------------------------------------------------------
 echo.
-echo [4/5] Verifying Node dependencies...
+echo [5/6] Verifying Node dependencies...
 if not exist node_modules\electron\package.json (
     echo   [INFO] Installing root Electron deps...
     call npm install --legacy-peer-deps
@@ -149,14 +169,10 @@ if not exist veddi-pocketpc\node_modules\expo\package.json (
 )
 
 :: ----------------------------------------------------------------
-:: 4b. Firewall rules — without these, your phone shows
-::     "packager is not running at 8088" even though the controller
-::     is happily listening (Windows blocks inbound by default).
-::     Run as Administrator OR we'll try via PowerShell; either way
-::     you see a clear pass/fail per rule.
+:: 5b. Firewall rules
 :: ----------------------------------------------------------------
 echo.
-echo [4b] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
+echo [5b] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
 set "FW_OK=1"
 for %%P in (8080 8000 8088) do (
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
@@ -179,10 +195,10 @@ if "!FW_OK!"=="0" (
 )
 
 :: ----------------------------------------------------------------
-:: 5. Launch.
+:: 6. Launch.
 :: ----------------------------------------------------------------
 echo.
-echo [5/5] Launching Vedi Pocket PC...
+echo [6/6] Launching Vedi Pocket PC...
 echo   (Close the window or press Ctrl+C inside the app to quit.)
 echo.
 
@@ -198,3 +214,83 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 endlocal
+exit /b 0
+
+:: ================================================================
+:: Subroutines
+:: ================================================================
+
+:ENSURE_ENV_FILE
+if exist "%~dp0.env" (
+    if "%~1"=="1" (
+        echo   .env file already exists at "%~dp0.env".
+        set /p OVERWRITE="Do you want to overwrite .env with default values? (Y/N): "
+        if /i "!OVERWRITE!" NEQ "Y" (
+            echo   Skipped overwriting .env file.
+            goto :EOF
+        )
+    ) else (
+        echo   [OK] .env file present.
+        goto :EOF
+    )
+)
+
+echo   [INFO] Creating .env file with default configuration...
+(
+    echo # ========================================================
+    echo # Vedi Pocket PC - Environment Configuration
+    echo # ========================================================
+    echo.
+    echo # Screen Stream Server Settings
+    echo STREAM_HOST=0.0.0.0
+    echo STREAM_PORT=8080
+    echo STREAM_FPS=30
+    echo STREAM_JPEG_QUALITY=50
+    echo STREAM_MAX_WIDTH=640
+    echo STREAM_MAX_HEIGHT=360
+    echo STREAM_MONITOR_INDEX=1
+    echo STREAM_MOUSE_SENSITIVITY=1.5
+    echo STREAM_SCROLL_SENSITIVITY=1.0
+    echo STREAM_DEBUG_MOUSE=false
+    echo.
+    echo # Backend Server Settings
+    echo BACKEND_HOST=0.0.0.0
+    echo BACKEND_PORT=8000
+    echo EXPO_PORT=8088
+) > "%~dp0.env"
+echo   [OK] Created .env file successfully.
+goto :EOF
+
+:DOWNLOAD_PYTHON_DEPS
+echo   [INFO] Installing Python dependencies...
+python -m pip install --upgrade pip
+python -m pip install -e packages\agent-core
+python -m pip install -r requirements.txt
+if !ERRORLEVEL! NEQ 0 (
+    echo.
+    echo   [ERROR] pip install failed. Check your network / proxy settings.
+    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
+)
+echo   [OK] Python dependencies installed.
+goto :EOF
+
+:DOWNLOAD_NODE_DEPS
+echo   [INFO] Installing Desktop App ^(Electron^) dependencies...
+call npm install --legacy-peer-deps
+if !ERRORLEVEL! NEQ 0 (
+    echo   [ERROR] Root npm install failed.
+    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
+)
+
+echo.
+echo   [INFO] Installing Mobile App ^(Expo^) dependencies...
+cd veddi-pocketpc
+call npm install --legacy-peer-deps
+set "MOBILE_ERR=!ERRORLEVEL!"
+cd ..
+if !MOBILE_ERR! NEQ 0 (
+    echo   [ERROR] Mobile app npm install failed.
+    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
+)
+echo   [OK] Node.js dependencies installed.
+goto :EOF

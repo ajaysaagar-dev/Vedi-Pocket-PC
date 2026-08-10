@@ -83,6 +83,39 @@ if !MOBILE_ERR! NEQ 0 (
 
 echo.
 echo ========================================================
+echo [5/5] Creating / Verifying .env Configuration...
+echo ========================================================
+if not exist "%~dp0.env" (
+    echo [INFO] Creating default .env file...
+    (
+        echo # ========================================================
+        echo # Vedi Pocket PC - Environment Configuration
+        echo # ========================================================
+        echo.
+        echo # Screen Stream Server Settings
+        echo STREAM_HOST=0.0.0.0
+        echo STREAM_PORT=8080
+        echo STREAM_FPS=30
+        echo STREAM_JPEG_QUALITY=50
+        echo STREAM_MAX_WIDTH=640
+        echo STREAM_MAX_HEIGHT=360
+        echo STREAM_MONITOR_INDEX=1
+        echo STREAM_MOUSE_SENSITIVITY=1.5
+        echo STREAM_SCROLL_SENSITIVITY=1.0
+        echo STREAM_DEBUG_MOUSE=false
+        echo.
+        echo # Backend Server Settings
+        echo BACKEND_HOST=0.0.0.0
+        echo BACKEND_PORT=8000
+        echo EXPO_PORT=8088
+    ) > "%~dp0.env"
+    echo [OK] Created .env file successfully.
+) else (
+    echo [OK] .env file already present.
+)
+
+echo.
+echo ========================================================
 echo        ALL DEPENDENCIES INSTALLED SUCCESSFULLY!
 echo ========================================================
 echo.

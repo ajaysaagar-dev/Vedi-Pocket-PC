@@ -3654,3 +3654,6 @@
 {"_e":"metro:client_log","_t":1786377946439,"level":"log","data":["[WS] Connection closed:","1006","unexpected end of stream on http://192.168.1.33:8088/..."]}
 {"_e":"metro:client_log","_t":1786377949488,"level":"log","data":["[WS] Connecting to ws://192.168.1.33:8000/ws?token=05f93adfdf5cfc2f3c6852e6d5e23b3b88056162d40e724ae5589a6eae00276e"]}
 {"_e":"metro:client_log","_t":1786377949560,"level":"log","data":["[WS] Connected successfully"]}
+{"_e":"metro:client_log","_t":1786378268062,"level":"warn","data":["[WS] Connection pending or offline."]}
+{"_e":"metro:client_log","_t":1786378268133,"level":"log","data":["[WS] Connection closed:","1006","Connection reset"]}
+{"_e":"metro:client_log","_t":1786378268134,"level":"log","data":["[WS] Reconnecting in 2000ms (attempt 1/5)"]}
