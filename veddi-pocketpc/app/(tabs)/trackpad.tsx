@@ -32,7 +32,7 @@ export default function TrackpadScreen() {
 
   const [sensitivity, setSensitivity] = useState(1.5);
   const [showHelp, setShowHelp] = useState(false);
-  const [showScreenViewport, setShowScreenViewport] = useState(true);
+  const [showScreenViewport, setShowScreenViewport] = useState(false);
 
   const [inputText, setInputText] = useState('');
   const [showKeyboardInput, setShowKeyboardInput] = useState(false);

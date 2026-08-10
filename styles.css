@@ -26,6 +26,9 @@
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.12);
 
+  --stalled: #f97316;
+  --stalled-bg: rgba(249, 115, 22, 0.15);
+
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
 
@@ -94,21 +97,45 @@ body {
   gap: 14px;
 }
 
-.logo-badge {
-  width: 44px;
-  height: 44px;
-
-  border-radius: var(--radius-md);
-
-  background-color: #ffffff;
-
+.logo-wrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.05));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
 
-  color: #000000;
+.logo-wrapper:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.18);
+}
 
-  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.12);
+.app-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.logo-status-glow {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid var(--surface-dark);
+  box-shadow: 0 0 8px var(--success);
 }
 
 .header-title {
@@ -508,6 +535,34 @@ body {
   color: var(--text-muted);
 }
 
+/* Pairing PIN row inside the QR card — styled like the status-pill
+   but accent-coloured so the user notices it. */
+.info-row-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+  padding: 4px 12px;
+  background-color: var(--success-bg);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-md);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+.info-row-pin .row-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--success);
+  text-transform: uppercase;
+}
+.info-row-pin .row-value {
+  color: var(--success);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
 
 /* =========================
    INFO LIST
@@ -591,6 +646,19 @@ body {
   background-color: var(--success-bg);
 
   color: var(--success);
+}
+
+/* Stalled = the Node process thinks it's running but /health on the
+   real port is unreachable. Strongly suggests port collision or a
+   silent crash before bind. */
+.status-pill.stalled {
+  background-color: var(--stalled-bg);
+  color: var(--stalled);
+  animation: stalled-pulse 1.6s ease-in-out infinite;
+}
+@keyframes stalled-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
 }
 
 

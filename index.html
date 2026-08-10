@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VediPocketPC Controller</title>
+  <link rel="icon" type="image/jpeg" href="logo.jpeg" />
   <link rel="stylesheet" href="styles.css" />
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,7 +16,11 @@
     <!-- Header Navbar -->
     <header class="app-header">
       <div class="header-left">
-        <div>
+        <div class="logo-wrapper" title="Vedi Pocket PC">
+          <img src="logo.jpeg" alt="Vedi Pocket PC Logo" class="app-logo-img" />
+          <span class="logo-status-glow"></span>
+        </div>
+        <div class="header-brand-info">
           <h1 class="header-title">Vedi Pocket PC</h1>
           <p class="header-subtitle">PC Screen Streaming & Remote Mouse Control Center</p>
         </div>
@@ -71,15 +76,19 @@
             </button>
           </div>
           <div class="qr-wrapper">
-            <img id="imgServerQr" src="" alt="Server QR Code" />
-            <div class="qr-overlay-spinner" id="serverQrLoader">
+            <img id="imgServerQr" src="" alt="Server QR Code" style="display: none;" />
+            <div class="qr-overlay-spinner loading" id="serverQrLoader">
               <div class="spinner"></div>
             </div>
           </div>
           <div class="qr-info">
-            <p class="info-label">WebSocket URL:</p>
-            <code class="info-code" id="txtWsUrl">ws://127.0.0.1:8080/ws</code>
-            <p class="info-hint">Scan with mobile app to connect screen &amp; remote trackpad</p>
+            <p class="info-label">Pairing Code (encoded in QR):</p>
+            <code class="info-code" id="txtPairingUrl">---.---.---.---:8000:----</code>
+            <div class="info-row-pin">
+              <span class="row-label">PIN</span>
+              <span class="row-value" id="txtPairingPin">----</span>
+            </div>
+            <p class="info-hint">Scan with the mobile app's "Pair Device" camera. Encodes the LAN IP, backend port, and the 4-digit PIN.</p>
           </div>
         </div>
 
@@ -98,15 +107,18 @@
             </button>
           </div>
           <div class="qr-wrapper">
-            <img id="imgExpoQr" src="" alt="Expo QR Code" />
-            <div class="qr-overlay-spinner" id="expoQrLoader">
+            <img id="imgExpoQr" src="" alt="Expo QR Code" style="display: none;" />
+            <div class="qr-overlay-spinner loading" id="expoQrLoader">
               <div class="spinner"></div>
             </div>
           </div>
           <div class="qr-info">
             <p class="info-label">Expo App URL:</p>
-            <code class="info-code" id="txtExpoUrl">exp://127.0.0.1:8081</code>
-            <p class="info-hint">Scan with phone camera or Expo Go to open mobile app</p>
+            <code class="info-code" id="txtExpoUrl">Detecting...</code>
+            <div class="info-row-pin">
+              <button class="small-copy-btn" id="btnReloadMetro" title="Restart Metro with cleared cache. Use this if your phone shows 'Failed to download remote update'.">Reload Metro</button>
+            </div>
+            <p class="info-hint">Scan with phone camera or Expo Go. If your phone shows "packager is not running", run start.bat as Administrator so the firewall rules get installed. If it shows "Failed to download remote update", tap <b>Reload Metro</b> above.</p>
           </div>
         </div>
 
@@ -127,13 +139,17 @@
             <div class="info-row">
               <span class="row-label">LAN IPv4 Address</span>
               <div class="row-value-group">
-                <span class="row-value" id="txtLanIp">127.0.0.1</span>
+                <span class="row-value" id="txtLanIp">Detecting...</span>
                 <button class="small-copy-btn" id="btnCopyIp">Copy</button>
               </div>
             </div>
             <div class="info-row">
               <span class="row-label">Python Stream Server</span>
               <span class="status-pill" id="pillPythonStatus">Starting...</span>
+            </div>
+            <div class="info-row">
+              <span class="row-label">FastAPI Backend Agent</span>
+              <span class="status-pill" id="pillBackendStatus">Starting...</span>
             </div>
             <div class="info-row">
               <span class="row-label">Expo Mobile Server</span>

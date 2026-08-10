@@ -1,13 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { X, Camera, RefreshCcw } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
 import { pairWithHost, describePairError } from '../src/ws/pairing';
 import { palette, Spacing, Radius, Typography, Elevation } from '../constants/theme-m3';
+import { AppLogo } from '../constants/assets';
 
 export default function PairingScreen() {
   const router = useRouter();
@@ -17,13 +28,28 @@ export default function PairingScreen() {
   const [pairingInProgress, setPairingInProgress] = useState(false);
   const addDevice = useDeviceStore(state => state.addDevice);
 
+  // Compute the reticle size from the screen so it scales to phones,
+  // phablets, and tablets. The previous 260px fixed size was hard to
+  // align with on anything but a small phone — users had to fish
+  // for the QR code. Targeting ~72% of the smaller screen dimension
+  // gives the QR roughly half the viewfinder area (the OS "quiet
+  // zone" needs to fit inside that half), which scans reliably
+  // across all our test devices.
+  const reticleSize = useMemo(() => {
+    const { width, height } = Dimensions.get('window');
+    const smaller = Math.min(width, height);
+    const target = Math.round(smaller * 0.72);
+    // Clamp so we don't get an absurdly small or giant cutout.
+    return Math.max(220, Math.min(560, target));
+  }, []);
+
   useEffect(() => {
     if (!permission) requestPermission();
   }, [permission]);
 
   if (!permission) {
     return (
-      <View style={styles.center}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={palette.primary} />
       </View>
     );
@@ -31,7 +57,7 @@ export default function PairingScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.center}>
+      <View style={styles.centerContainer}>
         <StatusBar style="dark" />
         <View style={styles.permissionCard}>
           <View style={styles.permissionIcon}>
@@ -57,12 +83,23 @@ export default function PairingScreen() {
     setScanned(true);
     setPairingInProgress(true);
 
+    // Haptic + status-bar flash so the user knows the scan succeeded
+    // even before the pairing call returns. Without this, users would
+    // often assume the camera wasn't aligned and move it again,
+    // re-triggering the scan and racing with the in-flight request.
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch {
+      /* haptics are optional */
+    }
+
     const str = (data || '').trim();
     let ip = '';
     let port = '8000';
     let pin = '';
 
-    // Handle Format A: ip:port:pin
+    // Handle Format A: ip:port:pin (preferred — carries the PIN so the
+    // mobile app can auth against the backend agent).
     const colonParts = str.split(':');
     if (colonParts.length === 3 && !str.includes('://')) {
       ip = colonParts[0];
@@ -127,34 +164,59 @@ export default function PairingScreen() {
 
   return (
     <View style={styles.cameraRoot}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <StatusBar style="light" />
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={styles.camera}
+        facing="back"
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
       />
 
-      {/* Overlay UI */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-        <View style={styles.scrim} pointerEvents="none" />
+      {/* Viewfinder Dark Mask with Center Transparent Cutout */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={styles.maskRowTop} />
+        <View style={[styles.maskRowCenter, { height: reticleSize }]}>
+          <View style={styles.maskSide} />
+          <View style={{ width: reticleSize, height: reticleSize }} />
+          <View style={styles.maskSide} />
+        </View>
+        <View style={styles.maskRowBottom} />
+      </View>
 
-        {/* Top bar — close */}
+      {/* Overlay UI — Top Close Button, Perfectly Centered Reticle & Bottom Status */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {/* Top bar — close and brand logo */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + Spacing.xs }]}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
             <X color={palette.onSurface} size={22} />
           </TouchableOpacity>
+          <View style={styles.topBrandGroup}>
+            <View style={styles.topLogoBadge}>
+              <Image source={AppLogo} style={styles.topLogoImage} resizeMode="cover" />
+            </View>
+            <Text style={styles.topBrandText}>Pair Device</Text>
+          </View>
         </View>
 
-        {/* Center reticle */}
-        <View style={styles.center} pointerEvents="none">
-          <View style={styles.reticle}>
+        {/* Center reticle — EXACT geometric center of the screen */}
+        <View style={styles.centerContainer} pointerEvents="none">
+          <View
+            style={[
+              styles.reticle,
+              { width: reticleSize, height: reticleSize },
+            ]}
+          >
+            <View style={styles.reticleHintTop}>
+              <Text style={styles.hintText}>Align QR code within frame</Text>
+            </View>
             <View style={[styles.corner, styles.tl]} />
             <View style={[styles.corner, styles.tr]} />
             <View style={[styles.corner, styles.bl]} />
             <View style={[styles.corner, styles.br]} />
-          </View>
-          <View style={styles.reticleHint}>
-            <Text style={styles.hintText}>Center the agent’s QR code</Text>
+            <View style={styles.crossH} />
+            <View style={styles.crossV} />
+            <View style={styles.laserLine} />
+            {pairingInProgress && <View style={styles.scanFlash} />}
           </View>
         </View>
 
@@ -186,15 +248,27 @@ export default function PairingScreen() {
   );
 }
 
-const RETICLE_SIZE = 260;
-
 const styles = StyleSheet.create({
   cameraRoot: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  camera: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
 
-  scrim: {
+  // Viewfinder dark mask around center cutout
+  maskRowTop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+  maskRowCenter: { flexDirection: 'row' },
+  maskSide: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+  maskRowBottom: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' },
+
+  // Center container for 100% exact alignment
+  centerContainer: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   topBar: {
@@ -202,6 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingTop: Spacing.xl,
     paddingHorizontal: Spacing.md,
+    zIndex: 10,
   },
   iconBtn: {
     width: 44,
@@ -214,34 +289,81 @@ const styles = StyleSheet.create({
   },
 
   reticle: {
-    width: RETICLE_SIZE,
-    height: RETICLE_SIZE,
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  corner: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderColor: palette.primary,
-  },
-  tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 4 },
-  tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 4 },
-  bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 4 },
-  br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 4 },
 
-  reticleHint: {
-    marginTop: Spacing.lg,
-    backgroundColor: 'rgba(254, 247, 255, 0.9)',
+  reticleHintTop: {
+    position: 'absolute',
+    top: -48,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 6,
     borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Elevation.level2,
   },
   hintText: {
     ...Typography.labelLarge,
-    color: palette.onSurface,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+
+  corner: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderColor: '#38bdf8',
+  },
+  tl: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 14 },
+  tr: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 14 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 14 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 14 },
+
+  crossH: {
+    position: 'absolute',
+    left: '20%',
+    right: '20%',
+    top: '50%',
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  crossV: {
+    position: 'absolute',
+    top: '20%',
+    bottom: '20%',
+    left: '50%',
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  laserLine: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: '50%',
+    height: 2,
+    backgroundColor: '#38bdf8',
+    borderRadius: 1,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
+  scanFlash: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(34, 197, 94, 0.35)',
+    borderRadius: 12,
   },
 
   bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingBottom: Spacing.xxl,
     paddingHorizontal: Spacing.md,
     alignItems: 'center',
@@ -325,5 +447,34 @@ const styles = StyleSheet.create({
   textBtnText: {
     ...Typography.labelLarge,
     color: palette.primary,
+  },
+
+  topBrandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  topLogoBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  topLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  topBrandText: {
+    ...Typography.titleSmall,
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });

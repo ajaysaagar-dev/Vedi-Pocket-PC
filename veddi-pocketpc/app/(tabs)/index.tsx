@@ -3,6 +3,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -25,10 +26,10 @@ import { useDeviceStore, PairedDevice } from '../../src/store/deviceStore';
 import wsClient from '../../src/ws/client';
 import { pairWithHost, describePairError, cleanIp } from '../../src/ws/pairing';
 import { palette, Spacing, Radius, Typography, Elevation } from '../../constants/theme-m3';
+import { AppLogo } from '../../constants/assets';
 
 export default function IndexScreen() {
   const router = useRouter();
-
   const pairedDevices = useDeviceStore(state => state.pairedDevices);
   const activeDevice = useDeviceStore(state => state.activeDevice);
   const connectionStatus = useDeviceStore(state => state.connectionStatus);
@@ -59,18 +60,23 @@ export default function IndexScreen() {
         setShowManualForm(false);
         Alert.alert('Paired', `Connected to ${result.hostname}.`);
         wsClient.connect(result.device);
-      } else {
-        // Fallback for direct stream connection
+      } else if (result.kind === 'unreachable') {
         const directDevice = {
           ip: safeIp,
-          port: parseInt(port, 10) || 8080,
+          port: 8080,
           token: pin || 'direct',
           hostname: `PC (${safeIp})`,
         };
         await addDevice(directDevice);
         setPin('');
         setShowManualForm(false);
-        Alert.alert('Added Device', `Configured connection to ${safeIp}:${port}.`);
+        Alert.alert(
+          'Added Device',
+          `Backend didn't respond on port ${port}. Configured direct stream at ${safeIp}:8080.`
+        );
+      } else {
+        const { title, body } = describePairError(result);
+        Alert.alert(title, body);
       }
     } catch (err) {
       console.error(err);
@@ -84,8 +90,6 @@ export default function IndexScreen() {
     if (activeDevice?.ip === device.ip && connectionStatus === 'connected') {
       wsClient.disconnect();
     } else {
-      // setActiveDevice() already triggers wsClient.connect() internally —
-      // a second call here would race with the closing old socket.
       setActiveDevice(device);
     }
   };
@@ -126,6 +130,19 @@ export default function IndexScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Hero Brand Header */}
+        <View style={styles.brandHeroCard}>
+          <View style={styles.brandHeroLeft}>
+            <View style={styles.heroLogoBadge}>
+              <Image source={AppLogo} style={styles.heroLogoImage} resizeMode="cover" />
+            </View>
+            <View>
+              <Text style={styles.brandHeroTitle}>Vedi Pocket PC</Text>
+              <Text style={styles.brandHeroSubtitle}>Remote Mouse & Display Hub</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Status card — M3 elevated surface */}
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>
@@ -504,5 +521,41 @@ const styles = StyleSheet.create({
   tonalBtnText: {
     ...Typography.labelLarge,
     color: palette.onSecondaryContainer,
+  },
+
+  // --- Hero Brand Logo Badge Header -------------------------
+  brandHeroCard: {
+    backgroundColor: palette.surfaceContainerHigh,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Elevation.level1,
+  },
+  brandHeroLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  heroLogoBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Elevation.level2,
+  },
+  heroLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  brandHeroTitle: {
+    ...Typography.titleMedium,
+    color: palette.onSurface,
+    fontWeight: '700',
+  },
+  brandHeroSubtitle: {
+    ...Typography.bodySmall,
+    color: palette.onSurfaceVariant,
   },
 });
