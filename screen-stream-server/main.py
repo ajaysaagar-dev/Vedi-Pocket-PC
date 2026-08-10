@@ -86,19 +86,33 @@ class ScreenStreamServer:
         )
 
         self.capture_task: asyncio.Task | None = None
-        self.app = web.Application()
+        self.app = web.Application(middlewares=[self._cors_middleware])
         self._setup_routes()
 
+    @web.middleware
+    async def _cors_middleware(self, request: web.Request, handler) -> web.StreamResponse:
+        if request.method == "OPTIONS":
+            response = web.Response(status=204)
+        else:
+            try:
+                response = await handler(request)
+            except web.HTTPException as ex:
+                response = ex
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+        return response
+
     def _setup_routes(self) -> None:
+        self.app.router.add_options("/{tail:.*}", self.handle_options)
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/health", self.handle_health)
-        # Pair endpoint now issues a real token from the shared
-        # MemoryTokenStore. The mobile app already POSTs here; we keep
-        # the same wire format but reject empty / wrong PINs the same
-        # way the control agent does.
         self.app.router.add_post("/pair", self.handle_pair)
         self.app.router.add_get("/status", self.handle_status)
         self.app.router.add_get("/ws", self.stream_manager.handle_websocket)
+
+    async def handle_options(self, request: web.Request) -> web.Response:
+        return web.Response(status=204)
 
     async def handle_health(self, request: web.Request) -> web.Response:
         return web.json_response({"status": "ok", "service": SERVER_NAME})
@@ -201,8 +215,30 @@ Waiting for mobile connection...
     async def start(self) -> None:
         runner = web.AppRunner(self.app)
         await runner.setup()
-        site = web.TCPSite(runner, HOST, PORT)
-        await site.start()
+
+        global PORT
+        bound_port = PORT
+        max_attempts = 20
+        site = None
+
+        for attempt in range(max_attempts):
+            test_port = bound_port + attempt
+            try:
+                site = web.TCPSite(runner, HOST, test_port)
+                await site.start()
+                bound_port = test_port
+                break
+            except OSError as e:
+                if e.errno in (10048, 98, 48) or "address" in str(e).lower() or "10048" in str(e):
+                    print(f"[WARN] Port {test_port} in use, attempting next port {test_port + 1}...", flush=True)
+                    continue
+                raise e
+
+        if not site:
+            raise RuntimeError(f"Could not bind to any free port starting from {PORT}")
+
+        PORT = bound_port
+        print(f"[Desktop] screen-stream-server running on port {PORT}", flush=True)
 
         self.capture_task = asyncio.create_task(self._capture_loop())
         self.print_banner()

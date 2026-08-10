@@ -161,6 +161,11 @@ function registerIpcHandlers({ getWindow, processes }) {
     return { success: true };
   });
 
+  ipcMain.handle('reload-expo', () => {
+    const success = processes.reloadExpo();
+    return { success };
+  });
+
   ipcMain.handle('generate-qr', async (_event, text) => qr.toDataUrl(text));
 
   ipcMain.handle('open-external', (_event, url) => shell.openExternal(url));

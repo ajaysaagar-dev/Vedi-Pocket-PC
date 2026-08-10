@@ -31,19 +31,26 @@ import { palette, Spacing, Radius, Typography, Elevation } from '../constants/th
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let base64 = '';
+  const len = bytes.length;
+
+  for (let i = 0; i < len; i += 3) {
+    const b1 = bytes[i];
+    const b2 = i + 1 < len ? bytes[i + 1] : 0;
+    const b3 = i + 2 < len ? bytes[i + 2] : 0;
+
+    const c1 = b1 >> 2;
+    const c2 = ((b1 & 3) << 4) | (b2 >> 4);
+    const c3 = ((b2 & 15) << 2) | (b3 >> 6);
+    const c4 = b3 & 63;
+
+    base64 += chars[c1] + chars[c2];
+    base64 += i + 1 < len ? chars[c3] : '=';
+    base64 += i + 2 < len ? chars[c4] : '=';
   }
-  if (typeof btoa !== 'undefined') {
-    return btoa(binary);
-  }
-  if (typeof globalThis !== 'undefined' && (globalThis as any).btoa) {
-    return (globalThis as any).btoa(binary);
-  }
-  return '';
+
+  return base64;
 }
 
 interface DesktopViewportProps {
@@ -94,6 +101,8 @@ export default function DesktopViewport({
   };
 
   const wsRef = useRef<WebSocket | null>(null);
+  const isMountedRef = useRef(true);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const frameCountRef = useRef(0);
   const bytesCountRef = useRef(0);
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -160,6 +169,10 @@ export default function DesktopViewport({
   const [activeBuffer, setActiveBuffer] = useState<'front' | 'back'>('front');
 
   const stopStream = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -179,31 +192,36 @@ export default function DesktopViewport({
     // Mint one by POSTing to the stream server's /pair endpoint
     // (which accepts any PIN and issues a fresh session token from
     // its own MemoryTokenStore), then connect with that token.
-    const baseHttpUrl = `http://${targetIp}:${targetPort}`;
-    const fetchToken = async (): Promise<string> => {
-      try {
-        const res = await fetch(`${baseHttpUrl}/pair`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: '' }),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as { token?: string };
-          if (data && typeof data.token === 'string' && data.token) {
-            return data.token;
+    const fetchToken = async (): Promise<{ token: string; port: string }> => {
+      const candidatePorts = Array.from(new Set([targetPort, '8081', '8088', '8082', '8080']));
+      for (const p of candidatePorts) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const res = await fetch(`http://${targetIp}:${p}/pair`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: '' }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            const data = (await res.json()) as { token?: string };
+            if (data && typeof data.token === 'string' && data.token) {
+              return { token: data.token, port: p };
+            }
           }
+        } catch {
+          // Probe next candidate port
         }
-        console.warn('[ScreenViewport] /pair did not return a token; opening WS without one');
-      } catch (err) {
-        console.warn('[ScreenViewport] /pair failed; opening WS without one', err);
       }
-      return '';
+      return { token: activeDevice?.token || 'direct_stream_token', port: targetPort };
     };
 
-    const openSocket = (token: string) => {
+    const openSocket = ({ token, port }: { token: string; port: string }) => {
       const wsUrl = token
-        ? `ws://${targetIp}:${targetPort}/ws?token=${encodeURIComponent(token)}`
-        : `ws://${targetIp}:${targetPort}/ws`;
+        ? `ws://${targetIp}:${port}/ws?token=${encodeURIComponent(token)}`
+        : `ws://${targetIp}:${port}/ws`;
       console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
       setIsStreaming(true);
 
@@ -215,44 +233,77 @@ export default function DesktopViewport({
         ws.onopen = () => {
           console.log('[ScreenViewport] Connected to screen stream');
           try {
-            ws.send(
-              JSON.stringify({
-                type: 'set_stream_settings',
-                max_width: selectedRes.w,
-                max_height: selectedRes.h,
-                fps: selectedFps,
-              })
-            );
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({
+                  type: 'set_stream_settings',
+                  max_width: selectedRes.w,
+                  max_height: selectedRes.h,
+                  fps: selectedFps,
+                })
+              );
+            }
           } catch (e) {
             console.warn('Failed sending initial settings on connect:', e);
           }
         };
 
         ws.onmessage = event => {
-          if (event.data instanceof ArrayBuffer) {
-            const byteLength = event.data.byteLength;
-            bytesCountRef.current += byteLength;
-            frameCountRef.current += 1;
+          try {
+            if (!event || !event.data) return;
+            if (typeof event.data === 'string') return; // Ignore text frames
 
-            const base64 = arrayBufferToBase64(event.data);
-            const nextUri = `data:image/jpeg;base64,${base64}`;
-
-            if (activeBufferRef.current === 'front') {
-              setBackUri(nextUri);
-            } else {
-              setFrontUri(nextUri);
+            let buffer: ArrayBuffer | null = null;
+            if (event.data instanceof ArrayBuffer) {
+              buffer = event.data;
+            } else if (event.data.buffer && event.data.buffer instanceof ArrayBuffer) {
+              buffer = event.data.buffer;
             }
+
+            if (buffer && buffer.byteLength > 0) {
+              const byteLength = buffer.byteLength;
+              bytesCountRef.current += byteLength;
+              frameCountRef.current += 1;
+
+              const base64 = arrayBufferToBase64(buffer);
+              const nextUri = `data:image/jpeg;base64,${base64}`;
+
+              if (activeBufferRef.current === 'front') {
+                setBackUri(nextUri);
+                activeBufferRef.current = 'back';
+                setActiveBuffer('back');
+              } else {
+                setFrontUri(nextUri);
+                activeBufferRef.current = 'front';
+                setActiveBuffer('front');
+              }
+            }
+          } catch (err) {
+            console.warn('[ScreenViewport] Frame processing error:', err);
           }
         };
 
         ws.onerror = err => {
-          console.warn('[ScreenViewport] Stream socket connection pending or offline.');
+          // Log as info to prevent React Native LogBox popup while socket status settles
+          console.log('[ScreenViewport] Stream socket status event:', err);
         };
 
         ws.onclose = () => {
           console.log('[ScreenViewport] Stream disconnected');
           setIsStreaming(false);
           wsRef.current = null;
+
+          if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+          }
+          if (isMountedRef.current) {
+            reconnectTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && !wsRef.current) {
+                console.log('[ScreenViewport] Auto-reconnecting to stream...');
+                startStream();
+              }
+            }, 3000);
+          }
         };
       } catch (e) {
         console.error('[ScreenViewport] Failed to open stream socket:', e);
@@ -268,13 +319,26 @@ export default function DesktopViewport({
     });
   }, [targetIp, targetPort, stopStream]);
 
+  const stopStreamRef = useRef(stopStream);
+  stopStreamRef.current = stopStream;
+
+  const startStreamRef = useRef(startStream);
+  startStreamRef.current = startStream;
+
   // Auto-start screen stream on component mount & clean up on unmount
   useEffect(() => {
-    startStream();
+    isMountedRef.current = true;
+    startStreamRef.current();
+
     return () => {
-      stopStream();
+      isMountedRef.current = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      stopStreamRef.current();
     };
-  }, [startStream, stopStream]);
+  }, [targetIp, targetPort]);
 
   const hasFrame = Boolean(frontUri || backUri);
 

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startServers: () => ipcRenderer.invoke('start-servers'),
   stopServers: () => ipcRenderer.invoke('stop-servers'),
   restartServers: () => ipcRenderer.invoke('restart-servers'),
+  reloadExpo: () => ipcRenderer.invoke('reload-expo'),
   generateQR: (text) => ipcRenderer.invoke('generate-qr', text),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   probeHealth: () => ipcRenderer.invoke('probe-health'),

@@ -211,6 +211,23 @@ class ProcessManager {
     this._emitStatus();
   }
 
+  reloadExpo() {
+    if (this.expoProcess && this.expoProcess.stdin && !this.expoProcess.stdin.destroyed) {
+      console.log('[Desktop] Sending "r" command to Expo CLI stdin...');
+      this._emitLog('expo-log', '[Desktop] > Executed "r" key (Reloading connected Expo devices)...');
+      try {
+        this.expoProcess.stdin.write('r\n');
+        return true;
+      } catch (e) {
+        console.error('[Desktop] Error sending "r" to stdin:', e);
+      }
+    }
+    console.log('[Desktop] Expo stdin unavailable, restarting Expo server process...');
+    this.stopExpo();
+    setTimeout(() => this.startExpo(), 500);
+    return false;
+  }
+
   // ------------------------- Stream server -------------------------
   startStreamServer() {
     if (this.pythonProcess) return;

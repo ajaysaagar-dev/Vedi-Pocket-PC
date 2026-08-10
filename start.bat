@@ -7,7 +7,33 @@ echo ========================================================
 echo           Vedi Pocket PC - Launcher
 echo ========================================================
 echo.
+echo Launch Options:
+echo   [1] Start Vedi Pocket PC (Normal)
+echo   [2] Reload Expo App (Clear Metro Cache)
+echo   [3] Run Master Setup
+echo.
+set "CHOICE=1"
+choice /c 123 /t 3 /d 1 /m "Select option (Auto-starting option 1 in 3s)... " >nul 2>&1
+if !ERRORLEVEL! EQU 2 goto RELOAD_EXPO
+if !ERRORLEVEL! EQU 3 goto RUN_SETUP
+goto MAIN_PREFLIGHT
 
+:RELOAD_EXPO
+echo.
+echo ========================================================
+echo     Reloading Expo Mobile App ^& Clearing Metro Cache...
+echo ========================================================
+echo.
+cd veddi-pocketpc
+call npx expo start -c
+pause
+exit /b 0
+
+:RUN_SETUP
+call setup.bat
+exit /b 0
+
+:MAIN_PREFLIGHT
 :: ----------------------------------------------------------------
 :: 1. Pre-flight checks — fail fast with a clear message if the
 ::    developer's machine is missing a runtime.

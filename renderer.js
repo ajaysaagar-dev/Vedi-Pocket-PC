@@ -207,13 +207,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnReloadMetro.disabled = true;
       btnReloadMetro.textContent = 'Reloading…';
       try {
-        await window.electronAPI.restartServers();
-        showToast('Metro reloading — re-scan the QR in a few seconds.');
+        if (window.electronAPI && typeof window.electronAPI.reloadExpo === 'function') {
+          await window.electronAPI.reloadExpo();
+          showToast('Sent "r" (Reload) command to Expo CLI logs.');
+        } else {
+          await window.electronAPI.restartServers();
+          showToast('Metro reloading — re-scan the QR in a few seconds.');
+        }
+      } catch (err) {
+        console.error('Reload failed:', err);
       } finally {
         setTimeout(() => {
           btnReloadMetro.disabled = false;
           btnReloadMetro.textContent = 'Reload Metro';
-        }, 4000);
+        }, 2000);
       }
     });
   }
