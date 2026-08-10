@@ -8,7 +8,7 @@ echo           Vedi Pocket PC - Launcher
 echo ========================================================
 echo.
 echo Launch Options:
-echo   [1] Start Vedi Pocket PC (Normal)
+echo   [1] Start Vedi Pocket PC Controller (PySide6 GUI)
 echo   [2] Reload Expo App (Clear Metro Cache)
 echo   [3] Create / Verify .env File
 echo   [4] Download / Reinstall All Dependencies
@@ -66,33 +66,14 @@ exit /b 0
 :: 1. Pre-flight checks — fail fast with a clear message if the
 ::    developer's machine is missing a runtime.
 :: ----------------------------------------------------------------
-echo [1/6] Checking prerequisites...
-
-where node >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo   [ERROR] Node.js was not found in your PATH.
-    echo   Vedi Pocket PC needs Node.js v18+ to run the desktop
-    echo   controller and the Expo dev server.
-    echo.
-    echo   Install from https://nodejs.org/ then re-run this file.
-    echo.
-    pause
-    exit /b 1
-)
-for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
-echo   [OK] Node.js  !NODE_VER!
-
-if exist "%~dp0..\.venv\Scripts\python.exe" (
-    set "PATH=%~dp0..\.venv\Scripts;!PATH!"
-)
+echo [1/5] Checking prerequisites...
 
 where python >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo   [ERROR] Python was not found in your PATH or .venv.
-    echo   Vedi Pocket PC needs Python 3.10+ to run the screen
-    echo   stream server and the FastAPI pairing backend.
+    echo   Vedi Pocket PC needs Python 3.10+ to run the PySide6
+    echo   desktop controller, stream server, and FastAPI backend.
     echo.
     echo   Install from https://www.python.org/ ^(tick "Add Python
     echo   to PATH" in the installer^) then re-run this file.
@@ -103,18 +84,32 @@ if %ERRORLEVEL% NEQ 0 (
 for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
 echo   [OK] Python    !PY_VER!
 
+where node >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo   [ERROR] Node.js was not found in your PATH.
+    echo   Vedi Pocket PC needs Node.js v18+ to run the Expo dev server.
+    echo.
+    echo   Install from https://nodejs.org/ then re-run this file.
+    echo.
+    pause
+    exit /b 1
+)
+for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
+echo   [OK] Node.js   !NODE_VER!
+
 :: ----------------------------------------------------------------
 :: 2. Check / Create .env configuration file
 :: ----------------------------------------------------------------
 echo.
-echo [2/6] Verifying environment configuration ^(.env^)...
+echo [2/5] Verifying environment configuration ^(.env^)...
 call :ENSURE_ENV_FILE 0
 
 :: ----------------------------------------------------------------
 :: 3. Non-destructive port check (8080, 8000, 8088)
 :: ----------------------------------------------------------------
 echo.
-echo [3/6] Checking required ports ^(8080, 8000, 8088^)...
+echo [3/5] Checking required ports ^(8080, 8000, 8088^)...
 for %%P in (8080 8000 8088) do (
     netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
@@ -127,52 +122,20 @@ echo   [OK] Port check complete.
 :: 4. Install Python deps if missing
 :: ----------------------------------------------------------------
 echo.
-echo [4/6] Verifying Python dependencies...
-python -c "import mss, aiohttp, fastapi, pyautogui, websockets" >nul 2>&1
+echo [4/5] Verifying Python dependencies...
+python -c "import mss, aiohttp, fastapi, pyautogui, websockets, PySide6" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   [INFO] Missing Python deps. Running pip install...
+    echo   [INFO] Missing Python / PySide6 deps. Running pip install...
     call :DOWNLOAD_PYTHON_DEPS 0
 ) else (
     echo   [OK] Python deps present.
 )
 
 :: ----------------------------------------------------------------
-:: 5. Install Node deps if missing
+:: 5. Firewall rules
 :: ----------------------------------------------------------------
 echo.
-echo [5/6] Verifying Node dependencies...
-if not exist node_modules\electron\package.json (
-    echo   [INFO] Installing root Electron deps via pnpm...
-    call pnpm install
-    if !ERRORLEVEL! NEQ 0 (
-        echo   [ERROR] Root pnpm install failed.
-        pause
-        exit /b 1
-    )
-) else (
-    echo   [OK] Root deps present.
-)
-
-if not exist Vedi-PocketPC-Mobile\node_modules\expo\package.json (
-    echo   [INFO] Installing mobile app deps ^(this can take a few minutes^)...
-    cd Vedi-PocketPC-Mobile
-    call pnpm install
-    set "MOBILE_ERR=!ERRORLEVEL!"
-    cd ..
-    if !MOBILE_ERR! NEQ 0 (
-        echo   [ERROR] Mobile app pnpm install failed.
-        pause
-        exit /b 1
-    )
-) else (
-    echo   [OK] Mobile deps present.
-)
-
-:: ----------------------------------------------------------------
-:: 5b. Firewall rules
-:: ----------------------------------------------------------------
-echo.
-echo [5b] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
+echo [5/5] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
 set "FW_OK=1"
 for %%P in (8080 8000 8088) do (
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
@@ -195,19 +158,17 @@ if "!FW_OK!"=="0" (
 )
 
 :: ----------------------------------------------------------------
-:: 6. Launch.
+:: Launch PySide6 Controller.
 :: ----------------------------------------------------------------
 echo.
-echo [6/6] Launching Vedi Pocket PC...
-echo   (Close the window or press Ctrl+C inside the app to quit.)
+echo Launching Vedi Pocket PC (PySide6 Controller)...
+echo   (Close the window or use System Tray icon to quit.)
 echo.
 
-pnpm start
+python Controller\app.py
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo   [ERROR] Electron exited with code %ERRORLEVEL%.
-    echo   Check the Controller window's "Python Server Logs" tab
-    echo   for the real error.
+    echo   [ERROR] Controller exited with code %ERRORLEVEL%.
     echo.
     pause
     exit /b %ERRORLEVEL%
@@ -275,14 +236,6 @@ echo   [OK] Python dependencies installed.
 goto :EOF
 
 :DOWNLOAD_NODE_DEPS
-echo   [INFO] Installing Desktop App ^(Electron^) dependencies...
-call pnpm install
-if !ERRORLEVEL! NEQ 0 (
-    echo   [ERROR] Root pnpm install failed.
-    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
-)
-
-echo.
 echo   [INFO] Installing Mobile App ^(Expo^) dependencies...
 cd Vedi-PocketPC-Mobile
 call pnpm install

@@ -2,12 +2,12 @@
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:203a43,100:2c5364&height=220&section=header&text=Vedi%20Pocket%20PC&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Your%20phone.%20Your%20PC.%20No%20cloud%20required.&descAlignY=58&descAlign=50" width="100%"/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=2800&pause=900&color=38BDF8&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=90&lines=Wireless+Trackpad+%2B+Keyboard+%2B+Screen+Mirror;100%25+Local+%E2%80%A2+Zero+Cloud+%E2%80%A2+Zero+Internet;Electron+%2B+FastAPI+%2B+Expo+%2B+WebSockets" alt="Typing SVG" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=2800&pause=900&color=38BDF8&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=90&lines=Wireless+Trackpad+%2B+Keyboard+%2B+Screen+Mirror;100%25+Local+%E2%80%A2+Zero+Cloud+%E2%80%A2+Zero+Internet;PySide6+Qt6+%2B+FastAPI+%2B+Expo+%2B+WebSockets" alt="Typing SVG" />
 
 <br/>
 
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=for-the-badge&logo=windows11&logoColor=white)
-![Electron](https://img.shields.io/badge/Desktop-Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)
+![PySide6](https://img.shields.io/badge/Desktop-PySide6%20Qt6-41CD52?style=for-the-badge&logo=qt&logoColor=white)
 ![Python](https://img.shields.io/badge/Backend-Python%203.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Expo](https://img.shields.io/badge/Mobile-Expo%20%2F%20RN-000020?style=for-the-badge&logo=expo&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-4c1?style=for-the-badge)
@@ -70,8 +70,8 @@ Lock · Sleep · Shutdown · Mute · Volume Control
 | Component | Requirement | Notes |
 |:---:|:---:|:---|
 | **OS** | Windows 10 / 11 | Host desktop machine |
-| **Node.js** | v18.0 or higher | Required for Electron desktop app & Expo server |
-| **Python** | 3.10 or higher | Required for backend agent & screen stream server |
+| **Python** | 3.10 or higher | Required for PySide6 controller, backend agent & screen stream server |
+| **Node.js** | v18.0 or higher | Required for Expo dev server |
 | **Network** | Local Wi-Fi (LAN) | Phone & PC must be on the same local Wi-Fi router |
 | **Mobile** | Expo Go App | Available free on iOS App Store & Android Google Play |
 
@@ -82,12 +82,12 @@ Lock · Sleep · Shutdown · Mute · Volume Control
 ### ⚡ Option A — 1-Click Automated Setup (Recommended)
 
 1. **Install All Dependencies**:
-   Run **[`scripts/setup.bat`](file:///C:/Projects/Vedi-Pocket-PC/scripts/setup.bat)** (or double-click `scripts\setup.bat` in File Explorer).
-   > *This script automatically checks Node & Python, installs Python packages, root Electron packages, and mobile Expo app packages in one step.*
+   Run **[`Scripts/setup.bat`](file:///C:/Projects/Vedi-Pocket-PC/Scripts/setup.bat)** (or double-click `Scripts\setup.bat` in File Explorer).
+   > *This script automatically checks Python & Node, installs PySide6, Python packages, and mobile Expo app packages in one step.*
 
 2. **Launch the Application**:
-   Run **[`scripts/start.bat`](file:///C:/Projects/Vedi-Pocket-PC/scripts/start.bat)** (or run `pnpm start`).
-   > *Launches the Electron desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
+   Run **[`Scripts/start.bat`](file:///C:/Projects/Vedi-Pocket-PC/Scripts/start.bat)** (or run `python Controller/app.py`).
+   > *Launches the PySide6 desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
 
 3. **Connect Mobile App**:
    - Open **Expo Go** on your phone.
@@ -103,46 +103,41 @@ Lock · Sleep · Shutdown · Mute · Volume Control
 
 <br/>
 
-#### 1️⃣ Install Python Dependencies
+#### 1️⃣ Install Python Dependencies (PySide6 & Backends)
 ```powershell
-# Installs agent-core, mss, Pillow, aiohttp, pyautogui, fastapi, uvicorn, websockets, etc.
 pip install -r requirements.txt
 ```
 
-#### 2️⃣ Install Desktop & Mobile Node Dependencies
+#### 2️⃣ Install Mobile Client Node Dependencies
 ```powershell
-# Install root Electron controller dependencies
-pnpm install
-
-# Install mobile client dependencies
-cd vedi-pocketpc-mobile
+cd Vedi-PocketPC-Mobile
 pnpm install
 cd ..
 ```
 
-#### 3️⃣ Launch Desktop Controller
+#### 3️⃣ Launch PySide6 Desktop Controller
 ```powershell
-pnpm start
+python Controller/app.py
 ```
 
-#### 4️⃣ Running Individual Services Separately (Without Electron)
+#### 4️⃣ Running Individual Services Separately (Without GUI Controller)
 If you prefer running backends manually in individual PowerShell windows:
 
 - **Screen Stream Server** (Port `8080`):
   ```powershell
-  cd screen-stream-server
-  python server.py
+  cd Screen-Stream-Server
+  python main.py
   ```
 
 - **FastAPI Remote Agent Backend** (Port `8000`):
   ```powershell
-  cd vedi-pocketpc-backend
+  cd Vedi-PocketPC-Backend
   python main.py
   ```
 
 - **Mobile Client Expo App** (Port `8088`):
   ```powershell
-  cd vedi-pocketpc-mobile
+  cd Vedi-PocketPC-Mobile
   npx expo start -c
   ```
 
@@ -155,12 +150,12 @@ If you prefer running backends manually in individual PowerShell windows:
 ```mermaid
 sequenceDiagram
     participant U as 👤 User
-    participant E as 🖥️ Electron App
+    participant E as 🖥️ PySide6 App
     participant B as 🔧 Backend (:8000)
     participant S as 📡 Stream Server (:8080)
     participant M as 📱 Mobile App
 
-    U->>E: Run scripts/start.bat / pnpm start
+    U->>E: Run Scripts/start.bat / python Controller/app.py
     E->>B: Spawn FastAPI Agent process
     E->>S: Spawn Stream Server process
     B->>B: Generate Pairing PIN & QR Code
@@ -174,7 +169,7 @@ sequenceDiagram
 ```
 
 1. Make sure your **Phone and PC are connected to the same Wi-Fi**.
-2. Run `scripts\start.bat` on your PC.
+2. Run `Scripts\start.bat` on your PC.
 3. Open **Expo Go** on your phone:
    - **Android**: Scan the terminal QR code inside Expo Go.
    - **iOS**: Scan the terminal QR code with your default Camera app, then tap "Open in Expo Go".
@@ -187,7 +182,7 @@ sequenceDiagram
 ```mermaid
 flowchart TB
     subgraph Desktop["🖥️ Windows Desktop"]
-        E["⚡ Electron Controller<br/>main.js"]
+        E["⚡ PySide6 Controller<br/>app.py"]
         S["📡 Screen Stream Server<br/>Python · aiohttp · mss<br/>:8080"]
         B["🔧 Remote Agent Backend<br/>FastAPI · WebSockets<br/>:8000"]
         E -->|spawns & monitors| S
@@ -215,24 +210,17 @@ flowchart TB
 ```text
 Vedi-Pocket-PC/
 ├── .env                               ⚙️ Environment settings file
-├── package.json                       ⚙️ Node & Electron configuration
-├── pnpm-lock.yaml                     ⚙️ PNPM dependency lockfile
 ├── requirements.txt                   📦 Master Python dependencies file
-├── .npmrc                             ⚙️ Config for legacy peer dependency resolution
 ├── .gitignore                         ⚙️ Git ignore file
 ├── Scripts/                           📜 Utility and launcher scripts
-│   ├── start.bat                      🚀 One-click launcher (Desktop + Backends + Expo)
-│   ├── setup.bat                      ⚡ One-click installer (Node + Python dependencies)
+│   ├── start.bat                      🚀 One-click launcher (PySide6 Controller + Backends + Expo)
+│   ├── setup.bat                      ⚡ One-click installer (PySide6 + Backends + Expo)
 │   └── reload_expo.bat                🔄 Metro cache reset script
 ├── Docs/                              📚 Documentation
 │   ├── README.md                      📖 Repository documentation
 │   └── AGENTS.md                      🤖 Agent Directives & Behavior Guidelines
-├── Controller/                        ⚡ Electron desktop controller & IPC handlers
-│   ├── main.js                        Central entry point for Electron
-│   ├── preload.js                     IPC context bridge script
-│   ├── ipc/                           IPC bridge between UI & system services
-│   ├── services/                      Process manager, binary resolver & network tools
-│   └── renderer/                      Desktop UI interface (index.html, renderer.js, styles.css)
+├── Controller/                        ⚡ PySide6 Qt Desktop Controller & Process Manager
+│   └── app.py                         Central entry point for PySide6 GUI Application
 ├── Vedi-PocketPC-Mobile/              📱 Expo / React Native mobile application (:8088)
 │   ├── app/(tabs)/                    Screens: Home, Screen Mirror, Trackpad, Keyboard, Controls
 │   ├── app/pairing.tsx                Camera QR code scanner screen
@@ -253,21 +241,12 @@ Vedi-Pocket-PC/
 
 ## 🛠️ Building Standalone Distributables
 
-### Desktop Installer (.exe)
-To package the desktop application into a standalone Windows installer:
+### Standalone PyInstaller Desktop App (.exe)
+To package the PySide6 Controller into a single standalone Windows executable:
 
 ```powershell
-pnpm run build   # Generates NSIS installer + ZIP in /dist
-pnpm run pack    # Builds unpacked executable directory for quick testing
-```
-
-### PyInstaller Standalone Backend
-To build the FastAPI backend into a single executable without requiring Python on target machines:
-
-```powershell
-cd vedi-pocketpc-backend
-build_agent.bat
-# Produces dist/PCRemoteAgent.exe
+pyinstaller --noconsole --onefile --name "VediPocketPCController" Controller/app.py
+# Produces dist/VediPocketPCController.exe
 ```
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
@@ -283,13 +262,7 @@ New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direct
 ```
 
 ### 2. `Port 8088 is being used by another process`
-This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `scripts\start.bat` or `pnpm start`.
-
-### 3. Peer Dependencies
-Expo 57 / React Native 0.86 uses React 19. Both the root directory and `vedi-pocketpc-mobile/` are configured with `.npmrc` to handle peer dependency resolutions smoothly.
-
-### 4. `electron is not recognized as an internal or external command`
-Run `scripts\setup.bat` or run `pnpm install` in the root directory to install Electron into `node_modules`.
+This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `Scripts\start.bat` or `python Controller/app.py`.
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
 
@@ -297,6 +270,6 @@ Run `scripts\setup.bat` or run `pnpm install` in the root directory to install E
 
 ### 📄 License
 
-**MIT License** — See `package.json` for details.
+**MIT License** — See `requirements.txt` for details.
 
 </div>
