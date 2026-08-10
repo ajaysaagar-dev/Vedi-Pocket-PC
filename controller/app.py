@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTabWidget, QTextEdit, QFrame, QGridLayout,
     QSystemTrayIcon, QMenu, QMessageBox, QGroupBox, QLineEdit,
-    QSizePolicy, QFileDialog
+    QSizePolicy, QFileDialog, QStyle
 )
 import qrcode
 from PIL import Image as PILImage
