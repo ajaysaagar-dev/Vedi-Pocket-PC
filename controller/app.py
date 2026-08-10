@@ -1,26 +1,25 @@
 """
-Vedi Pocket PC — PySide6 Desktop Controller
-Exact implementation of ref/dark.html and ref/other.html with top-right Theme Switcher (Dark Mode default).
+Vedi Pocket PC — pywebview Desktop Controller
+Exact 1:1 HTML/CSS implementation of ref/dark.html and ref/other.html
+with dark window background, theme switcher at top right, and zero COM exceptions.
 """
 
 import sys
 import os
+import io
 import re
 import socket
+import base64
 import subprocess
+import queue
+import time
+import json
+import threading
 from typing import Optional
 
-from PySide6.QtCore import Qt, QProcess, QTimer, QSize, Signal, Slot
-from PySide6.QtGui import QIcon, QPixmap, QImage, QFont, QColor, QAction, QTextCursor
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QTabWidget, QTextEdit, QFrame, QGridLayout,
-    QSystemTrayIcon, QMenu, QMessageBox, QGroupBox, QLineEdit,
-    QSizePolicy, QFileDialog, QStyle, QGraphicsDropShadowEffect
-)
+import webview
 import qrcode
-from PIL import Image as PILImage
-
+from bottle import Bottle, request, response
 
 def get_lan_ip() -> str:
     """Find local Wi-Fi / Ethernet LAN IP address."""
@@ -51,30 +50,28 @@ def find_free_port(preferred: int) -> int:
     return port
 
 
-def generate_qr_pixmap(data: str, size: int = 180) -> QPixmap:
-    """Generate a clean QR code QPixmap."""
+def generate_qr_base64(data: str) -> str:
+    """Generate a crisp base64 PNG data URL for a QR code."""
     if not data:
         data = "VediPocketPC"
     try:
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
+            box_size=8,
             border=2,
         )
         qr.add_data(data)
         qr.make(fit=True)
         img = qr.make_image(fill_color="#000000", back_color="#ffffff").convert("RGBA")
         
-        im_bytes = img.tobytes("raw", "RGBA")
-        qimg = QImage(im_bytes, img.width, img.height, img.width * 4, QImage.Format_RGBA8888).copy()
-        pixmap = QPixmap.fromImage(qimg)
-        return pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/png;base64,{b64}"
     except Exception as e:
-        print(f"[QR Error] Failed to generate QR: {e}")
-        pix = QPixmap(size, size)
-        pix.fill(QColor("#ffffff"))
-        return pix
+        print(f"[QR Error] {e}")
+        return ""
 
 
 def kill_process_tree(pid: int):
@@ -93,871 +90,623 @@ def kill_process_tree(pid: int):
             pass
 
 
-# --- Theme QSS Definitions (ref/dark.html & ref/other.html) ---
+HTML_CONTENT = """<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vedi Pocket PC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
 
-DARK_THEME_QSS = """
-QMainWindow, QWidget#centralWidget {
-    background-color: #131313;
-    color: #e5e2e1;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-}
+<script id="tailwind-config">
+    const darkThemeConfig = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "background": "#131313",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed-variant": "#454747",
+                    "surface-dim": "#131313",
+                    "on-secondary-fixed": "#002113",
+                    "surface-variant": "#353534",
+                    "on-secondary-container": "#00311f",
+                    "primary-fixed-dim": "#c6c6c7",
+                    "on-surface": "#e5e2e1",
+                    "on-primary-container": "#636565",
+                    "inverse-surface": "#e5e2e1",
+                    "on-error": "#690005",
+                    "on-primary-fixed": "#1a1c1c",
+                    "primary-container": "#e2e2e2",
+                    "surface": "#131313",
+                    "on-tertiary-fixed-variant": "#930013",
+                    "secondary-fixed-dim": "#4edea3",
+                    "surface-container-high": "#2a2a2a",
+                    "tertiary-fixed-dim": "#ffb3ad",
+                    "on-tertiary-container": "#c22229",
+                    "secondary": "#4edea3",
+                    "on-background": "#e5e2e1",
+                    "secondary-container": "#00a572",
+                    "surface-container-low": "#1c1b1b",
+                    "error": "#ffb4ab",
+                    "inverse-on-surface": "#313030",
+                    "on-secondary": "#003824",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-error-container": "#ffdad6",
+                    "error-container": "#93000a",
+                    "inverse-primary": "#5d5f5f",
+                    "outline-variant": "#444748",
+                    "on-primary": "#2f3131",
+                    "outline": "#8e9192",
+                    "primary-fixed": "#e2e2e2",
+                    "surface-bright": "#393939",
+                    "surface-tint": "#c6c6c7",
+                    "tertiary": "#ffffff",
+                    "tertiary-container": "#ffdad7",
+                    "on-secondary-fixed-variant": "#005236",
+                    "on-surface-variant": "#c4c7c8",
+                    "on-tertiary-fixed": "#410004",
+                    "on-tertiary": "#68000a",
+                    "secondary-fixed": "#6ffbbe",
+                    "primary": "#ffffff",
+                    "surface-container-highest": "#353534",
+                    "surface-container": "#201f1f"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+                },
+                "spacing": {
+                    "container-max-width": "1440px",
+                    "gutter": "16px",
+                    "unit": "4px",
+                    "margin": "24px"
+                },
+                "fontFamily": {
+                    "code-log": ["JetBrains Mono"],
+                    "body-md": ["Inter"],
+                    "label-mono": ["JetBrains Mono"],
+                    "headline-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"]
+                },
+                "fontSize": {
+                    "code-log": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                    "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                    "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "headline-md": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                    "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                }
+            }
+        }
+    };
+    tailwind.config = darkThemeConfig;
+</script>
+<style>
+        body.theme-dark {
+            background-color: #131313;
+            color: #e5e2e1;
+        }
+        body.theme-dark .glass-panel {
+            background-color: rgba(19, 19, 19, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid #2C2C2E;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
 
-QFrame.glassPanel {
-    background-color: rgba(19, 19, 19, 0.85);
-    border: 1px solid #2C2C2E;
-    border-radius: 12px;
-    padding: 16px;
-}
+        body.theme-cyber {
+            background: linear-gradient(to bottom right, #0A0C10, #0F172A);
+            color: #F3F4F6;
+        }
+        body.theme-cyber .glass-panel {
+            background-color: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        body.theme-cyber .text-primary { color: #06B6D4; }
+        body.theme-cyber .text-secondary { color: #A855F7; }
 
-QLabel {
-    color: #e5e2e1;
-}
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: #000;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+</style>
+</head>
+<body class="theme-dark bg-background text-on-surface font-body-md min-h-screen flex flex-col items-center pt-8 pb-12 px-margin transition-colors duration-300">
 
-QLabel.titleLabel {
-    font-size: 24px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: -0.5px;
-}
+<!-- Top Navigation Container -->
+<header class="glass-panel w-full max-w-container-max-width rounded-xl p-6 flex justify-between items-center mb-6">
+  <div>
+    <h1 class="font-headline-lg text-headline-lg text-primary">Vedi Pocket PC</h1>
+    <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">pywebview Apple Glassmorphism Desktop Controller</p>
+  </div>
+  
+  <div class="flex items-center gap-3">
+    <!-- LAN IP -->
+    <div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded-full border border-outline-variant shadow-sm">
+      <span class="material-symbols-outlined text-[18px] text-secondary">language</span>
+      <span class="font-label-mono text-label-mono text-on-surface" id="lanIpDisplay">127.0.0.1</span>
+    </div>
 
-QLabel.subTitleLabel {
-    font-size: 13px;
-    color: #c4c7c8;
-}
+    <!-- Theme Switcher Button (Top Right) -->
+    <button onclick="toggleTheme()" class="flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-full border border-outline-variant hover:bg-surface-variant transition-all cursor-pointer">
+      <span class="material-symbols-outlined text-[18px] text-secondary" id="themeIcon">palette</span>
+      <span id="themeBtnText" class="font-label-mono text-label-mono text-on-surface">Cyber Mode</span>
+    </button>
+  </div>
+</header>
 
-QLabel.sectionTitle {
-    font-size: 12px;
-    font-weight: 600;
-    color: #c4c7c8;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+<!-- Main Content Area Grid -->
+<main class="w-full max-w-container-max-width grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+  <!-- Left Panel: System Services (Spans 4 cols) -->
+  <section class="glass-panel rounded-xl p-6 lg:col-span-4 flex flex-col h-full">
+    <h2 class="font-label-mono text-label-mono text-on-surface-variant mb-4 uppercase tracking-wider">System Services</h2>
+    <div class="flex flex-col gap-3 flex-1">
+      <!-- Service Items -->
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">monitor</span>
+          <span class="font-body-md text-on-surface font-medium">Screen Stream (:8080)</span>
+        </div>
+        <span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="streamBadge">ACTIVE</span>
+      </div>
 
-QLabel.statusBadgeActive {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background-color: rgba(78, 222, 163, 0.12);
-    color: #4edea3;
-    border: 1px solid rgba(78, 222, 163, 0.3);
-}
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">router</span>
+          <span class="font-body-md text-on-surface font-medium">Remote Agent (:8000)</span>
+        </div>
+        <span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="backendBadge">ACTIVE</span>
+      </div>
 
-QLabel.statusBadgeOffline {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background-color: rgba(255, 180, 171, 0.1);
-    color: #ffb4ab;
-    border: 1px solid rgba(255, 180, 171, 0.25);
-}
+      <div class="flex justify-between items-center py-2 border-b border-outline-variant/30">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">smartphone</span>
+          <span class="font-body-md text-on-surface font-medium">Mobile Client (:8088)</span>
+        </div>
+        <span class="bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest" id="expoBadge">ACTIVE</span>
+      </div>
+    </div>
 
-QPushButton {
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 10px 16px;
-    background-color: transparent;
-    color: #e5e2e1;
-    border: 1px solid #444748;
-}
+    <!-- Action Buttons -->
+    <div class="flex flex-col gap-3 mt-6">
+      <button onclick="sendAction('start_all')" class="w-full bg-primary text-on-primary font-body-md font-semibold py-3 rounded-lg hover:bg-primary/90 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] cursor-pointer">
+        Start All Services
+      </button>
+      <button onclick="sendAction('stop_all')" class="w-full bg-error-container/30 text-error border border-error/50 font-body-md font-semibold py-3 rounded-lg hover:bg-error-container/50 transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] cursor-pointer">
+        Stop All Services
+      </button>
+      <button onclick="sendAction('restart_all')" class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer">
+        Restart All Services
+      </button>
+      <button onclick="sendAction('reload_expo')" class="w-full bg-transparent border border-outline-variant text-on-surface font-body-md font-medium py-3 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer">
+        Reload Mobile App
+      </button>
+    </div>
+  </section>
 
-QPushButton:hover {
-    background-color: #2a2a2a;
-}
+  <!-- Right Panel Container (Spans 8 cols) -->
+  <div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+    <!-- QR Card 1 -->
+    <section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+      <h3 class="font-label-mono text-label-mono text-on-surface-variant mb-6 uppercase tracking-wider text-center">1. Scan PC Pairing QR</h3>
+      <div class="bg-white p-4 rounded-lg mb-6 shadow-xl flex items-center justify-center">
+        <img id="pcQrImg" class="w-48 h-48 rounded" src="" alt="PC Pairing QR" />
+      </div>
+      <p class="font-headline-md text-headline-md text-primary tracking-widest" id="pinDisplay">PIN: ----</p>
+    </section>
 
-QPushButton.primaryBtn {
-    background-color: #ffffff;
-    color: #2f3131;
-    border: none;
-    font-weight: 600;
-}
+    <!-- QR Card 2 -->
+    <section class="glass-panel rounded-xl p-8 flex flex-col items-center justify-center">
+      <h3 class="font-label-mono text-label-mono text-on-surface-variant mb-6 uppercase tracking-wider text-center">2. Scan Expo Go QR</h3>
+      <div class="bg-white p-4 rounded-lg mb-6 shadow-xl flex items-center justify-center">
+        <img id="expoQrImg" class="w-48 h-48 rounded" src="" alt="Expo Go QR" />
+      </div>
+      <p class="font-label-mono text-label-mono text-on-surface-variant lowercase" id="expoUrlDisplay">Initializing Expo...</p>
+    </section>
+  </div>
 
-QPushButton.primaryBtn:hover {
-    background-color: #e2e2e2;
-}
+  <!-- Terminal Logs Panel (Spans 12 cols) -->
+  <section class="glass-panel rounded-xl lg:col-span-12 flex flex-col mt-2 h-80 overflow-hidden">
+    <div class="flex justify-between items-center bg-surface-container-lowest/80 border-b border-outline-variant px-4 py-3">
+      <div class="flex gap-4">
+        <button id="tab-combined" onclick="switchTab('combined')" class="bg-surface-variant/50 text-on-surface px-4 py-1.5 rounded-full font-label-mono text-label-mono border border-outline-variant shadow-sm transition-colors hover:bg-surface-variant cursor-pointer">Combined Logs</button>
+        <button id="tab-python" onclick="switchTab('python')" class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer">Python Backend Logs</button>
+        <button id="tab-expo" onclick="switchTab('expo')" class="text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer">Expo Mobile Logs</button>
+      </div>
+      <button onclick="clearLogs()" class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-xs font-label-mono cursor-pointer">
+        <span class="material-symbols-outlined text-[14px]">cleaning_services</span>
+        Clear
+      </button>
+    </div>
+    <div class="bg-black flex-1 p-4 overflow-y-auto terminal-scroll">
+      <pre class="font-code-log text-code-log text-secondary whitespace-pre-wrap break-all" id="logBox"></pre>
+    </div>
+  </section>
+</main>
 
-QPushButton.stopBtn {
-    background-color: rgba(147, 0, 10, 0.3);
-    color: #ffb4ab;
-    border: 1px solid rgba(255, 180, 171, 0.4);
-    font-weight: 600;
-}
+<script>
+  let currentTheme = 'theme-dark';
+  let activeTab = 'combined';
+  const logs = {
+    combined: [],
+    python: [],
+    expo: []
+  };
 
-QPushButton.stopBtn:hover {
-    background-color: rgba(147, 0, 10, 0.5);
-}
+  function toggleTheme() {
+    const body = document.body;
+    const themeBtnText = document.getElementById('themeBtnText');
+    
+    if (currentTheme === 'theme-dark') {
+      body.classList.remove('theme-dark');
+      body.classList.add('theme-cyber');
+      currentTheme = 'theme-cyber';
+      themeBtnText.innerText = 'Dark Mode';
+    } else {
+      body.classList.remove('theme-cyber');
+      body.classList.add('theme-dark');
+      currentTheme = 'theme-dark';
+      themeBtnText.innerText = 'Cyber Mode';
+    }
+  }
 
-QPushButton.themeToggleBtn {
-    font-size: 12px;
-    font-weight: 500;
-    padding: 6px 14px;
-    border-radius: 20px;
-    background-color: #2a2a2a;
-    color: #e5e2e1;
-    border: 1px solid #444748;
-}
+  function sendAction(actionName) {
+    fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: actionName })
+    }).catch(err => console.error(err));
+  }
 
-QPushButton.themeToggleBtn:hover {
-    background-color: #353534;
-}
+  function switchTab(tab) {
+    activeTab = tab;
+    ['combined', 'python', 'expo'].forEach(t => {
+      const el = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        el.className = "bg-surface-variant/50 text-on-surface px-4 py-1.5 rounded-full font-label-mono text-label-mono border border-outline-variant shadow-sm transition-colors cursor-pointer";
+      } else {
+        el.className = "text-on-surface-variant px-4 py-1.5 rounded-full font-label-mono text-label-mono transition-colors hover:text-on-surface hover:bg-surface-variant/20 cursor-pointer";
+      }
+    });
+    renderLogs();
+  }
 
-QTabWidget::pane {
-    border: 1px solid #2C2C2E;
-    border-radius: 8px;
-    background-color: #000000;
-}
+  function renderLogs() {
+    const logBox = document.getElementById('logBox');
+    const lines = logs[activeTab] || [];
+    logBox.innerText = lines.join('\\n');
+    logBox.scrollTop = logBox.scrollHeight;
+  }
 
-QTabBar::tab {
-    background-color: transparent;
-    color: #c4c7c8;
-    font-weight: 500;
-    font-size: 12px;
-    padding: 6px 16px;
-    border-radius: 16px;
-    margin: 4px;
-}
+  function clearLogs() {
+    logs.combined = [];
+    logs.python = [];
+    logs.expo = [];
+    renderLogs();
+  }
 
-QTabBar::tab:selected {
-    background-color: #353534;
-    color: #ffffff;
-    border: 1px solid #444748;
-}
+  // Poll status & logs
+  async function pollData() {
+    try {
+      const statusRes = await fetch('/api/status');
+      const data = await statusRes.json();
 
-QTextEdit {
-    background-color: #000000;
-    color: #4edea3;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 13px;
-    border: none;
-    border-radius: 6px;
-    padding: 12px;
-    line-height: 1.5;
-}
+      if (data.lan_ip) {
+        document.getElementById('lanIpDisplay').innerText = data.lan_ip;
+      }
+
+      const setBadge = (id, active) => {
+        const el = document.getElementById(id);
+        el.innerText = active ? 'ACTIVE' : 'OFFLINE';
+        if (active) {
+          el.className = 'bg-secondary/10 text-secondary border border-secondary/20 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest';
+        } else {
+          el.className = 'bg-error-container/20 text-error border border-error/30 px-3 py-0.5 rounded-full font-label-mono text-[10px] tracking-widest';
+        }
+      };
+      setBadge('streamBadge', data.stream_running);
+      setBadge('backendBadge', data.backend_running);
+      setBadge('expoBadge', data.expo_running);
+
+      if (data.pairing_pin) {
+        document.getElementById('pinDisplay').innerText = `PIN: ${data.pairing_pin}`;
+      }
+      if (data.expo_url) {
+        document.getElementById('expoUrlDisplay').innerText = data.expo_url;
+      }
+
+      if (data.pc_qr) {
+        document.getElementById('pcQrImg').src = data.pc_qr;
+      }
+      if (data.expo_qr) {
+        document.getElementById('expoQrImg').src = data.expo_qr;
+      }
+    } catch (e) {}
+
+    try {
+      const logsRes = await fetch('/api/logs');
+      const items = await logsRes.json();
+      if (items && items.length) {
+        items.forEach(item => {
+          const line = `[${item.target.toUpperCase()}] ${item.message}`;
+          logs.combined.push(line);
+          if (item.target === 'python') logs.python.push(item.message);
+          if (item.target === 'expo') logs.expo.push(item.message);
+        });
+        renderLogs();
+      }
+    } catch (e) {}
+  }
+
+  setInterval(pollData, 300);
+  pollData();
+</script>
+</body>
+</html>
 """
 
-CYBER_THEME_QSS = """
-QMainWindow, QWidget#centralWidget {
-    background-color: #0A0C10;
-    color: #F3F4F6;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-}
 
-QFrame.glassPanel {
-    background-color: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(6, 182, 212, 0.35);
-    border-radius: 12px;
-    padding: 16px;
-}
-
-QLabel {
-    color: #F3F4F6;
-}
-
-QLabel.titleLabel {
-    font-size: 24px;
-    font-weight: 700;
-    color: #06B6D4;
-    letter-spacing: -0.5px;
-}
-
-QLabel.subTitleLabel {
-    font-size: 13px;
-    color: #D1D5DB;
-}
-
-QLabel.sectionTitle {
-    font-size: 12px;
-    font-weight: 600;
-    color: #06B6D4;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-QLabel.statusBadgeActive {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background-color: rgba(6, 182, 212, 0.2);
-    color: #06B6D4;
-    border: 1px solid rgba(6, 182, 212, 0.4);
-}
-
-QLabel.statusBadgeOffline {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 12px;
-    background-color: rgba(244, 63, 94, 0.2);
-    color: #F43F5E;
-    border: 1px solid rgba(244, 63, 94, 0.4);
-}
-
-QPushButton {
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 10px 16px;
-    background-color: rgba(17, 24, 39, 0.6);
-    color: #A855F7;
-    border: 1px solid rgba(168, 85, 247, 0.4);
-}
-
-QPushButton:hover {
-    background-color: #1F2937;
-}
-
-QPushButton.primaryBtn {
-    background-color: #06B6D4;
-    color: #0A0C10;
-    border: none;
-    font-weight: 600;
-}
-
-QPushButton.primaryBtn:hover {
-    background-color: rgba(6, 182, 212, 0.9);
-}
-
-QPushButton.stopBtn {
-    background-color: rgba(159, 18, 57, 0.4);
-    color: #F43F5E;
-    border: 1px solid rgba(244, 63, 94, 0.5);
-    font-weight: 600;
-}
-
-QPushButton.stopBtn:hover {
-    background-color: rgba(159, 18, 57, 0.7);
-}
-
-QPushButton.themeToggleBtn {
-    font-size: 12px;
-    font-weight: 500;
-    padding: 6px 14px;
-    border-radius: 20px;
-    background-color: #1F2937;
-    color: #06B6D4;
-    border: 1px solid rgba(6, 182, 212, 0.4);
-}
-
-QPushButton.themeToggleBtn:hover {
-    background-color: #374151;
-}
-
-QTabWidget::pane {
-    border: 1px solid rgba(6, 182, 212, 0.4);
-    border-radius: 8px;
-    background-color: #050608;
-}
-
-QTabBar::tab {
-    background-color: transparent;
-    color: #D1D5DB;
-    font-weight: 500;
-    font-size: 12px;
-    padding: 6px 16px;
-    border-radius: 16px;
-    margin: 4px;
-}
-
-QTabBar::tab:selected {
-    background-color: rgba(6, 182, 212, 0.2);
-    color: #06B6D4;
-    border: 1px solid rgba(6, 182, 212, 0.5);
-}
-
-QTextEdit {
-    background-color: #050608;
-    color: #06B6D4;
-    font-family: 'JetBrains Mono', 'Consolas', monospace;
-    font-size: 13px;
-    border: none;
-    border-radius: 6px;
-    padding: 12px;
-    line-height: 1.5;
-}
-"""
-
-
-class ControllerWindow(QMainWindow):
+class ControllerManager:
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Vedi Pocket PC")
-        self.setMinimumSize(980, 720)
-        self.current_theme = "dark"
-        self.setStyleSheet(DARK_THEME_QSS)
-
-        # Base directories
         self.root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.server_dir = os.path.join(self.root_dir, "Screen-Stream-Server")
         self.backend_dir = os.path.join(self.root_dir, "Vedi-PocketPC-Backend")
         self.mobile_dir = os.path.join(self.root_dir, "Vedi-PocketPC-Mobile")
 
-        # Network info
         self.lan_ip = get_lan_ip()
         self.stream_port = 8080
         self.backend_port = 8000
         self.expo_port = 8088
 
-        # Pairing State
         self.pairing_pin = ""
         self.expo_url = ""
 
-        # QProcess instances
-        self.stream_process: Optional[QProcess] = None
-        self.backend_process: Optional[QProcess] = None
-        self.expo_process: Optional[QProcess] = None
+        self.stream_proc: Optional[subprocess.Popen] = None
+        self.backend_proc: Optional[subprocess.Popen] = None
+        self.expo_proc: Optional[subprocess.Popen] = None
 
-        self._init_ui()
-        self._init_tray()
+        self.is_running = True
+        self.log_queue = queue.Queue()
 
-        # Start servers automatically on launch
-        QTimer.singleShot(400, self.start_all_servers)
-
-    def toggle_theme(self):
-        if self.current_theme == "dark":
-            self.current_theme = "cyber"
-            self.setStyleSheet(CYBER_THEME_QSS)
-            self.theme_toggle_btn.setText("🎨 Cyber Mode")
-        else:
-            self.current_theme = "dark"
-            self.setStyleSheet(DARK_THEME_QSS)
-            self.theme_toggle_btn.setText("🎨 Dark Mode")
-
-    def _init_ui(self):
-        central_widget = QWidget(self)
-        central_widget.setObjectName("centralWidget")
-        self.setCentralWidget(central_widget)
-
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(20)
-
-        # --- Top Navigation Header (ref/dark.html) ---
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glassPanel")
-        
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 16, 20, 16)
-        
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-
-        brand_title = QLabel("Vedi Pocket PC")
-        brand_title.setProperty("class", "titleLabel")
-
-        brand_sub = QLabel("pywebview Apple Glassmorphism Desktop Controller")
-        brand_sub.setProperty("class", "subTitleLabel")
-
-        title_box.addWidget(brand_title)
-        title_box.addWidget(brand_sub)
-
-        # Top Right Pills & Theme Switcher
-        top_right_box = QHBoxLayout()
-        top_right_box.setSpacing(12)
-
-        self.lan_label = QLabel(f"🌐  {self.lan_ip}")
-        self.lan_label.setStyleSheet(
-            "font-size: 13px; font-weight: 500; color: #e5e2e1; "
-            "background: rgba(255,255,255,0.06); padding: 6px 16px; "
-            "border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);"
-        )
-
-        self.theme_toggle_btn = QPushButton("🎨 Dark Mode")
-        self.theme_toggle_btn.setProperty("class", "themeToggleBtn")
-        self.theme_toggle_btn.setCursor(Qt.PointingHandCursor)
-        self.theme_toggle_btn.clicked.connect(self.toggle_theme)
-
-        top_right_box.addWidget(self.lan_label)
-        top_right_box.addWidget(self.theme_toggle_btn)
-
-        header_layout.addLayout(title_box)
-        header_layout.addStretch()
-        header_layout.addLayout(top_right_box)
-
-        main_layout.addWidget(header_frame)
-
-        # --- Main Content Grid Area (Spans 4 cols / 8 cols) ---
-        middle_grid = QGridLayout()
-        middle_grid.setSpacing(20)
-
-        # Left Panel: System Services (Spans 4 cols)
-        status_card = QFrame()
-        status_card.setProperty("class", "glassPanel")
-
-        status_layout = QVBoxLayout(status_card)
-        status_layout.setSpacing(14)
-
-        services_title = QLabel("SYSTEM SERVICES")
-        services_title.setProperty("class", "sectionTitle")
-        status_layout.addWidget(services_title)
-
-        grid = QGridLayout()
-        grid.setVerticalSpacing(14)
-        grid.setHorizontalSpacing(16)
-
-        # 1. Stream Server Row
-        stream_lbl = QLabel("🖥️ Screen Stream (:8080)")
-        stream_lbl.setStyleSheet("font-size: 14px; font-weight: 500;")
-        grid.addWidget(stream_lbl, 0, 0)
-
-        self.stream_status_badge = QLabel("ACTIVE")
-        self.stream_status_badge.setProperty("class", "statusBadgeActive")
-        grid.addWidget(self.stream_status_badge, 0, 1, alignment=Qt.AlignRight)
-
-        # 2. Remote Agent Row
-        backend_lbl = QLabel("📡 Remote Agent (:8000)")
-        backend_lbl.setStyleSheet("font-size: 14px; font-weight: 500;")
-        grid.addWidget(backend_lbl, 1, 0)
-
-        self.backend_status_badge = QLabel("ACTIVE")
-        self.backend_status_badge.setProperty("class", "statusBadgeActive")
-        grid.addWidget(self.backend_status_badge, 1, 1, alignment=Qt.AlignRight)
-
-        # 3. Mobile Client Row
-        expo_lbl = QLabel("📱 Mobile Client (:8088)")
-        expo_lbl.setStyleSheet("font-size: 14px; font-weight: 500;")
-        grid.addWidget(expo_lbl, 2, 0)
-
-        self.expo_status_badge = QLabel("ACTIVE")
-        self.expo_status_badge.setProperty("class", "statusBadgeActive")
-        grid.addWidget(self.expo_status_badge, 2, 1, alignment=Qt.AlignRight)
-
-        status_layout.addLayout(grid)
-        status_layout.addSpacing(8)
-
-        # Master Controls Action Buttons
-        btn_layout = QVBoxLayout()
-        btn_layout.setSpacing(10)
-
-        self.start_btn = QPushButton("Start All Services")
-        self.start_btn.setProperty("class", "primaryBtn")
-        self.start_btn.setCursor(Qt.PointingHandCursor)
-        self.start_btn.clicked.connect(self.start_all_servers)
-
-        self.stop_btn = QPushButton("Stop All Services")
-        self.stop_btn.setProperty("class", "stopBtn")
-        self.stop_btn.setCursor(Qt.PointingHandCursor)
-        self.stop_btn.clicked.connect(self.stop_all_servers)
-
-        self.restart_btn = QPushButton("Restart All Services")
-        self.restart_btn.setCursor(Qt.PointingHandCursor)
-        self.restart_btn.clicked.connect(self.restart_all_servers)
-
-        self.reload_expo_btn = QPushButton("Reload Mobile App")
-        self.reload_expo_btn.setCursor(Qt.PointingHandCursor)
-        self.reload_expo_btn.clicked.connect(self.reload_expo)
-
-        btn_layout.addWidget(self.start_btn)
-        btn_layout.addWidget(self.stop_btn)
-        btn_layout.addWidget(self.restart_btn)
-        btn_layout.addWidget(self.reload_expo_btn)
-
-        status_layout.addLayout(btn_layout)
-        status_layout.addStretch()
-
-        middle_grid.addWidget(status_card, 0, 0)
-
-        # Right Panel Container: QR Cards (Spans 8 cols)
-        pc_card = QFrame()
-        pc_card.setProperty("class", "glassPanel")
-        pc_layout = QVBoxLayout(pc_card)
-        pc_layout.setContentsMargins(16, 20, 16, 20)
-        pc_layout.setSpacing(12)
-        pc_layout.setAlignment(Qt.AlignCenter)
-
-        pc_title = QLabel("1. SCAN PC PAIRING QR")
-        pc_title.setProperty("class", "sectionTitle")
-        pc_title.setAlignment(Qt.AlignCenter)
-
-        self.pc_qr_label = QLabel()
-        self.pc_qr_label.setFixedSize(180, 180)
-        self.pc_qr_label.setAlignment(Qt.AlignCenter)
-        self.pc_qr_label.setStyleSheet("background-color: #ffffff; border-radius: 8px; padding: 8px;")
-        self.pc_qr_label.setPixmap(generate_qr_pixmap(f"{self.lan_ip}:8000:0000", 164))
-
-        self.pin_info_label = QLabel("PIN: ----")
-        self.pin_info_label.setAlignment(Qt.AlignCenter)
-        self.pin_info_label.setStyleSheet("font-size: 18px; font-weight: 600; letter-spacing: 2px;")
-
-        pc_layout.addWidget(pc_title)
-        pc_layout.addWidget(self.pc_qr_label, alignment=Qt.AlignCenter)
-        pc_layout.addWidget(self.pin_info_label)
-
-        expo_card = QFrame()
-        expo_card.setProperty("class", "glassPanel")
-        expo_layout = QVBoxLayout(expo_card)
-        expo_layout.setContentsMargins(16, 20, 16, 20)
-        expo_layout.setSpacing(12)
-        expo_layout.setAlignment(Qt.AlignCenter)
-
-        expo_title = QLabel("2. SCAN EXPO GO QR")
-        expo_title.setProperty("class", "sectionTitle")
-        expo_title.setAlignment(Qt.AlignCenter)
-
-        self.expo_qr_label = QLabel()
-        self.expo_qr_label.setFixedSize(180, 180)
-        self.expo_qr_label.setAlignment(Qt.AlignCenter)
-        self.expo_qr_label.setStyleSheet("background-color: #ffffff; border-radius: 8px; padding: 8px;")
-        self.expo_qr_label.setPixmap(generate_qr_pixmap(f"exp://{self.lan_ip}:8088", 164))
-
-        self.expo_info_label = QLabel("Initializing Expo...")
-        self.expo_info_label.setAlignment(Qt.AlignCenter)
-        self.expo_info_label.setStyleSheet("font-size: 12px; color: #c4c7c8;")
-
-        expo_layout.addWidget(expo_title)
-        expo_layout.addWidget(self.expo_qr_label, alignment=Qt.AlignCenter)
-        expo_layout.addWidget(self.expo_info_label)
-
-        middle_grid.addWidget(pc_card, 0, 1)
-        middle_grid.addWidget(expo_card, 0, 2)
-
-        middle_grid.setColumnStretch(0, 4)
-        middle_grid.setColumnStretch(1, 4)
-        middle_grid.setColumnStretch(2, 4)
-
-        main_layout.addLayout(middle_grid)
-
-        # --- Terminal Logs Panel (Spans 12 cols) ---
-        logs_card = QFrame()
-        logs_card.setProperty("class", "glassPanel")
-
-        logs_layout = QVBoxLayout(logs_card)
-        logs_layout.setContentsMargins(0, 0, 0, 0)
-        logs_layout.setSpacing(0)
-
-        # Terminal Header Bar with Tabs & Clear
-        term_header = QWidget()
-        term_header_layout = QHBoxLayout(term_header)
-        term_header_layout.setContentsMargins(16, 10, 16, 10)
-
-        self.tabs = QTabWidget()
-
-        self.all_log_edit = QTextEdit()
-        self.all_log_edit.setReadOnly(True)
-
-        self.python_log_edit = QTextEdit()
-        self.python_log_edit.setReadOnly(True)
-
-        self.expo_log_edit = QTextEdit()
-        self.expo_log_edit.setReadOnly(True)
-
-        self.tabs.addTab(self.all_log_edit, "Combined Logs")
-        self.tabs.addTab(self.python_log_edit, "Python Backend Logs")
-        self.tabs.addTab(self.expo_log_edit, "Expo Mobile Logs")
-
-        clear_btn = QPushButton("🧹 Clear")
-        clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setStyleSheet(
-            "font-size: 12px; border: none; background: transparent; "
-            "color: #c4c7c8; font-weight: 500;"
-        )
-        clear_btn.clicked.connect(self.clear_logs)
-
-        term_header_layout.addWidget(self.tabs)
-        term_header_layout.addWidget(clear_btn, alignment=Qt.AlignRight)
-
-        logs_layout.addWidget(term_header)
-        main_layout.addWidget(logs_card, stretch=1)
-
-    def _init_tray(self):
-        """Initialize System Tray icon and menu."""
-        self.tray_icon = QSystemTrayIcon(self)
-        icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
-        self.tray_icon.setIcon(icon)
-
-        tray_menu = QMenu()
-        show_action = QAction("Show Controller", self)
-        show_action.triggered.connect(self.show_normal)
-        
-        start_action = QAction("Start All Services", self)
-        start_action.triggered.connect(self.start_all_servers)
-
-        stop_action = QAction("Stop All Services", self)
-        stop_action.triggered.connect(self.stop_all_servers)
-
-        restart_action = QAction("Restart All Services", self)
-        restart_action.triggered.connect(self.restart_all_servers)
-
-        quit_action = QAction("Quit Vedi Pocket PC", self)
-        quit_action.triggered.connect(self.quit_app)
-
-        tray_menu.addAction(show_action)
-        tray_menu.addSeparator()
-        tray_menu.addAction(start_action)
-        tray_menu.addAction(stop_action)
-        tray_menu.addAction(restart_action)
-        tray_menu.addSeparator()
-        tray_menu.addAction(quit_action)
-
-        self.tray_icon.setContextMenu(tray_menu)
-        self.tray_icon.activated.connect(self._on_tray_activated)
-        self.tray_icon.show()
-
-    def show_normal(self):
-        self.show()
-        self.activateWindow()
-
-    def _on_tray_activated(self, reason):
-        if reason == QSystemTrayIcon.DoubleClick or reason == QSystemTrayIcon.Trigger:
-            if self.isVisible():
-                self.hide()
-            else:
-                self.show_normal()
-
-    def closeEvent(self, event):
-        """Minimize to tray when close button is clicked."""
-        if self.tray_icon.isVisible():
-            self.hide()
-            self.tray_icon.showMessage(
-                "Vedi Pocket PC",
-                "Controller minimized to tray.",
-                QSystemTrayIcon.Information,
-                2000
-            )
-            event.ignore()
-        else:
-            self.quit_app()
-
-    def quit_app(self):
-        self.stop_all_servers()
-        QApplication.quit()
-
-    # --- Log Appenders ---
     def append_log(self, target: str, text: str):
-        if not text:
+        if not text or not self.is_running:
             return
-        if target == "python":
-            self.python_log_edit.append(text)
-        elif target == "expo":
-            self.expo_log_edit.append(text)
-        
-        self.all_log_edit.append(f"[{target.upper()}] {text}")
+        self.log_queue.put((target, text))
 
-    def clear_logs(self):
-        self.all_log_edit.clear()
-        self.python_log_edit.clear()
-        self.expo_log_edit.clear()
+    def get_pending_logs(self):
+        batch = []
+        while len(batch) < 40:
+            try:
+                target, text = self.log_queue.get_nowait()
+                batch.append({"target": target, "message": text})
+            except queue.Empty:
+                break
+        return batch
 
-    # --- Server Process Management ---
-    def start_all_servers(self):
+    def get_status_dict(self):
+        pc_payload = f"{self.lan_ip}:{self.backend_port}:{self.pairing_pin or '0000'}"
+        expo_payload = self.expo_url or f"exp://{self.lan_ip}:{self.expo_port}"
+
+        pc_qr = generate_qr_base64(pc_payload)
+        expo_qr = generate_qr_base64(expo_payload)
+
+        return {
+            "lan_ip": self.lan_ip,
+            "stream_running": self.stream_proc is not None and self.stream_proc.poll() is None,
+            "backend_running": self.backend_proc is not None and self.backend_proc.poll() is None,
+            "expo_running": self.expo_proc is not None and self.expo_proc.poll() is None,
+            "pairing_pin": self.pairing_pin,
+            "expo_url": self.expo_url,
+            "pc_qr": pc_qr,
+            "expo_qr": expo_qr,
+        }
+
+    def start_all_services(self):
         self.start_stream_server()
         self.start_backend_server()
         self.start_expo_server()
 
-    def stop_all_servers(self):
+    def stop_all_services(self):
         self.stop_stream_server()
         self.stop_backend_server()
         self.stop_expo_server()
 
-    def restart_all_servers(self):
+    def restart_all_services(self):
         self.append_log("python", "Restarting all system services...")
-        self.stop_all_servers()
-        QTimer.singleShot(600, self.start_all_servers)
+        self.stop_all_services()
+        self.start_all_services()
 
     # 1. Screen Stream Server
     def start_stream_server(self):
-        if self.stream_process and self.stream_process.state() != QProcess.NotRunning:
+        if self.stream_proc and self.stream_proc.poll() is None:
             return
 
         self.stream_port = find_free_port(8080)
         self.append_log("python", f"Starting Screen Stream Server on port {self.stream_port}...")
 
-        self.stream_process = QProcess(self)
-        self.stream_process.setWorkingDirectory(self.server_dir)
+        env = os.environ.copy()
+        env["STREAM_PORT"] = str(self.stream_port)
+        env["STREAM_HOST"] = "0.0.0.0"
 
-        env = QProcess.systemEnvironment()
-        env.append(f"STREAM_PORT={self.stream_port}")
-        env.append(f"STREAM_HOST=0.0.0.0")
-        self.stream_process.setEnvironment(env)
+        self.stream_proc = subprocess.Popen(
+            [sys.executable, "main.py"],
+            cwd=self.server_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        self._start_log_thread(self.stream_proc, "python")
 
-        self.stream_process.readyReadStandardOutput.connect(self._on_stream_stdout)
-        self.stream_process.readyReadStandardError.connect(self._on_stream_stderr)
-        self.stream_process.finished.connect(self._on_stream_finished)
-
-        self.stream_process.start(sys.executable, ["main.py"])
-
-        self.stream_status_badge.setText("ACTIVE")
-        self.stream_status_badge.setProperty("class", "statusBadgeActive")
-        self.stream_status_badge.style().unpolish(self.stream_status_badge)
-        self.stream_status_badge.style().polish(self.stream_status_badge)
-
-    def _on_stream_stdout(self):
-        if not self.stream_process:
-            return
-        data = self.stream_process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
-        self.append_log("python", f"[Stream] {data.strip()}")
-
-    def _on_stream_stderr(self):
-        if not self.stream_process:
-            return
-        data = self.stream_process.readAllStandardError().data().decode("utf-8", errors="ignore")
-        self.append_log("python", f"[Stream Err] {data.strip()}")
-
-    def _on_stream_finished(self):
-        self.append_log("python", "Screen Stream Server process exited.")
-        self.stream_status_badge.setText("OFFLINE")
-        self.stream_status_badge.setProperty("class", "statusBadgeOffline")
-        self.stream_status_badge.style().unpolish(self.stream_status_badge)
-        self.stream_status_badge.style().polish(self.stream_status_badge)
-        self.stream_process = None
-
-    def stop_stream_server(self):
-        if self.stream_process:
-            kill_process_tree(self.stream_process.processId())
-            self.stream_process.kill()
-            self.stream_process = None
-
-    # 2. FastAPI Backend
+    # 2. Remote Agent Backend
     def start_backend_server(self):
-        if self.backend_process and self.backend_process.state() != QProcess.NotRunning:
+        if self.backend_proc and self.backend_proc.poll() is None:
             return
 
         self.backend_port = find_free_port(8000)
         self.append_log("python", f"Starting Remote Agent Backend on port {self.backend_port}...")
 
-        self.backend_process = QProcess(self)
-        self.backend_process.setWorkingDirectory(self.backend_dir)
+        env = os.environ.copy()
+        env["BACKEND_PORT"] = str(self.backend_port)
+        env["BACKEND_HOST"] = "0.0.0.0"
 
-        env = QProcess.systemEnvironment()
-        env.append(f"BACKEND_PORT={self.backend_port}")
-        env.append(f"BACKEND_HOST=0.0.0.0")
-        self.backend_process.setEnvironment(env)
-
-        self.backend_process.readyReadStandardOutput.connect(self._on_backend_stdout)
-        self.backend_process.readyReadStandardError.connect(self._on_backend_stderr)
-        self.backend_process.finished.connect(self._on_backend_finished)
-
-        self.backend_process.start(sys.executable, ["main.py"])
-
-        self.backend_status_badge.setText("ACTIVE")
-        self.backend_status_badge.setProperty("class", "statusBadgeActive")
-        self.backend_status_badge.style().unpolish(self.backend_status_badge)
-        self.backend_status_badge.style().polish(self.backend_status_badge)
-
-    def _on_backend_stdout(self):
-        if not self.backend_process:
-            return
-        data = self.backend_process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
-        text = data.strip()
-        self.append_log("python", f"[Backend] {text}")
-
-        # Parse pairing PIN
-        match = re.search(r"Pairing PIN:\s*(\d{4})", text)
-        if match:
-            self.pairing_pin = match.group(1)
-            self.pin_info_label.setText(f"PIN: {self.pairing_pin}")
-            qr_payload = f"{self.lan_ip}:{self.backend_port}:{self.pairing_pin}"
-            pix = generate_qr_pixmap(qr_payload, 164)
-            self.pc_qr_label.setPixmap(pix)
-            self.append_log("python", f"Captured PC Pairing PIN: {self.pairing_pin}")
-
-    def _on_backend_stderr(self):
-        if not self.backend_process:
-            return
-        data = self.backend_process.readAllStandardError().data().decode("utf-8", errors="ignore")
-        self.append_log("python", f"[Backend Err] {data.strip()}")
-
-    def _on_backend_finished(self):
-        self.append_log("python", "Remote Agent Backend process exited.")
-        self.backend_status_badge.setText("OFFLINE")
-        self.backend_status_badge.setProperty("class", "statusBadgeOffline")
-        self.backend_status_badge.style().unpolish(self.backend_status_badge)
-        self.backend_status_badge.style().polish(self.backend_status_badge)
-        self.backend_process = None
-
-    def stop_backend_server(self):
-        if self.backend_process:
-            kill_process_tree(self.backend_process.processId())
-            self.backend_process.kill()
-            self.backend_process = None
+        self.backend_proc = subprocess.Popen(
+            [sys.executable, "main.py"],
+            cwd=self.backend_dir,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        self._start_log_thread(self.backend_proc, "python", parse_pin=True)
 
     # 3. Mobile Expo Server
     def start_expo_server(self):
-        if self.expo_process and self.expo_process.state() != QProcess.NotRunning:
+        if self.expo_proc and self.expo_proc.poll() is None:
             return
 
         self.expo_port = find_free_port(8088)
         self.expo_url = f"exp://{self.lan_ip}:{self.expo_port}"
         self.append_log("expo", f"Starting Expo Server on {self.expo_url}...")
 
-        self.expo_process = QProcess(self)
-        self.expo_process.setWorkingDirectory(self.mobile_dir)
-
         npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
-        expo_args = ["expo", "start", "-c", "--host", "lan", "--port", str(self.expo_port)]
+        expo_args = [npx_cmd, "expo", "start", "-c", "--host", "lan", "--port", str(self.expo_port)]
 
-        self.expo_process.readyReadStandardOutput.connect(self._on_expo_stdout)
-        self.expo_process.readyReadStandardError.connect(self._on_expo_stderr)
-        self.expo_process.finished.connect(self._on_expo_finished)
-
-        self.expo_process.start(npx_cmd, expo_args)
-
-        self.expo_status_badge.setText("ACTIVE")
-        self.expo_status_badge.setProperty("class", "statusBadgeActive")
-        self.expo_status_badge.style().unpolish(self.expo_status_badge)
-        self.expo_status_badge.style().polish(self.expo_status_badge)
-
-        pix = generate_qr_pixmap(self.expo_url, 164)
-        self.expo_qr_label.setPixmap(pix)
-        self.expo_info_label.setText(f"exp://{self.lan_ip}:{self.expo_port}")
-
-    def _on_expo_stdout(self):
-        if not self.expo_process:
-            return
-        data = self.expo_process.readAllStandardOutput().data().decode("utf-8", errors="ignore")
-        text = data.strip()
-        self.append_log("expo", text)
-
-        # Detect exp:// URL
-        clean_text = re.sub(r"\x1b\[[0-9;]*m", "", text)
-        match = re.search(r"exp://[\w.\-]+(?::\d+)?[^\s]*", clean_text)
-        if match:
-            self.expo_url = match.group(0)
-            pix = generate_qr_pixmap(self.expo_url, 164)
-            self.expo_qr_label.setPixmap(pix)
-            self.expo_info_label.setText(self.expo_url)
-
-    def _on_expo_stderr(self):
-        if not self.expo_process:
-            return
-        data = self.expo_process.readAllStandardError().data().decode("utf-8", errors="ignore")
-        self.append_log("expo", data.strip())
-
-    def _on_expo_finished(self):
-        self.append_log("expo", "Expo Server process exited.")
-        self.expo_status_badge.setText("OFFLINE")
-        self.expo_status_badge.setProperty("class", "statusBadgeOffline")
-        self.expo_status_badge.style().unpolish(self.expo_status_badge)
-        self.expo_status_badge.style().polish(self.expo_status_badge)
-        self.expo_process = None
-
-    def stop_expo_server(self):
-        if self.expo_process:
-            kill_process_tree(self.expo_process.processId())
-            self.expo_process.kill()
-            self.expo_process = None
+        self.expo_proc = subprocess.Popen(
+            expo_args,
+            cwd=self.mobile_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+        self._start_log_thread(self.expo_proc, "expo", parse_expo=True)
 
     def reload_expo(self):
-        if self.expo_process and self.expo_process.state() == QProcess.Running:
+        if self.expo_proc and self.expo_proc.poll() is None and self.expo_proc.stdin:
             self.append_log("expo", "Sending 'r' key signal to reload connected Expo devices...")
-            self.expo_process.write(b"r\n")
+            try:
+                self.expo_proc.stdin.write("r\n")
+                self.expo_proc.stdin.flush()
+            except Exception:
+                pass
         else:
-            self.append_log("expo", "Expo process not running, restarting...")
             self.stop_expo_server()
-            QTimer.singleShot(500, self.start_expo_server)
+            self.start_expo_server()
+
+    def stop_stream_server(self):
+        if self.stream_proc:
+            kill_process_tree(self.stream_proc.pid)
+            self.stream_proc = None
+
+    def stop_backend_server(self):
+        if self.backend_proc:
+            kill_process_tree(self.backend_proc.pid)
+            self.backend_proc = None
+
+    def stop_expo_server(self):
+        if self.expo_proc:
+            kill_process_tree(self.expo_proc.pid)
+            self.expo_proc = None
+
+    def _start_log_thread(self, proc, target: str, parse_pin=False, parse_expo=False):
+        def reader():
+            for line in iter(proc.stdout.readline, ''):
+                if not line or not self.is_running:
+                    break
+                text = line.strip()
+                self.append_log(target, text)
+
+                if parse_pin:
+                    match = re.search(r"Pairing PIN:\s*(\d{4})", text)
+                    if match:
+                        self.pairing_pin = match.group(1)
+
+                if parse_expo:
+                    clean_text = re.sub(r"\x1b\[[0-9;]*m", "", text)
+                    match = re.search(r"exp://[\w.\-]+(?::\d+)?[^\s]*", clean_text)
+                    if match:
+                        self.expo_url = match.group(0)
+
+        t = threading.Thread(target=reader, daemon=True)
+        t.start()
 
 
-def main():
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
-    
-    window = ControllerWindow()
-    window.show()
-    
-    sys.exit(app.exec())
+manager = ControllerManager()
+bottle_app = Bottle()
+
+@bottle_app.route('/')
+def route_index():
+    return HTML_CONTENT
+
+@bottle_app.route('/api/status')
+def route_status():
+    response.content_type = 'application/json'
+    return json.dumps(manager.get_status_dict())
+
+@bottle_app.route('/api/logs')
+def route_logs():
+    response.content_type = 'application/json'
+    return json.dumps(manager.get_pending_logs())
+
+@bottle_app.route('/api/action', method='POST')
+def route_action():
+    data = request.json or {}
+    act = data.get('action')
+    if act == 'start_all':
+        manager.start_all_services()
+    elif act == 'stop_all':
+        manager.stop_all_services()
+    elif act == 'restart_all':
+        manager.restart_all_services()
+    elif act == 'reload_expo':
+        manager.reload_expo()
+    return json.dumps({'status': 'ok'})
+
+
+def start_server_and_gui():
+    server_port = find_free_port(18090)
+    server_thread = threading.Thread(
+        target=lambda: bottle_app.run(host='127.0.0.1', port=server_port, quiet=True),
+        daemon=True
+    )
+    server_thread.start()
+    time.sleep(0.3)
+
+    manager.start_all_services()
+
+    window = webview.create_window(
+        title="Vedi Pocket PC",
+        url=f"http://127.0.0.1:{server_port}",
+        width=1240,
+        height=840,
+        resizable=True,
+        background_color="#131313"
+    )
+
+    def on_closing():
+        manager.is_running = False
+        manager.stop_all_services()
+
+    window.events.closing += on_closing
+    webview.start(debug=False)
 
 
 if __name__ == "__main__":
-    main()
+    start_server_and_gui()
