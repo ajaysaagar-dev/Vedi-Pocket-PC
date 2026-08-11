@@ -162,6 +162,7 @@ class ScreenStreamServer:
 
     async def _capture_loop(self) -> None:
         loop = asyncio.get_running_loop()
+        consecutive_errors = 0
         while True:
             t0 = loop.time()
             interval = 1.0 / max(1, self.stream_manager.target_fps)
@@ -175,12 +176,22 @@ class ScreenStreamServer:
                     self.stream_manager.jpeg_quality,
                 )
 
-                if self.stream_manager.client_count > 0:
+                # The capturer returns ``None`` for intentionally skipped
+                # frames (duplicate or blank). Only an actual capture
+                # counts as a "good" iteration for the error counter.
+                if jpeg_bytes is not None and self.stream_manager.client_count > 0:
                     await self.stream_manager.broadcast_frame(jpeg_bytes)
+                    consecutive_errors = 0
+                elif jpeg_bytes is not None:
+                    # Captured but no clients — still reset the error
+                    # counter because the capture pipeline is healthy.
+                    consecutive_errors = 0
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"[ERROR] Capture loop exception: {e}", flush=True)
+                consecutive_errors += 1
+                if consecutive_errors <= 3 or consecutive_errors % 30 == 0:
+                    print(f"[ERROR] Capture loop exception ({consecutive_errors}): {e}", flush=True)
 
             elapsed = loop.time() - t0
             sleep_time = max(0.001, interval - elapsed)

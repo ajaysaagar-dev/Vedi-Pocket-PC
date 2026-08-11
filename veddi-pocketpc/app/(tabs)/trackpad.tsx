@@ -48,6 +48,7 @@ export default function TrackpadScreen() {
   };
 
   const handleKeyCombo = (keys: string[]) => {
+    wsClient.send({ type: 'hotkey', keys });
     wsClient.send({ type: 'key_combo', keys });
   };
 

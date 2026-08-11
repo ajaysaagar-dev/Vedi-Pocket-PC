@@ -101,6 +101,7 @@ DISPATCH: Dict[str, Handler] = {
     "keyboard_type": _keyboard_type,
     "key_press": _key_press,
     "hotkey": _hotkey,
+    "key_combo": _hotkey,
     "ping": _ping,
     "auth": _auth_ok,
 }

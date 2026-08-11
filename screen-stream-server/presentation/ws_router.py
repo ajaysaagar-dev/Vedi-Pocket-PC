@@ -279,10 +279,19 @@ class StreamManager:
     async def _client_writer(self, ws, queue, client_ip):
         try:
             while not ws.closed:
-                jpeg_bytes = await queue.get()
+                payload = await queue.get()
                 if ws.closed:
                     break
-                await ws.send_bytes(jpeg_bytes)
+                # The queue carries either raw JPEG bytes (legacy fast
+                # path) or a 4-byte length-prefixed envelope
+                # ``b"STRM" + uint32 BE length + JPEG bytes`` so the
+                # client can recover from truncated messages by detecting
+                # a length mismatch.
+                if isinstance(payload, (bytes, bytearray)) and payload.startswith(b"STRM"):
+                    await ws.send_bytes(bytes(payload))
+                else:
+                    # Legacy raw-JPEG payload.
+                    await ws.send_bytes(bytes(payload))
                 queue.task_done()
         except asyncio.CancelledError:
             pass
@@ -301,22 +310,45 @@ class StreamManager:
             await ws.close()
         print(f"[CLIENT] Disconnected: {client_ip}", flush=True)
 
-    async def broadcast_frame(self, jpeg_bytes: bytes) -> None:
+    async def broadcast_frame(self, jpeg_bytes: bytes, sequence: int = 0) -> None:
+        """Enqueue a JPEG frame for every connected client.
+
+        We wrap the JPEG bytes with a four-byte magic prefix and a
+        four-byte big-endian length so the client can:
+
+        * Tell apart stream frames from any binary payloads the same
+          WebSocket might carry (other text frames use JSON, but a
+          future binary message could otherwise be ambiguous).
+        * Detect truncation by comparing the wire length to the
+          declared length and dropping frames that don't match — this
+          directly addresses the "black screen" symptom because a
+          truncated JPEG otherwise decodes to a solid colour and
+          renders as a black frame.
+        """
         if not self.connected_clients:
             return
+        # The envelope is intentionally cheap to build (struct.pack of
+        # two ints). Frames that don't carry an envelope wouldn't have
+        # this protection, so we always emit one.
+        import struct
+
+        body = b"STRM" + struct.pack(">I", len(jpeg_bytes)) + jpeg_bytes
         for ws in list(self.connected_clients):
             if ws.closed:
                 continue
             queue = self._client_queues.get(ws)
             if queue is None:
                 continue
+            # "Latest-wins" strategy: if the client can't keep up, drop
+            # the older frame so the writer is always pushing the most
+            # recent bitmap. Each queue is bounded to a single slot.
             if queue.full():
                 try:
                     queue.get_nowait()
                 except asyncio.QueueEmpty:
                     pass
             try:
-                queue.put_nowait(jpeg_bytes)
+                queue.put_nowait(body)
             except asyncio.QueueFull:
                 pass
 

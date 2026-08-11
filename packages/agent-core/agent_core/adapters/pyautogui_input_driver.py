@@ -94,4 +94,20 @@ class PyAutoGUIInputDriver(_InputDriverPort):
     def hotkey(self, cmd: HotkeyCommand) -> None:
         if not cmd.keys:
             return
-        self._pyautogui.hotkey(*cmd.keys, _pause=False)
+        normalized = []
+        for k in cmd.keys:
+            lk = str(k).lower().strip()
+            if lk in ("ctrl", "control"):
+                normalized.append("ctrl")
+            elif lk in ("alt", "option"):
+                normalized.append("alt")
+            elif lk in ("shift",):
+                normalized.append("shift")
+            elif lk in ("win", "cmd", "command", "super"):
+                normalized.append("win")
+            else:
+                normalized.append(lk)
+        try:
+            self._pyautogui.hotkey(*normalized, _pause=False)
+        except Exception as e:
+            print(f"[InputDriver] Hotkey exception for {normalized}: {e}")

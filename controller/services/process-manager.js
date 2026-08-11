@@ -132,19 +132,28 @@ class ProcessManager {
     const localExpoBin = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli');
     const localExpoJs = path.join(expoDir, 'node_modules', 'expo', 'bin', 'cli.js');
 
-    const expoArgs = ['start', '-c', '--host', 'lan', '--port', String(this.currentExpoPort)];
+    const expoArgs = ['start', '-c', '--non-interactive', '--host', 'lan', '--port', String(this.currentExpoPort)];
     const useLocalJs = fs.existsSync(localExpoJs);
     const cliPath = useLocalJs ? localExpoJs : localExpoBin;
 
+    const spawnOptions = {
+      cwd: expoDir,
+      env: {
+        ...env,
+        CI: '1',
+        EXPO_NO_INTERACTIVE: '1',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    };
+
     if (useLocalJs) {
       console.log(`[Desktop] Spawning local Expo CLI with Node (${nodeCmd}): ${cliPath}`);
-      this.expoProcess = spawn(nodeCmd, [cliPath, ...expoArgs], { cwd: expoDir, env });
+      this.expoProcess = spawn(nodeCmd, [cliPath, ...expoArgs], spawnOptions);
     } else {
       console.log(`[Desktop] Spawning npx expo start on LAN: ${npxCmd}`);
       this.expoProcess = spawn(npxCmd, ['expo', ...expoArgs], {
-        cwd: expoDir,
+        ...spawnOptions,
         shell: isWin,
-        env,
       });
     }
 

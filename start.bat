@@ -8,18 +8,20 @@ echo           Vedi Pocket PC - Launcher
 echo ========================================================
 echo.
 echo Launch Options:
-echo   [1] Start Vedi Pocket PC (Normal)
-echo   [2] Reload Expo App (Clear Metro Cache)
-echo   [3] Create / Verify .env File
-echo   [4] Download / Reinstall All Dependencies
-echo   [5] Run Master Setup
+echo   [1] Start Vedi Pocket PC (Normal - Desktop + Backend + Mobile)
+echo   [2] Reload Expo App (Clear Metro Cache - Non-Interactive)
+echo   [3] Start Expo App (Interactive Terminal Mode for Devs)
+echo   [4] Create / Verify .env File
+echo   [5] Download / Reinstall All Dependencies
+echo   [6] Run Master Setup
 echo.
 set "CHOICE=1"
-choice /c 12345 /t 5 /d 1 /m "Select option (Auto-starting option 1 in 5s)... " >nul 2>&1
+choice /c 123456 /t 5 /d 1 /m "Select option (Auto-starting option 1 in 5s)... " >nul 2>&1
 if !ERRORLEVEL! EQU 2 goto RELOAD_EXPO
-if !ERRORLEVEL! EQU 3 goto CREATE_ENV_MENU
-if !ERRORLEVEL! EQU 4 goto DOWNLOAD_DEPS_MENU
-if !ERRORLEVEL! EQU 5 goto RUN_SETUP
+if !ERRORLEVEL! EQU 3 goto START_EXPO_INTERACTIVE
+if !ERRORLEVEL! EQU 4 goto CREATE_ENV_MENU
+if !ERRORLEVEL! EQU 5 goto DOWNLOAD_DEPS_MENU
+if !ERRORLEVEL! EQU 6 goto RUN_SETUP
 goto MAIN_PREFLIGHT
 
 :RELOAD_EXPO
@@ -28,8 +30,29 @@ echo ========================================================
 echo     Reloading Expo Mobile App ^& Clearing Metro Cache...
 echo ========================================================
 echo.
-cd veddi-pocketpc
-call npx expo start -c
+if exist "veddi-pocketpc" (
+    cd veddi-pocketpc
+    set EXPO_NO_INTERACTIVE=1
+    set CI=1
+    call npx expo start -c --non-interactive --host lan --port 8088
+) else (
+    echo   [ERROR] Mobile directory 'veddi-pocketpc' not found.
+)
+pause
+exit /b 0
+
+:START_EXPO_INTERACTIVE
+echo.
+echo ========================================================
+echo     Starting Expo Mobile App ^(Interactive Terminal^)...
+echo ========================================================
+echo.
+if exist "veddi-pocketpc" (
+    cd veddi-pocketpc
+    call npx expo start -c --host lan --port 8088
+) else (
+    echo   [ERROR] Mobile directory 'veddi-pocketpc' not found.
+)
 pause
 exit /b 0
 

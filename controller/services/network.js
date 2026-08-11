@@ -93,6 +93,8 @@ function getSpawnEnv() {
     PYTHONUNBUFFERED: '1',
     REACT_NATIVE_PACKAGER_HOSTNAME: lanIp,
     HIDE_DIALOG: '1',
+    CI: '1',
+    EXPO_NO_INTERACTIVE: '1',
   };
   if (isWin) {
     env.SystemRoot = sysRoot;
