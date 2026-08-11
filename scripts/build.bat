@@ -6,7 +6,7 @@ echo   Vedi Pocket PC - Standalone Desktop App Builder
 echo ===================================================
 echo.
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 :: 1. Verify Python
 python --version >nul 2>&1
@@ -17,6 +17,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [1/3] Checking dependencies...
+python -m pip install -e packages\core
 python -m pip install pyinstaller pillow pywebview qrcode bottle --quiet
 
 echo.
