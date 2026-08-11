@@ -33,9 +33,19 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
+echo [3/3] Organizing build artifacts into Distribution folder...
+
+if exist "Distribution" rd /s /q "Distribution"
+if exist "dist\Vedi Pocket PC" (
+    powershell -NoProfile -Command "Move-Item -Path 'dist\Vedi Pocket PC' -Destination 'Distribution' -Force"
+    if exist "dist" rd /s /q "dist"
+)
+if exist "build" rd /s /q "build"
+
+echo.
 echo ===================================================
 echo   [SUCCESS] Build completed successfully!
-echo   Output Executable: dist\Vedi Pocket PC\Vedi Pocket PC.exe
+echo   Output Executable: Distribution\Vedi Pocket PC.exe
 echo ===================================================
 echo.
 pause
