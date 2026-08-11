@@ -15,6 +15,7 @@ import queue
 import time
 import json
 import threading
+import multiprocessing
 from typing import Optional
 
 import webview
@@ -470,9 +471,12 @@ def find_root_dir() -> str:
     candidates = [
         os.path.dirname(os.path.abspath(__file__)),
         os.path.dirname(os.path.abspath(sys.executable)),
+        getattr(sys, '_MEIPASS', ''),
         os.getcwd()
     ]
     for start in candidates:
+        if not start:
+            continue
         curr = start
         for _ in range(6):
             if os.path.exists(os.path.join(curr, "Screen-Stream-Server")):
@@ -566,14 +570,24 @@ class ControllerManager:
         env["STREAM_PORT"] = str(self.stream_port)
         env["STREAM_HOST"] = "0.0.0.0"
 
+        if getattr(sys, 'frozen', False):
+            cmd = [sys.executable, "--run-stream"]
+        else:
+            cmd = [sys.executable, os.path.join(self.server_dir, "main.py")]
+
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
         self.stream_proc = subprocess.Popen(
-            [sys.executable, "main.py"],
+            cmd,
             cwd=self.server_dir,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            **kwargs
         )
         self._start_log_thread(self.stream_proc, "python")
 
@@ -588,15 +602,26 @@ class ControllerManager:
         env = os.environ.copy()
         env["BACKEND_PORT"] = str(self.backend_port)
         env["BACKEND_HOST"] = "0.0.0.0"
+        env["HIDE_DIALOG"] = "1"
+
+        if getattr(sys, 'frozen', False):
+            cmd = [sys.executable, "--run-backend"]
+        else:
+            cmd = [sys.executable, os.path.join(self.backend_dir, "main.py")]
+
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
         self.backend_proc = subprocess.Popen(
-            [sys.executable, "main.py"],
+            cmd,
             cwd=self.backend_dir,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            **kwargs
         )
         self._start_log_thread(self.backend_proc, "python", parse_pin=True)
 
@@ -612,6 +637,10 @@ class ControllerManager:
         npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
         expo_args = [npx_cmd, "expo", "start", "-c", "--host", "lan", "--port", str(self.expo_port)]
 
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
         self.expo_proc = subprocess.Popen(
             expo_args,
             cwd=self.mobile_dir,
@@ -619,7 +648,8 @@ class ControllerManager:
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             text=True,
-            bufsize=1
+            bufsize=1,
+            **kwargs
         )
         self._start_log_thread(self.expo_proc, "expo", parse_expo=True)
 
@@ -740,5 +770,45 @@ def start_server_and_gui():
     webview.start(debug=False)
 
 
+def run_stream_subcommand():
+    root_dir = find_root_dir()
+    server_dir = os.path.join(root_dir, "Screen-Stream-Server")
+    agent_core_dir = os.path.join(root_dir, "Packages", "agent-core")
+
+    if server_dir not in sys.path:
+        sys.path.insert(0, server_dir)
+    if agent_core_dir not in sys.path:
+        sys.path.insert(0, agent_core_dir)
+
+    os.chdir(server_dir)
+    import main as stream_main
+    stream_main.main()
+
+
+def run_backend_subcommand():
+    root_dir = find_root_dir()
+    backend_dir = os.path.join(root_dir, "Vedi-PocketPC-Backend")
+    agent_core_dir = os.path.join(root_dir, "Packages", "agent-core")
+
+    if backend_dir not in sys.path:
+        sys.path.insert(0, backend_dir)
+    if agent_core_dir not in sys.path:
+        sys.path.insert(0, agent_core_dir)
+
+    os.chdir(backend_dir)
+    import main as backend_main
+    backend_main.main()
+
+
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--run-stream":
+            run_stream_subcommand()
+            sys.exit(0)
+        elif sys.argv[1] == "--run-backend":
+            run_backend_subcommand()
+            sys.exit(0)
+
     start_server_and_gui()
