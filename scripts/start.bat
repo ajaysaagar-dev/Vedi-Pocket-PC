@@ -1,0 +1,249 @@
+@echo off
+setlocal EnableDelayedExpansion
+title Vedi Pocket PC - Launcher
+cd /d "%~dp0.."
+
+echo ========================================================
+echo           Vedi Pocket PC - Launcher
+echo ========================================================
+echo.
+echo Launch Options:
+echo   [1] Start Vedi Pocket PC Controller (PySide6 GUI)
+echo   [2] Reload Expo App (Clear Metro Cache)
+echo   [3] Create / Verify .env File
+echo   [4] Download / Reinstall All Dependencies
+echo   [5] Run Master Setup
+echo.
+set "CHOICE=1"
+choice /c 12345 /t 5 /d 1 /m "Select option (Auto-starting option 1 in 5s)... " >nul 2>&1
+if !ERRORLEVEL! EQU 2 goto RELOAD_EXPO
+if !ERRORLEVEL! EQU 3 goto CREATE_ENV_MENU
+if !ERRORLEVEL! EQU 4 goto DOWNLOAD_DEPS_MENU
+if !ERRORLEVEL! EQU 5 goto RUN_SETUP
+goto MAIN_PREFLIGHT
+
+:RELOAD_EXPO
+echo.
+echo ========================================================
+echo     Reloading Expo Mobile App ^& Clearing Metro Cache...
+echo ========================================================
+echo.
+cd apps\mobile\app
+call npx expo start -c
+pause
+exit /b 0
+
+:CREATE_ENV_MENU
+echo.
+echo ========================================================
+echo         Creating / Verifying .env File...
+echo ========================================================
+echo.
+call :ENSURE_ENV_FILE 1
+pause
+exit /b 0
+
+:DOWNLOAD_DEPS_MENU
+echo.
+echo ========================================================
+echo         Downloading All Dependencies...
+echo ========================================================
+echo.
+call :DOWNLOAD_PYTHON_DEPS 1
+call :DOWNLOAD_NODE_DEPS 1
+echo.
+echo   [OK] All dependencies successfully downloaded and installed.
+echo.
+pause
+exit /b 0
+
+:RUN_SETUP
+call "%~dp0setup.bat"
+exit /b 0
+
+:MAIN_PREFLIGHT
+:: ----------------------------------------------------------------
+:: 1. Pre-flight checks — fail fast with a clear message if the
+::    developer's machine is missing a runtime.
+:: ----------------------------------------------------------------
+echo [1/5] Checking prerequisites...
+
+where python >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo   [ERROR] Python was not found in your PATH or .venv.
+    echo   Vedi Pocket PC needs Python 3.10+ to run the PySide6
+    echo   desktop controller, stream server, and FastAPI backend.
+    echo.
+    echo   Install from https://www.python.org/ ^(tick "Add Python
+    echo   to PATH" in the installer^) then re-run this file.
+    echo.
+    pause
+    exit /b 1
+)
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
+echo   [OK] Python    !PY_VER!
+
+where node >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo   [ERROR] Node.js was not found in your PATH.
+    echo   Vedi Pocket PC needs Node.js v18+ to run the Expo dev server.
+    echo.
+    echo   Install from https://nodejs.org/ then re-run this file.
+    echo.
+    pause
+    exit /b 1
+)
+for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
+echo   [OK] Node.js   !NODE_VER!
+
+:: ----------------------------------------------------------------
+:: 2. Check / Create .env configuration file
+:: ----------------------------------------------------------------
+echo.
+echo [2/5] Verifying environment configuration ^(.env^)...
+call :ENSURE_ENV_FILE 0
+
+:: ----------------------------------------------------------------
+:: 3. Non-destructive port check (8080, 8000, 8088)
+:: ----------------------------------------------------------------
+echo.
+echo [3/5] Checking required ports ^(8080, 8000, 8088^)...
+for %%P in (8080 8000 8088) do (
+    netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo   [INFO] Port %%P is in use by another app. Controller will auto-bind to next free port.
+    )
+)
+echo   [OK] Port check complete.
+
+:: ----------------------------------------------------------------
+:: 4. Install Python deps if missing
+:: ----------------------------------------------------------------
+echo.
+echo [4/5] Verifying Python dependencies...
+python -c "import mss, aiohttp, fastapi, pyautogui, websockets, webview" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo   [INFO] Missing Python / PySide6 deps. Running pip install...
+    call :DOWNLOAD_PYTHON_DEPS 0
+) else (
+    echo   [OK] Python deps present.
+)
+
+:: ----------------------------------------------------------------
+:: 5. Firewall rules
+:: ----------------------------------------------------------------
+echo.
+echo [5/5] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088...
+set "FW_OK=1"
+for %%P in (8080 8000 8088) do (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+        "try { if (-not (Get-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Direction Inbound -LocalPort %%P -Protocol TCP -Action Allow -Profile Private,Domain | Out-Null }; exit 0 } catch { exit 1 }" >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo   [OK]  VediPocketPC-%%P ^(port %%P^)
+    ) else (
+        echo   [WARN] Could not add VediPocketPC-%%P ^(port %%P^).
+        echo          Re-run this window as Administrator if your phone
+        echo          can't reach the controller.
+        set "FW_OK=0"
+    )
+)
+if "!FW_OK!"=="0" (
+    echo.
+    echo   Phones may not be able to connect. Re-run start.bat as
+    echo   Administrator ^(right-click start.bat ^> Run as administrator^)
+    echo   to install the firewall rules automatically.
+    echo.
+)
+
+:: ----------------------------------------------------------------
+:: Launch PySide6 Controller.
+:: ----------------------------------------------------------------
+echo.
+echo Launching Vedi Pocket PC (PySide6 Controller)...
+echo   (Close the window or use System Tray icon to quit.)
+echo.
+
+python apps\desktop\controller\app.py
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo   [ERROR] Controller exited with code %ERRORLEVEL%.
+    echo.
+    pause
+    exit /b %ERRORLEVEL%
+)
+
+endlocal
+exit /b 0
+
+:: ================================================================
+:: Subroutines
+:: ================================================================
+
+:ENSURE_ENV_FILE
+if exist "%~dp0..\.env" (
+    if "%~1"=="1" (
+        echo   .env file already exists at "%~dp0..\.env".
+        set /p OVERWRITE="Do you want to overwrite .env with default values? (Y/N): "
+        if /i "!OVERWRITE!" NEQ "Y" (
+            echo   Skipped overwriting .env file.
+            goto :EOF
+        )
+    ) else (
+        echo   [OK] .env file present.
+        goto :EOF
+    )
+)
+
+echo   [INFO] Creating .env file with default configuration...
+(
+    echo # ========================================================
+    echo # Vedi Pocket PC - Environment Configuration
+    echo # ========================================================
+    echo.
+    echo # Screen Stream Server Settings
+    echo STREAM_HOST=0.0.0.0
+    echo STREAM_PORT=8080
+    echo STREAM_FPS=30
+    echo STREAM_JPEG_QUALITY=50
+    echo STREAM_MAX_WIDTH=640
+    echo STREAM_MAX_HEIGHT=360
+    echo STREAM_MONITOR_INDEX=1
+    echo STREAM_MOUSE_SENSITIVITY=1.5
+    echo STREAM_SCROLL_SENSITIVITY=1.0
+    echo STREAM_DEBUG_MOUSE=false
+    echo.
+    echo # Backend Server Settings
+    echo BACKEND_HOST=0.0.0.0
+    echo BACKEND_PORT=8000
+    echo EXPO_PORT=8088
+) > "%~dp0..\.env"
+echo   [OK] Created .env file successfully.
+goto :EOF
+
+:DOWNLOAD_PYTHON_DEPS
+echo   [INFO] Installing Python dependencies...
+python -m pip install --upgrade pip
+python -m pip install -e packages\core
+python -m pip install -r requirements.txt
+if !ERRORLEVEL! NEQ 0 (
+    echo.
+    echo   [ERROR] pip install failed. Check your network / proxy settings.
+    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
+)
+echo   [OK] Python dependencies installed.
+goto :EOF
+
+:DOWNLOAD_NODE_DEPS
+echo   [INFO] Installing Mobile App ^(Expo^) dependencies...
+cd apps\mobile\app
+call pnpm install
+set "MOBILE_ERR=!ERRORLEVEL!"
+cd ..
+if !MOBILE_ERR! NEQ 0 (
+    echo   [ERROR] Mobile app pnpm install failed.
+    if "%~1"=="1" ( exit /b 1 ) else ( pause & exit /b 1 )
+)
+echo   [OK] Node.js dependencies installed.
+goto :EOF
