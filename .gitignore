@@ -4,6 +4,7 @@ node_modules/
 
 # Build and distribution output
 dist/
+Distribution/*
 build/
 *.egg-info/
 

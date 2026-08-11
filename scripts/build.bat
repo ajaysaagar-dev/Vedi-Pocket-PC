@@ -22,6 +22,7 @@ python -m pip install pyinstaller pillow pywebview qrcode bottle --quiet
 
 echo.
 echo [2/3] Building standalone Windows executable with PyInstaller...
+if not exist "build\VediPocketPCController" mkdir "build\VediPocketPCController"
 
 python -m PyInstaller --noconfirm VediPocketPCController.spec
 
@@ -37,7 +38,7 @@ echo [3/3] Organizing build artifacts into Distribution folder...
 
 if exist "Distribution" rd /s /q "Distribution"
 if exist "dist\Vedi Pocket PC" (
-    powershell -NoProfile -Command "Move-Item -Path 'dist\Vedi Pocket PC' -Destination 'Distribution' -Force"
+    powershell -NoProfile -Command "Move-Item -Path 'dist\Vedi Pocket PC\*' -Destination 'Distribution\' -Force"
     if exist "dist" rd /s /q "dist"
 )
 if exist "build" rd /s /q "build"
