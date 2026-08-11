@@ -24,7 +24,7 @@ echo.
 echo [2/3] Building standalone Windows executable with PyInstaller...
 if not exist "build\VediPocketPCController" mkdir "build\VediPocketPCController"
 
-python -m PyInstaller --noconfirm VediPocketPCController.spec
+python -m PyInstaller --noconfirm apps\desktop\controller\VediPocketPCController.spec
 
 if %ERRORLEVEL% neq 0 (
     echo.
