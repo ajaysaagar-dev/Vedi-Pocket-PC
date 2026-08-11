@@ -71,7 +71,7 @@ export default function PairingScreen() {
           <TouchableOpacity style={styles.filledBtn} onPress={requestPermission}>
             <Text style={styles.filledBtnText}>Grant permission</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.textBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.textBtn} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}>
             <Text style={styles.textBtnText}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -134,7 +134,11 @@ export default function PairingScreen() {
       if (result.kind === 'ok') {
         await addDevice(result.device);
         wsClient.connect(result.device);
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         // If probing failed on backend port, fallback to adding direct device for screen streaming
         if (result.kind === 'unreachable') {
@@ -146,7 +150,11 @@ export default function PairingScreen() {
           };
           await addDevice(directDevice);
           wsClient.connect(directDevice);
-          router.back();
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)');
+          }
           return;
         }
 
@@ -190,7 +198,7 @@ export default function PairingScreen() {
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {/* Top bar — close and brand logo */}
         <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 16) + Spacing.xs }]}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))} activeOpacity={0.7}>
             <X color={palette.onSurface} size={22} />
           </TouchableOpacity>
           <View style={styles.topBrandGroup}>
