@@ -1,290 +1,189 @@
-<div align="center">
+# 🖥️ Vedi Pocket PC
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:203a43,100:2c5364&height=220&section=header&text=Vedi%20Pocket%20PC&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Your%20phone.%20Your%20PC.%20No%20cloud%20required.&descAlignY=58&descAlign=50" width="100%"/>
+Turn your phone into a wireless trackpad, keyboard, and screen for your PC — no cloud, no cables, no internet required. Vedi Pocket PC streams your desktop to your phone and sends mouse, keyboard, media, and power commands back, all over your local Wi-Fi.
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=2800&pause=900&color=38BDF8&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=90&lines=Wireless+Trackpad+%2B+Keyboard+%2B+Screen+Mirror;100%25+Local+%E2%80%A2+Zero+Cloud+%E2%80%A2+Zero+Internet;Electron+%2B+FastAPI+%2B+Expo+%2B+WebSockets" alt="Typing SVG" />
+The project has three parts that work together, plus a desktop app that launches and manages all of them for you:
 
-<br/>
-
-![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=for-the-badge&logo=windows11&logoColor=white)
-![Electron](https://img.shields.io/badge/Desktop-Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)
-![Python](https://img.shields.io/badge/Backend-Python%203.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Expo](https://img.shields.io/badge/Mobile-Expo%20%2F%20RN-000020?style=for-the-badge&logo=expo&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-4c1?style=for-the-badge)
-
-<br/>
-
-<img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" />
-<img src="https://img.shields.io/badge/LAN%20only-no%20cloud-critical?style=flat-square&color=orange" />
-<img src="https://img.shields.io/badge/latency-%3C50ms-9cf?style=flat-square" />
-
-</div>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## ✨ Overview
-
-**Vedi Pocket PC** turns your phone into a wireless trackpad, keyboard, and live screen for your desktop PC — streamed entirely over your **local Wi-Fi network**. No accounts, no third-party servers, no cloud relay, and zero internet dependency. 
-
-Scan a QR code on your PC screen and immediately take remote control.
-
-<div align="center">
-<table>
-<tr>
-<td align="center" width="25%">
-
-### 🖥️
-**Screen Mirror**
-Low-latency JPEG stream over WebSockets (<50ms)
-
-</td>
-<td align="center" width="25%">
-
-### 🖱️
-**Trackpad**
-Move · Left/Right Click · Drag · Smooth Scroll
-
-</td>
-<td align="center" width="25%">
-
-### ⌨️
-**Keyboard**
-Full soft keys + shortcut bar (Ctrl, Alt, Win, Del)
-
-</td>
-<td align="center" width="25%">
-
-### ⚡
-**Power & Media**
-Lock · Sleep · Shutdown · Mute · Volume Control
-
-</td>
-</tr>
-</table>
-</div>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 📋 System Requirements
-
-| Component | Requirement | Notes |
-|:---:|:---:|:---|
-| **OS** | Windows 10 / 11 | Host desktop machine |
-| **Node.js** | v18.0 or higher | Required for Electron desktop app & Expo server |
-| **Python** | 3.10 or higher | Required for backend agent & screen stream server |
-| **Network** | Local Wi-Fi (LAN) | Phone & PC must be on the same local Wi-Fi router |
-| **Mobile** | Expo Go App | Available free on iOS App Store & Android Google Play |
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🚀 Quick Start Guide
-
-### ⚡ Option A — 1-Click Automated Setup (Recommended)
-
-1. **Install All Dependencies**:
-   Double-click **[`setup.bat`](file:///P:/Vedi-Pocket-PC/setup.bat)** (or run `.\setup.bat` in PowerShell).
-   > *This script automatically checks Node & Python, installs Python packages, root Electron packages, and mobile Expo app packages in one step.*
-
-2. **Launch the Application**:
-   Double-click **[`start.bat`](file:///P:/Vedi-Pocket-PC/start.bat)** (or run `npm start`).
-   > *Launches the Electron desktop controller, starts the Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
-
-3. **Connect Mobile App**:
-   - Open **Expo Go** on your phone.
-   - Scan the **Expo QR Code** shown in your terminal / desktop app.
-   - Once inside the mobile app, scan the **PC Pairing QR Code** to connect!
+| Component | Folder | Stack | Role |
+|---|---|---|---|
+| **Desktop Controller** | root (`main.js`, `index.html`, …) | Electron | Launches/monitors the two Python services and the mobile dev server, shows a pairing QR code |
+| **Screen Stream Server** | [`screen-stream-server/`](./screen-stream-server) | Python (aiohttp, mss, PyAutoGUI) | Captures the desktop and streams JPEG frames over WebSocket; relays trackpad move/click/scroll events |
+| **Remote Agent (Backend)** | [`vedi-pocketpc-backend/`](./vedi-pocketpc-backend) | Python (FastAPI, WebSockets) | Handles pairing (PIN/QR), keyboard input, media keys, volume, and power actions (lock/sleep/shutdown); advertises itself via mDNS |
+| **Mobile App** | [`veddi-pocketpc/`](./veddi-pocketpc) | Expo / React Native / TypeScript | The phone client: scan to pair, then use trackpad, keyboard, screen-view, and controls tabs |
 
 ---
 
-### ⚙️ Option B — Manual Step-by-Step Installation
+## How it works
 
-<details>
-<summary><b>Click to expand manual setup instructions</b></summary>
-
-<br/>
-
-#### 1️⃣ Install Python Dependencies
-```powershell
-# Installs agent-core, mss, Pillow, aiohttp, pyautogui, fastapi, uvicorn, websockets, etc.
-pip install -r requirements.txt
+```
+┌─────────────────────────────┐
+│   VediPocketPC Controller    │  Electron desktop app
+│   (main.js)                  │  spawns & monitors ↓
+└──────┬───────────┬───────────┘
+       │           │
+       ▼           ▼
+┌─────────────┐ ┌───────────────────┐
+│ screen-      │ │ vedi-pocketpc-    │
+│ stream-      │ │ backend (FastAPI) │
+│ server       │ │ port 8000         │
+│ port 8080    │ │                   │
+│              │ │ pairing / QR /    │
+│ screen frames│ │ keyboard / media /│
+│ + trackpad   │ │ volume / power /  │
+│ over WS      │ │ mDNS discovery    │
+└──────┬───────┘ └─────────┬─────────┘
+       │                   │
+       └─────────┬─────────┘
+                  │ same LAN / Wi-Fi
+                  ▼
+     ┌─────────────────────────┐
+     │  Vedi Pocket PC mobile   │  Expo / React Native
+     │  app (phone)             │  Screen • Trackpad •
+     │                          │  Keyboard • Controls tabs
+     └─────────────────────────┘
 ```
 
-#### 2️⃣ Install Desktop & Mobile Node Dependencies
-```powershell
-# Install root Electron controller dependencies
-npm install
+1. The **Electron app** boots up, detects your LAN IP, and starts the two Python services as child processes.
+2. The **screen-stream-server** grabs the desktop with `mss`, encodes it as JPEG, and streams frames to the phone over a WebSocket (port `8080`), while also listening for trackpad move/click/scroll JSON messages on the same socket.
+3. The **backend agent** advertises itself on the LAN via mDNS (`_pcremote._tcp.local.`), generates a pairing PIN/QR code, and exposes REST + WebSocket endpoints (port `8000`) for keyboard input, media transport, volume, and power controls.
+4. The **mobile app** scans the QR code (or falls back to mDNS discovery / manual PIN entry) to pair, then talks to both services to mirror the screen and forward gestures, keystrokes, and commands back to the PC.
 
-# Install mobile client dependencies
-cd veddi-pocketpc
-npm install
-cd ..
-```
+---
 
-#### 3️⃣ Launch Desktop Controller
-```powershell
+## Getting started
+
+### Prerequisites
+
+- **Windows 10/11** (the agent uses Windows-specific APIs — `pycaw`, `taskkill`, etc.)
+- **Node.js** 18+ and npm
+- **Python** 3.10+ (3.11+ recommended)
+- A phone and PC on the **same Wi-Fi network**
+- [Expo Go](https://expo.dev/go) installed on the phone (for development) — a packaged build isn't required if you just want to try it via Expo
+
+### Option A — Run everything via the desktop app (recommended)
+
+```bash
+# From the repo root
+npm install
 npm start
 ```
 
-#### 4️⃣ Running Individual Services Separately (Without Electron)
-If you prefer running backends manually in individual PowerShell windows:
+This launches the Electron controller, which spawns the screen-stream server, the FastAPI backend, and the Expo dev server for you, and shows a QR code to scan from the mobile app.
 
-- **Screen Stream Server** (Port `8080`):
-  ```powershell
-  cd screen-stream-server
-  python server.py
-  ```
+### Option B — Run each service manually
 
-- **FastAPI Remote Agent Backend** (Port `8000`):
-  ```powershell
-  cd vedi-pocketpc-backend
-  python main.py
-  ```
+**1. Screen Stream Server**
+```bash
+cd screen-stream-server
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python server.py
+```
+Runs at `http://<LAN_IP>:8080`, WebSocket at `ws://<LAN_IP>:8080/ws`.
 
-- **Mobile Client Expo App** (Port `8088`):
-  ```powershell
-  cd veddi-pocketpc
-  npx expo start -c
-  ```
+**2. Remote Agent (Backend)**
+```bash
+cd vedi-pocketpc-backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+Runs at `http://<LAN_IP>:8000`. Prints a pairing PIN and QR code to the terminal.
 
-</details>
+**3. Mobile App**
+```bash
+cd veddi-pocketpc
+npm install
+npx expo start
+```
+Scan the Expo QR code with the Expo Go app, then pair with the PC from within the app.
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
+See each subfolder's README for full details:
+- [`screen-stream-server/README.md`](./screen-stream-server/README.md)
+- [`vedi-pocketpc-backend/README.md`](./vedi-pocketpc-backend/README.md)
+- [`veddi-pocketpc/README.md`](./veddi-pocketpc/README.md)
 
-## 📱 How to Pair Mobile App with PC
+---
 
-```mermaid
-sequenceDiagram
-    participant U as 👤 User
-    participant E as 🖥️ Electron App
-    participant B as 🔧 Backend (:8000)
-    participant S as 📡 Stream Server (:8080)
-    participant M as 📱 Mobile App
+## Features
 
-    U->>E: Run start.bat / npm start
-    E->>B: Spawn FastAPI Agent process
-    E->>S: Spawn Stream Server process
-    B->>B: Generate Pairing PIN & QR Code
-    U->>M: Scan Expo QR with Expo Go
-    M->>M: Launch Vedi Pocket PC app
-    U->>M: Scan PC Pairing QR Code
-    M->>B: Verify PIN & Authenticate
-    B-->>M: Pairing Confirmed (Token granted)
-    M->>S: Open WebSocket (ws://<LAN_IP>:8080/ws)
-    S-->>M: Stream low-latency JPEG frames & trackpad inputs
+- **📷 QR code pairing** with mDNS auto-discovery and manual PIN fallback
+- **🖥️ Live screen mirroring** — low-latency JPEG streaming over WebSocket, configurable FPS/resolution/quality
+- **🖱️ Trackpad mode** — relative mouse movement, left/right/double click, drag (mouse down/up), scroll
+- **⌨️ Remote keyboard** — soft keyboard forwarding plus a quick shortcut bar (Ctrl+C, Ctrl+V, Alt+Tab, Win, Esc, Task Manager)
+- **🔊 Media & volume controls** — play/pause/next/prev, system volume via `pycaw`
+- **⚡ Power management** — lock, sleep, shutdown
+- **📊 Status dashboard** — host info, connection latency, battery/memory stats
+- **🔒 Local-only / offline** — everything runs over LAN; no cloud services or internet dependency
+
+---
+
+## Building a distributable
+
+The Electron app is configured with `electron-builder` to produce a Windows installer that bundles the Python services and mobile project as extra resources:
+
+```bash
+npm run build   # NSIS installer + zip
+npm run pack    # Unpacked directory build, for testing
 ```
 
-1. Make sure your **Phone and PC are connected to the same Wi-Fi**.
-2. Run `start.bat` on your PC.
-3. Open **Expo Go** on your phone:
-   - **Android**: Scan the terminal QR code inside Expo Go.
-   - **iOS**: Scan the terminal QR code with your default Camera app, then tap "Open in Expo Go".
-4. In the mobile app, tap **Pair Device** and point your camera at the **PC Pairing QR code** displayed on your desktop screen (or enter the IP and 4-digit PIN manually).
+The Python backend agent can also be frozen into a standalone `.exe` (no Python install required on the target machine):
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🧩 System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Desktop["🖥️ Windows Desktop"]
-        E["⚡ Electron Controller<br/>main.js"]
-        S["📡 Screen Stream Server<br/>Python · aiohttp · mss<br/>:8080"]
-        B["🔧 Remote Agent Backend<br/>FastAPI · WebSockets<br/>:8000"]
-        E -->|spawns & monitors| S
-        E -->|spawns & monitors| B
-    end
-
-    subgraph Phone["📱 Mobile Client"]
-        M["Expo / React Native App<br/>Screen · Trackpad · Keyboard · Controls"]
-    end
-
-    S <-->|"JPEG frames + trackpad events (WS)"| M
-    B <-->|"pairing · keyboard · media · power (REST/WS)"| M
-    B -.->|"mDNS service discovery<br/>_pcremote._tcp.local."| M
-
-    style E fill:#38BDF8,color:#0f172a,stroke:#0284c7,stroke-width:2px
-    style S fill:#a78bfa,color:#1e1b4b,stroke:#7c3aed,stroke-width:2px
-    style B fill:#34d399,color:#022c22,stroke:#059669,stroke-width:2px
-    style M fill:#fb923c,color:#431407,stroke:#ea580c,stroke-width:2px
-```
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🗂️ Repository Structure
-
-```text
-Vedi-Pocket-PC/
-├── setup.bat                          ⚡ One-click installer (Node + Python dependencies)
-├── start.bat                          🚀 One-click launcher (Desktop + Backends + Expo)
-├── requirements.txt                   📦 Master Python dependencies file
-├── .npmrc                             ⚙️ Config for legacy peer dependency resolution
-├── controller/                        ⚡ Electron desktop controller & IPC handlers
-│   ├── main.js                        Central entry point for Electron
-│   ├── services/                      Process manager, binary resolver & network tools
-│   └── ipc/                           IPC bridge between UI & system services
-├── screen-stream-server/              📡 High-performance screen capture & trackpad server (:8080)
-│   ├── capture/                       Fast screen grabber using `mss` & `Pillow`
-│   ├── mouse/                         Low-latency mouse input injection
-│   └── server.py                      aiohttp WebSocket server
-├── vedi-pocketpc-backend/             🔧 FastAPI remote management agent (:8000)
-│   ├── routes/                        Pairing, system info, power & media routes
-│   ├── discovery.py                   mDNS local network discovery broadcast
-│   └── main.py                        FastAPI app entry point
-├── veddi-pocketpc/                    📱 Expo / React Native mobile application (:8088)
-│   ├── app/(tabs)/                    Screens: Home, Screen Mirror, Trackpad, Keyboard, Controls
-│   ├── app/pairing.tsx                Camera QR code scanner screen
-│   └── package.json                   Mobile app dependencies (React 19, Lucide, Navigation)
-└── packages/agent-core/               🧠 Shared Python domain models & utilities
-```
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🛠️ Building Standalone Distributables
-
-### Desktop Installer (.exe)
-To package the desktop application into a standalone Windows installer:
-
-```powershell
-npm run build   # Generates NSIS installer + ZIP in /dist
-npm run pack    # Builds unpacked executable directory for quick testing
-```
-
-### PyInstaller Standalone Backend
-To build the FastAPI backend into a single executable without requiring Python on target machines:
-
-```powershell
+```bash
 cd vedi-pocketpc-backend
 build_agent.bat
-# Produces dist/PCRemoteAgent.exe
+# Output: dist/PCRemoteAgent.exe
 ```
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
+---
 
-## 🚨 Troubleshooting & FAQ
+## Firewall
 
-### 1. Windows Firewall Blocking Connection
-If your phone cannot connect to the PC, open PowerShell **as Administrator** and allow inbound traffic on ports `8080` & `8000`:
+If the phone can't reach the PC, allow the ports through Windows Firewall (run PowerShell as Administrator):
 
 ```powershell
 New-NetFirewallRule -DisplayName "Vedi Pocket PC - Screen Stream (8080)" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow -Profile Private,Domain
 New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Private,Domain
 ```
 
-### 2. `Port 8088 is being used by another process`
-This happens if `npx expo start` is already running in another terminal window. Close all extra terminal windows running Expo before executing `start.bat` or `npm start`.
+---
 
-### 3. `npm install` Peer Dependency Error (`ERESOLVE`)
-Expo 57 / React Native 0.86 uses React 19. Both the root directory and `veddi-pocketpc/` contain `.npmrc` with `legacy-peer-deps=true` to automatically bypass strict peer dependency checks.
+## Repository structure
 
-### 4. `electron is not recognized as an internal or external command`
-Run `setup.bat` or run `npm install` in the root directory to install Electron into `node_modules`.
+```
+Vedi-Pocket-PC/
+├── main.js, preload.js, renderer.js   # Electron desktop controller
+├── index.html, styles.css             # Controller UI
+├── package.json                       # Electron app + electron-builder config
+├── screen-stream-server/              # Python: screen capture & trackpad relay (port 8080)
+│   ├── capture/  mouse/  streaming/
+│   ├── config.py, server.py
+│   └── requirements.txt
+├── vedi-pocketpc-backend/             # Python: FastAPI remote agent (port 8000)
+│   ├── routes/ (pairing, system, media)
+│   ├── discovery.py, ws_handler.py, input_control.py, state.py
+│   ├── main.py
+│   └── requirements.txt
+└── veddi-pocketpc/                    # Expo / React Native mobile client
+    ├── app/(tabs)/ (index, screen, trackpad, keyboard, controls)
+    ├── app/pairing.tsx
+    ├── components/, hooks/, constants/
+    └── package.json
+```
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
+---
 
-<div align="center">
+## Tech stack
 
-### 📄 License
+- **Desktop:** Electron, Node.js, `qrcode`, `electron-builder`
+- **Screen streaming:** Python, `aiohttp`, `mss`, `PyAutoGUI`, `Pillow`
+- **Remote agent:** Python, FastAPI, `uvicorn`, `websockets`, `zeroconf`, `pycaw`, `pystray`, `psutil`, `cryptography`
+- **Mobile:** Expo (React Native), TypeScript, Expo Router
 
-**MIT License** — See `package.json` for details.
+---
 
-</div>
+## License
+
+MIT (see `package.json`).

@@ -2,7 +2,7 @@
   "name": "vedi-pocketpc-desktop",
   "version": "1.0.0",
   "description": "VediPocketPC Desktop Controller",
-  "main": "controller/main.js",
+  "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
@@ -41,7 +41,8 @@
       "createStartMenuShortcut": true
     },
     "files": [
-      "controller/**/*",
+      "main.js",
+      "preload.js",
       "index.html",
       "renderer.js",
       "styles.css"

@@ -177,16 +177,6 @@ class PCRemoteWSClient {
 
   private scheduleReconnect() {
     this.clearReconnect();
-    // Don't reconnect if the user explicitly disconnected, or if the new
-    // connect() that triggered this schedule was itself a manual action
-    // (isManuallyClosed is set true in disconnect() and only cleared in
-    // onopen of a freshly-opened socket). Without this check, a reconnect
-    // timer that was already in flight when the user hit "Disconnect"
-    // would still fire and start a new connection cycle.
-    if (this.isManuallyClosed) {
-      console.log('[WS] Reconnect skipped: manually closed.');
-      return;
-    }
     if (!this.currentDevice || this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.log('[WS] Reconnect skipped: no device or max attempts reached.');
       return;

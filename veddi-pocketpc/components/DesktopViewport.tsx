@@ -31,26 +31,19 @@ import { palette, Spacing, Radius, Typography, Elevation } from '../constants/th
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let base64 = '';
-  const len = bytes.length;
-
-  for (let i = 0; i < len; i += 3) {
-    const b1 = bytes[i];
-    const b2 = i + 1 < len ? bytes[i + 1] : 0;
-    const b3 = i + 2 < len ? bytes[i + 2] : 0;
-
-    const c1 = b1 >> 2;
-    const c2 = ((b1 & 3) << 4) | (b2 >> 4);
-    const c3 = ((b2 & 15) << 2) | (b3 >> 6);
-    const c4 = b3 & 63;
-
-    base64 += chars[c1] + chars[c2];
-    base64 += i + 1 < len ? chars[c3] : '=';
-    base64 += i + 2 < len ? chars[c4] : '=';
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
-
-  return base64;
+  if (typeof btoa !== 'undefined') {
+    return btoa(binary);
+  }
+  if (typeof globalThis !== 'undefined' && (globalThis as any).btoa) {
+    return (globalThis as any).btoa(binary);
+  }
+  return '';
 }
 
 interface DesktopViewportProps {
@@ -77,22 +70,14 @@ export default function DesktopViewport({
   const [customPort, setCustomPort] = useState(String(streamPort));
 
   const [selectedRes, setSelectedRes] = useState({ label: '360p', w: 640, h: 360 });
-  // Default FPS is 20 (not 30) — at 30 FPS, a 640x360 JPEG stream lands in the
-  // 700-1200 kbps range on a typical desktop, which stutters badly on cellular.
-  // 20 FPS keeps responsiveness for cursor tracking while halving the bitrate.
-  const [selectedFps, setSelectedFps] = useState<number>(20);
-  // JPEG quality (10-95) maps to Low / Medium / High presets below.
-  // The server clamps to 10-100 and applies it to the *next* captured frame,
-  // so this is what actually controls bitrate per-frame.
-  const [selectedQuality, setSelectedQuality] = useState<number>(45);
+  const [selectedFps, setSelectedFps] = useState<number>(30);
 
-  const sendStreamSettings = (w: number, h: number, fps: number, quality: number) => {
+  const sendStreamSettings = (w: number, h: number, fps: number) => {
     const payloadObj = {
       type: 'set_stream_settings',
       max_width: w,
       max_height: h,
       fps: fps,
-      jpeg_quality: quality,
     };
 
     // Send over control client
@@ -109,8 +94,6 @@ export default function DesktopViewport({
   };
 
   const wsRef = useRef<WebSocket | null>(null);
-  const isMountedRef = useRef(true);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const frameCountRef = useRef(0);
   const bytesCountRef = useRef(0);
   const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -172,173 +155,89 @@ export default function DesktopViewport({
   }, []);
 
   const [frontUri, setFrontUri] = useState<string | null>(null);
+  const [backUri, setBackUri] = useState<string | null>(null);
+  const activeBufferRef = useRef<'front' | 'back'>('front');
+  const [activeBuffer, setActiveBuffer] = useState<'front' | 'back'>('front');
 
   const stopStream = useCallback(() => {
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     setIsStreaming(false);
     setFrontUri(null);
+    setBackUri(null);
   }, []);
 
   const startStream = useCallback(() => {
     stopStream();
 
-    // The stream-server's WebSocket endpoint requires a valid token
-    // (either `?token=…` in the URL or an `auth` message after open).
-    // The mobile app only pairs with the BACKEND (port 8000) for the
-    // QR-scan handshake, so we never have a stream-side token yet.
-    // Mint one by POSTing to the stream server's /pair endpoint
-    // (which accepts any PIN and issues a fresh session token from
-    // its own MemoryTokenStore), then connect with that token.
-    const fetchToken = async (): Promise<{ token: string; port: string }> => {
-      const candidatePorts = Array.from(new Set([targetPort, '8081', '8088', '8082', '8080']));
-      for (const p of candidatePorts) {
+    const wsUrl = `ws://${targetIp}:${targetPort}/ws`;
+    console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
+    setIsStreaming(true);
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      ws.binaryType = 'arraybuffer';
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('[ScreenViewport] Connected to screen stream');
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
-          const res = await fetch(`http://${targetIp}:${p}/pair`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: '' }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            const data = (await res.json()) as { token?: string };
-            if (data && typeof data.token === 'string' && data.token) {
-              return { token: data.token, port: p };
-            }
-          }
-        } catch {
-          // Probe next candidate port
+          ws.send(
+            JSON.stringify({
+              type: 'set_stream_settings',
+              max_width: selectedRes.w,
+              max_height: selectedRes.h,
+              fps: selectedFps,
+            })
+          );
+        } catch (e) {
+          console.warn('Failed sending initial settings on connect:', e);
         }
-      }
-      return { token: activeDevice?.token || 'direct_stream_token', port: targetPort };
-    };
+      };
 
-    const openSocket = ({ token, port }: { token: string; port: string }) => {
-      const wsUrl = token
-        ? `ws://${targetIp}:${port}/ws?token=${encodeURIComponent(token)}`
-        : `ws://${targetIp}:${port}/ws`;
-      console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
-      setIsStreaming(true);
+      ws.onmessage = event => {
+        if (event.data instanceof ArrayBuffer) {
+          const byteLength = event.data.byteLength;
+          bytesCountRef.current += byteLength;
+          frameCountRef.current += 1;
 
-      try {
-        const ws = new WebSocket(wsUrl);
-        ws.binaryType = 'arraybuffer';
-        wsRef.current = ws;
+          const base64 = arrayBufferToBase64(event.data);
+          const nextUri = `data:image/jpeg;base64,${base64}`;
 
-        ws.onopen = () => {
-          console.log('[ScreenViewport] Connected to screen stream');
-          try {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(
-                JSON.stringify({
-                  type: 'set_stream_settings',
-                  max_width: selectedRes.w,
-                  max_height: selectedRes.h,
-                  fps: selectedFps,
-                  jpeg_quality: selectedQuality,
-                })
-              );
-            }
-          } catch (e) {
-            console.warn('Failed sending initial settings on connect:', e);
+          if (activeBufferRef.current === 'front') {
+            setBackUri(nextUri);
+          } else {
+            setFrontUri(nextUri);
           }
-        };
+        }
+      };
 
-        ws.onmessage = event => {
-          try {
-            if (!event || !event.data) return;
-            if (typeof event.data === 'string') return; // Ignore text frames
+      ws.onerror = err => {
+        console.warn('[ScreenViewport] Stream socket connection pending or offline.');
+      };
 
-            let buffer: ArrayBuffer | null = null;
-            if (event.data instanceof ArrayBuffer) {
-              buffer = event.data;
-            } else if (event.data.buffer && event.data.buffer instanceof ArrayBuffer) {
-              buffer = event.data.buffer;
-            }
-
-            if (buffer && buffer.byteLength > 0) {
-              const byteLength = buffer.byteLength;
-              bytesCountRef.current += byteLength;
-              frameCountRef.current += 1;
-
-              const base64 = arrayBufferToBase64(buffer);
-              const nextUri = `data:image/jpeg;base64,${base64}`;
-
-              // Single buffer — RN's <Image> keeps the old frame visible
-              // until the new source is decoded, so we get the same effect
-              // without paying for two simultaneous JPEG decodes.
-              setFrontUri(nextUri);
-            }
-          } catch (err) {
-            console.warn('[ScreenViewport] Frame processing error:', err);
-          }
-        };
-
-        ws.onerror = err => {
-          // Log as info to prevent React Native LogBox popup while socket status settles
-          console.log('[ScreenViewport] Stream socket status event:', err);
-        };
-
-        ws.onclose = () => {
-          console.log('[ScreenViewport] Stream disconnected');
-          setIsStreaming(false);
-          wsRef.current = null;
-
-          if (reconnectTimerRef.current) {
-            clearTimeout(reconnectTimerRef.current);
-          }
-          if (isMountedRef.current) {
-            reconnectTimerRef.current = setTimeout(() => {
-              if (isMountedRef.current && !wsRef.current) {
-                console.log('[ScreenViewport] Auto-reconnecting to stream...');
-                startStream();
-              }
-            }, 3000);
-          }
-        };
-      } catch (e) {
-        console.error('[ScreenViewport] Failed to open stream socket:', e);
+      ws.onclose = () => {
+        console.log('[ScreenViewport] Stream disconnected');
         setIsStreaming(false);
-      }
-    };
-
-    // Async mint + open. The token request happens before the socket
-    // so the WS handshake carries it in the URL.
-    fetchToken().then(openSocket).catch(err => {
-      console.error('[ScreenViewport] Failed to mint stream token:', err);
+        wsRef.current = null;
+      };
+    } catch (e) {
+      console.error('[ScreenViewport] Failed to open stream socket:', e);
       setIsStreaming(false);
-    });
+    }
   }, [targetIp, targetPort, stopStream]);
-
-  const stopStreamRef = useRef(stopStream);
-  stopStreamRef.current = stopStream;
-
-  const startStreamRef = useRef(startStream);
-  startStreamRef.current = startStream;
 
   // Auto-start screen stream on component mount & clean up on unmount
   useEffect(() => {
-    isMountedRef.current = true;
-    startStreamRef.current();
-
+    startStream();
     return () => {
-      isMountedRef.current = false;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-      stopStreamRef.current();
+      stopStream();
     };
-  }, [targetIp, targetPort]);
+  }, [startStream, stopStream]);
+
+  const hasFrame = Boolean(frontUri || backUri);
 
   return (
     <View style={[styles.container, isFullscreen && styles.fullscreenContainer]}>
@@ -408,18 +307,45 @@ export default function DesktopViewport({
         {...panResponder.panHandlers}
         style={[styles.viewportFrame, isFullscreen && styles.fullscreenFrame]}
       >
-        {frontUri ? (
-          // Single Image — React Native's Image keeps the old frame visible
-          // until the new source is decoded, so we don't need explicit
-          // double-buffering. Rendering both buffers (the previous design)
-          // doubled JPEG decode work every frame and caused the visible
-          // stutter at higher bitrates.
-          <Image
-            source={{ uri: frontUri }}
-            style={[styles.screenImage, StyleSheet.absoluteFill]}
-            resizeMode="contain"
-            fadeDuration={0}
-          />
+        {hasFrame ? (
+          <View style={StyleSheet.absoluteFill}>
+            {frontUri && (
+              <Image
+                source={{ uri: frontUri }}
+                style={[
+                  styles.screenImage,
+                  StyleSheet.absoluteFill,
+                  { opacity: activeBuffer === 'front' ? 1 : 0 },
+                ]}
+                resizeMode="contain"
+                fadeDuration={0}
+                onLoad={() => {
+                  if (activeBufferRef.current === 'back') {
+                    activeBufferRef.current = 'front';
+                    setActiveBuffer('front');
+                  }
+                }}
+              />
+            )}
+            {backUri && (
+              <Image
+                source={{ uri: backUri }}
+                style={[
+                  styles.screenImage,
+                  StyleSheet.absoluteFill,
+                  { opacity: activeBuffer === 'back' ? 1 : 0 },
+                ]}
+                resizeMode="contain"
+                fadeDuration={0}
+                onLoad={() => {
+                  if (activeBufferRef.current === 'front') {
+                    activeBufferRef.current = 'back';
+                    setActiveBuffer('back');
+                  }
+                }}
+              />
+            )}
+          </View>
         ) : (
           <View style={styles.placeholderContainer}>
             {isStreaming ? (
@@ -497,10 +423,10 @@ export default function DesktopViewport({
               </Text>
               <View style={styles.segmented}>
                 {[
+                  { label: '1080p', w: 1920, h: 1080 },
                   { label: '720p', w: 1280, h: 720 },
                   { label: '480p', w: 854, h: 480 },
                   { label: '360p', w: 640, h: 360 },
-                  { label: '240p', w: 426, h: 240 },
                 ].map(res => {
                   const active = selectedRes.w === res.w;
                   return (
@@ -509,7 +435,7 @@ export default function DesktopViewport({
                       style={[styles.segment, active && styles.segmentActive]}
                       onPress={() => {
                         setSelectedRes(res);
-                        sendStreamSettings(res.w, res.h, selectedFps, selectedQuality);
+                        sendStreamSettings(res.w, res.h, selectedFps);
                       }}
                     >
                       <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
@@ -524,7 +450,7 @@ export default function DesktopViewport({
                 Stream Frame Rate (FPS)
               </Text>
               <View style={styles.segmented}>
-                {[15, 20, 30].map(f => {
+                {[15, 30, 60].map(f => {
                   const active = selectedFps === f;
                   return (
                     <TouchableOpacity
@@ -532,7 +458,7 @@ export default function DesktopViewport({
                       style={[styles.segment, active && styles.segmentActive]}
                       onPress={() => {
                         setSelectedFps(f);
-                        sendStreamSettings(selectedRes.w, selectedRes.h, f, selectedQuality);
+                        sendStreamSettings(selectedRes.w, selectedRes.h, f);
                       }}
                     >
                       <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
@@ -542,38 +468,6 @@ export default function DesktopViewport({
                   );
                 })}
               </View>
-
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>
-                JPEG Quality — biggest impact on bitrate
-              </Text>
-              <View style={styles.segmented}>
-                {[
-                  { label: 'Low (35)', q: 35 },
-                  { label: 'Medium (55)', q: 55 },
-                  { label: 'High (80)', q: 80 },
-                ].map(opt => {
-                  const active = selectedQuality === opt.q;
-                  return (
-                    <TouchableOpacity
-                      key={opt.label}
-                      style={[styles.segment, active && styles.segmentActive]}
-                      onPress={() => {
-                        setSelectedQuality(opt.q);
-                        sendStreamSettings(selectedRes.w, selectedRes.h, selectedFps, opt.q);
-                      }}
-                    >
-                      <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {kbps > 1500 && (
-                <Text style={styles.qualityWarn}>
-                  Stream is {kbps} kbps — try Low quality or 360p to reduce stutter.
-                </Text>
-              )}
 
               <TouchableOpacity
                 style={styles.modalSaveBtn}
@@ -813,11 +707,4 @@ const styles = StyleSheet.create({
   },
   segmentText: { ...Typography.labelMedium, color: palette.onSurfaceVariant },
   segmentTextActive: { color: palette.onPrimary },
-
-  qualityWarn: {
-    ...Typography.bodySmall,
-    color: palette.error,
-    marginTop: Spacing.xs,
-    textAlign: 'center',
-  },
 });

@@ -87,15 +87,10 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     try {
       const { pairedDevices, activeDevice } = get();
       const updated = pairedDevices.filter(d => d.ip !== ip);
-
+      
       let nextActive = activeDevice;
       if (activeDevice && activeDevice.ip === ip) {
-        // Pick the first remaining device rather than the last so the choice
-        // is reproducible — the last device in the array is always the most
-        // recently added (see addDevice), and switching to it after deleting
-        // an unrelated active device surprised users. First-of-list is also
-        // the order shown at the top of the Devices tab.
-        nextActive = updated.length > 0 ? updated[0] : null;
+        nextActive = updated.length > 0 ? updated[updated.length - 1] : null;
       }
 
       set({ pairedDevices: updated, activeDevice: nextActive });

@@ -4,32 +4,6 @@ A high-performance, lightweight local screen streaming and remote control server
 
 ---
 
-## What's new in this refactor
-
-This server used to carry its **own** copy of the mouse / keyboard /
-volume code. Now it shares one `ControlInput` use case with the
-`vedi-pocketpc-backend` agent via the `agent_core` package:
-
-- **No more duplicate driver code.** The `mouse/mouse_controller.py`
-  file is gone; input goes through
-  `agent_core.adapters.PyAutoGUIInputDriver`.
-- **Auth hole closed.** Every WebSocket connection must now present a
-  verified token from the shared `MemoryTokenStore` (via `?token=...`
-  on the URL or an `auth` message). Previously any device on the LAN
-  could issue clicks.
-
-```
-screen-stream-server/
-├── main.py               composition root
-├── domain/
-│   └── capture.py        ScreenCapturer (MSS-backed)
-├── presentation/
-│   └── ws_router.py      StreamManager (auth + dispatch + frames)
-└── config.py
-```
-
----
-
 ## Features
 
 - **Real-Time Screen Streaming**: High performance using `mss` for fast screen capture.
@@ -37,8 +11,6 @@ screen-stream-server/
 - **Bi-Directional Single WebSocket**:
   - `PC -> Mobile`: Binary JPEG screen frames.
   - `Mobile -> PC`: JSON control messages.
-- **Authenticated**: A valid session token (issued via `POST /pair`)
-  is required before any control message is processed.
 - **Configurable Control**: Adjust mouse sensitivity, scroll sensitivity, target FPS, max resolution, and JPEG quality.
 - **Non-Blocking Architecture**: Separate execution loops ensure screen capture and incoming control messages run independently with zero lag.
 - **Zero Cloud / Offline**: Works entirely over local Wi-Fi / LAN with no external dependencies or cloud services required.
@@ -57,17 +29,20 @@ screen-stream-server/
 ### 1. Create Virtual Environment & Install Dependencies
 
 ```bash
-# Shared domain package (required)
-pip install -e ../packages/agent-core
+# Create virtual environment
+python -m venv .venv
 
-# This server's deps
+# Activate virtual environment (Windows)
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### 2. Run the Server
 
 ```bash
-python main.py
+python server.py
 ```
 
 Console Output Example:
@@ -96,23 +71,6 @@ Waiting for mobile connection...
 ---
 
 ## WebSocket Communication Protocol
-
-### Mobile → PC: Auth
-
-Before any control messages are processed, the client must present a
-session token. Either:
-
-```
-ws://<PC_LAN_IP>:8080/ws?token=<TOKEN>
-```
-
-or send a single JSON frame immediately after connecting:
-
-```json
-{ "type": "auth", "token": "<TOKEN>" }
-```
-
-A token can be obtained from `POST /pair`.
 
 ### PC → Mobile (Screen Streaming)
 Sends raw binary JPEG image frames directly.
@@ -182,12 +140,15 @@ Configuration options can be modified in `config.py` or overridden via environme
 | Setting | Default | Description | Environment Variable |
 | :--- | :--- | :--- | :--- |
 | `HOST` | `"0.0.0.0"` | Server listening interface | `STREAM_HOST` |
-| `PORT` | `"8080"` | Server TCP port | `STREAM_PORT` |
+| `PORT` | `8080` | Server TCP port | `STREAM_PORT` |
 | `FPS` | `30` | Target frames per second | `STREAM_FPS` |
 | `JPEG_QUALITY` | `70` | JPEG compression quality (1-100) | `STREAM_JPEG_QUALITY` |
 | `MAX_WIDTH` | `1280` | Maximum capture output width | `STREAM_MAX_WIDTH` |
 | `MAX_HEIGHT` | `720` | Maximum capture output height | `STREAM_MAX_HEIGHT` |
 | `MONITOR_INDEX` | `1` | Target monitor index (`1` = Primary) | `STREAM_MONITOR_INDEX` |
+| `MOUSE_SENSITIVITY` | `1.5` | Mouse movement multiplier | `STREAM_MOUSE_SENSITIVITY` |
+| `SCROLL_SENSITIVITY`| `1.0` | Mouse scroll multiplier | `STREAM_SCROLL_SENSITIVITY` |
+| `DEBUG_MOUSE` | `False` | Log every mouse move event | `STREAM_DEBUG_MOUSE` |
 
 ---
 

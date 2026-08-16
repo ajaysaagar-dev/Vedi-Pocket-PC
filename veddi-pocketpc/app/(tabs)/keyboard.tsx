@@ -22,7 +22,6 @@ import {
   Undo2,
   Check,
   Send,
-  Tv,
 } from 'lucide-react-native';
 import { useDeviceStore } from '../../src/store/deviceStore';
 import wsClient from '../../src/ws/client';
@@ -31,10 +30,8 @@ import { palette, Spacing, Radius, Typography, Elevation } from '../../constants
 
 export default function KeyboardScreen() {
   const connectionStatus = useDeviceStore(state => state.connectionStatus);
-  const activeDevice = useDeviceStore(state => state.activeDevice);
   const isConnected = connectionStatus === 'connected';
 
-  const [showScreenViewport, setShowScreenViewport] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const [inputValue, setInputValue] = useState(' ');
   const [quickText, setQuickText] = useState('');
@@ -98,6 +95,9 @@ export default function KeyboardScreen() {
 
   return (
     <View style={styles.screen}>
+      {/* Real-time Desktop Viewport Scene */}
+      <DesktopViewport streamPort={8080} interactive={false} />
+
       <TextInput
         ref={inputRef}
         style={styles.hiddenInput}
@@ -113,34 +113,6 @@ export default function KeyboardScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Status Bar with Viewport Toggle */}
-        <View style={styles.topBar}>
-          <View style={styles.statusBadge}>
-            <View
-              style={[
-                styles.dot,
-                { backgroundColor: isConnected ? '#2E7D32' : palette.outline },
-              ]}
-            />
-            <Text style={styles.statusText}>
-              {isConnected ? activeDevice?.hostname : 'Not connected'}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.tvBtn,
-              showScreenViewport && { backgroundColor: palette.primaryContainer },
-            ]}
-            onPress={() => setShowScreenViewport(!showScreenViewport)}
-          >
-            <Tv color={showScreenViewport ? palette.primary : palette.onSurfaceVariant} size={20} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Real-time Desktop Viewport Scene (Toggleable) */}
-        {showScreenViewport && <DesktopViewport streamPort={8080} interactive={false} />}
-
         {/* Connection warning — M3 error container */}
         {!isConnected && (
           <View style={styles.warningBanner}>
@@ -329,36 +301,6 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     opacity: 0.01,
-  },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.surfaceContainer,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    flex: 1,
-    marginRight: Spacing.xs,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.xs },
-  statusText: {
-    ...Typography.labelLarge,
-    color: palette.onSurface,
-  },
-  tvBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: palette.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   warningBanner: {

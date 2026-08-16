@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import {
   Volume2,
   VolumeX,
@@ -10,7 +10,6 @@ import {
   Lock,
   Moon,
   Power,
-  Tv,
 } from 'lucide-react-native';
 import { useDeviceStore } from '../../src/store/deviceStore';
 import DesktopViewport from '../../components/DesktopViewport';
@@ -20,7 +19,6 @@ export default function ControlsScreen() {
   const connectionStatus = useDeviceStore(state => state.connectionStatus);
   const activeDevice = useDeviceStore(state => state.activeDevice);
 
-  const [showScreenViewport, setShowScreenViewport] = useState(false);
   const isConnected = connectionStatus === 'connected';
 
   const sendCommand = async (
@@ -72,34 +70,9 @@ export default function ControlsScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}>
-      {/* Top Status Bar with Viewport Toggle */}
-      <View style={styles.topBar}>
-        <View style={styles.statusBadge}>
-          <View
-            style={[
-              styles.dot,
-              { backgroundColor: isConnected ? '#2E7D32' : palette.outline },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isConnected ? activeDevice?.hostname : 'Not connected'}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.tvBtn,
-            showScreenViewport && { backgroundColor: palette.primaryContainer },
-          ]}
-          onPress={() => setShowScreenViewport(!showScreenViewport)}
-        >
-          <Tv color={showScreenViewport ? palette.primary : palette.onSurfaceVariant} size={20} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Real-time Desktop Viewport Scene (Toggleable) */}
-      {showScreenViewport && <DesktopViewport streamPort={8080} interactive={false} />}
+    <View style={styles.screen}>
+      {/* Real-time Desktop Viewport Scene */}
+      <DesktopViewport streamPort={8080} interactive={false} />
 
       {!isConnected && (
         <View style={styles.warningBanner}>
@@ -186,7 +159,7 @@ export default function ControlsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -277,39 +250,8 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: palette.background,
-  },
-  scrollContent: {
     padding: Spacing.md,
     gap: Spacing.md,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: palette.surfaceContainer,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    flex: 1,
-    marginRight: Spacing.xs,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.xs },
-  statusText: {
-    ...Typography.labelLarge,
-    color: palette.onSurface,
-  },
-  tvBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    backgroundColor: palette.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   warningBanner: {

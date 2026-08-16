@@ -4,7 +4,7 @@
     "slug": "mobile-new",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "../logo.jpeg",
+    "icon": "./assets/images/icon.png",
     "scheme": "mobilenew",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -25,17 +25,17 @@
     "android": {
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#0F131A",
-        "foregroundImage": "../logo.jpeg",
-        "backgroundImage": "../logo.jpeg",
-        "monochromeImage": "../logo.jpeg"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "../logo.jpeg"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -48,12 +48,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "../logo.jpeg",
+          "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0F131A",
+          "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#0F131A"
+            "backgroundColor": "#000000"
           }
         }
       ],
@@ -61,21 +61,7 @@
       "expo-image",
       "expo-secure-store",
       "expo-status-bar",
-      "expo-web-browser",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true,
-            "manifest": {
-              "usesFeature": [
-                { "name": "android.hardware.camera", "required": false },
-                { "name": "android.hardware.camera.autofocus", "required": false }
-              ]
-            }
-          }
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
