@@ -20,6 +20,12 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
+        // Freeze inactive tabs — their JS context and native views are
+        // suspended while not focused, which dramatically lowers RAM usage
+        // (each tab can otherwise keep an idle stream socket + image buffer
+        // mounted). Tab state is preserved on return. Tune to `false` if
+        // you want all tabs hot at all times.
+        freezeOnBlur: true,
         tabBarStyle: {
           backgroundColor: palette.surfaceContainer,
           borderTopWidth: 0,

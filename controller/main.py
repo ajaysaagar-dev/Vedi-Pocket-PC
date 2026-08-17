@@ -22,6 +22,13 @@ _REPO_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("VediPocketPC.ControllerApp.1.0")
+    except Exception:
+        pass
+
 from aiohttp import web
 
 from controller.network import find_free_port, get_lan_ip
@@ -96,6 +103,77 @@ async def run_server(pm: ProcessManager, port: int, open_browser: bool = True) -
         print("[Controller] Clean exit complete.", flush=True)
 
 
+def ensure_ico_file() -> str:
+    """Ensures logo.ico exists for Windows taskbar and titlebar app icon."""
+    ico_path = os.path.join(_REPO_ROOT, "logo.ico")
+    jpg_path = os.path.join(_REPO_ROOT, "logo.jpeg")
+    if not os.path.exists(ico_path) and os.path.exists(jpg_path):
+        try:
+            from PIL import Image
+            img = Image.open(jpg_path)
+            img.save(ico_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+        except Exception:
+            pass
+    return ico_path if os.path.exists(ico_path) else ""
+
+
+def _apply_icon_to_process_hwnds(ico_path: str) -> None:
+    if sys.platform != "win32" or not os.path.exists(ico_path):
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        WM_SETICON = 0x0080
+        ICON_SMALL = 0
+        ICON_BIG = 1
+        IMAGE_ICON = 1
+        LR_LOADFROMFILE = 0x0010
+
+        abs_ico = os.path.abspath(ico_path)
+        h_icon_big = user32.LoadImageW(None, abs_ico, IMAGE_ICON, 32, 32, LR_LOADFROMFILE)
+        h_icon_small = user32.LoadImageW(None, abs_ico, IMAGE_ICON, 16, 16, LR_LOADFROMFILE)
+        if not h_icon_big:
+            h_icon_big = user32.LoadImageW(None, abs_ico, IMAGE_ICON, 0, 0, LR_LOADFROMFILE)
+        if not h_icon_small:
+            h_icon_small = h_icon_big
+
+        current_pid = os.getpid()
+
+        def _enum_proc(hwnd, lParam):
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value == current_pid:
+                if h_icon_big:
+                    user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_icon_big)
+                if h_icon_small:
+                    user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_icon_small)
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        enum_func = WNDENUMPROC(_enum_proc)
+        user32.EnumWindows(enum_func, 0)
+    except Exception:
+        pass
+
+
+def apply_windows_icon(title: str = "Vedi Pocket PC") -> None:
+    """Sets AppUserModelID and window icon on Windows taskbar & window frame."""
+    if sys.platform != "win32":
+        return
+    ico_path = ensure_ico_file()
+    if not ico_path:
+        return
+
+    def _set_icon_loop():
+        for delay in (0.2, 0.6, 1.2, 2.5, 4.0):
+            time.sleep(delay)
+            _apply_icon_to_process_hwnds(ico_path)
+
+    threading.Thread(target=_set_icon_loop, daemon=True).start()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Vedi Pocket PC Desktop Controller")
     parser.add_argument("--port", type=int, default=8090, help="Controller UI Port (default: 8090)")
@@ -114,6 +192,8 @@ def main() -> None:
     if use_window:
         try:
             import webview
+
+            apply_windows_icon("Vedi Pocket PC")
 
             loop_holder = {}
             shutdown_event_holder = {}

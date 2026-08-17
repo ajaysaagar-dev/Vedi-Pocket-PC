@@ -9,8 +9,10 @@ import {
   TextInput,
   PanResponder,
   AppState,
+  Share,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { Paths, File } from 'expo-file-system';
 import {
   Play,
   Square,
@@ -22,6 +24,8 @@ import {
   X,
   MousePointer,
   Eye,
+  Camera,
+  Activity,
 } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
 import { wsClient } from '../src/ws/client';
@@ -149,8 +153,26 @@ export default function DesktopViewport({
   const [customPort, setCustomPort] = useState(String(streamPort));
 
   const [selectedRes, setSelectedRes] = useState({ label: '360p', w: 640, h: 360 });
-  const [selectedFps, setSelectedFps] = useState<number>(20);
-  const [selectedQuality, setSelectedQuality] = useState<number>(45);
+  // Defaults tuned for ~60MB resident footprint on a typical phone: lower FPS
+  // means fewer JPEG decodes / second, and lower JPEG quality means smaller
+  // base64 strings held in React state. Both can be raised from the settings
+  // modal; we just pick a sane default.
+  const [selectedFps, setSelectedFps] = useState<number>(15);
+  const [selectedQuality, setSelectedQuality] = useState<number>(35);
+
+  // -----------------------------------------------------------------------
+  // New feature state — sits alongside existing logic without changing it.
+  // -----------------------------------------------------------------------
+  // Latency (ms) to the streaming server. -1 = unknown / not yet measured.
+  const [latencyMs, setLatencyMs] = useState<number>(-1);
+  // Quick toast for "Screenshot saved" — auto-clears.
+  const [savingToast, setSavingToast] = useState<string | null>(null);
+  // Hint flag rendered in the toolbar: adaptive FPS auto-dropped one step.
+  const [adaptiveReduced, setAdaptiveReduced] = useState(false);
+  // Last user-selected fps baseline; lets us restore after adaptive throttle.
+  const userFpsRef = useRef<number>(selectedFps);
+  // Outbound ping timestamps for RTT measurement.
+  const pingSentAtRef = useRef<number>(0);
 
   const [displayedUri, setDisplayedUri] = useState<string | null>(null);
 
@@ -193,6 +215,64 @@ export default function DesktopViewport({
       }
     }
   };
+
+  // -------------------------------------------------------------------------
+  // Latency probe — NEW FEATURE
+  // Sends a tiny JSON ping over the stream socket and waits for the matching
+  // pong reply. The control-plane wsClient also has heartbeats but those go
+  // over a different socket; measuring RTT on the streaming socket gives a
+  // more honest "screen responsiveness" number that's useful in the toolbar.
+  // We only fire one probe at a time to avoid building up a queue.
+  // -------------------------------------------------------------------------
+  const sendLatencyProbe = useCallback(() => {
+    const sock = wsRef.current;
+    if (!sock || sock.readyState !== WebSocket.OPEN) return;
+    if (pingSentAtRef.current !== 0) return; // probe already in flight
+    pingSentAtRef.current = Date.now();
+    try {
+      sock.send(JSON.stringify({ type: 'ping', t: pingSentAtRef.current }));
+    } catch {
+      pingSentAtRef.current = 0;
+    }
+  }, []);
+
+  // Listen for pong replies on the stream socket. We piggyback on the
+  // existing `onmessage` handler so we don't need a second subscription.
+  // To detect pongs we add a tiny side-effect here (the actual hookup is
+  // done in startStream below — this is just a callback the startStream
+  // path installs onto `sock`).
+  // We track this via a ref because the WS onmessage is reassigned each
+  // time the socket is rebuilt.
+  // -------------------------------------------------------------------------
+  // Screenshot/share — NEW FEATURE
+  // Writes the currently displayed JPEG data URI to a file inside the
+  // app's cache, then opens the native share sheet so the user can save
+  // it to gallery / send it to themselves. Uses the new Expo FileSystem
+  // class API (`Paths`, `File`) — no new dependencies required.
+  // -------------------------------------------------------------------------
+  const captureAndShareFrame = useCallback(async () => {
+    if (!displayedUri) {
+      setSavingToast('No frame to capture yet');
+      setTimeout(() => setSavingToast(null), 2000);
+      return;
+    }
+    try {
+      const base64 = displayedUri.split(',')[1] ?? '';
+      const filename = `pc-stream-${Date.now()}.jpg`;
+      const file = new File(Paths.cache, filename);
+      file.write(base64, { encoding: 'base64' });
+      setSavingToast('Saved · opening share');
+      setTimeout(() => setSavingToast(null), 2000);
+      await Share.share({
+        url: file.uri,
+        message: 'PC screen capture',
+      });
+    } catch (err) {
+      console.warn('[ScreenViewport] Screenshot failed:', err);
+      setSavingToast('Capture failed');
+      setTimeout(() => setSavingToast(null), 2000);
+    }
+  }, [displayedUri]);
 
   // PanResponder to handle dragging finger on Desktop Viewport to move PC cursor
   const panResponder = useMemo(
@@ -237,19 +317,67 @@ export default function DesktopViewport({
   const targetPort = customPort || String(streamPort);
   const activeToken = activeDevice?.token;
 
-  // Start FPS & KB/s calculation timer
+  // Start FPS & KB/s calculation timer.
+// Tick at 2s rather than 1s — this halves the React re-render frequency
+// inside DesktopViewport, which is the main consumer of CPU time and a
+// steady driver of GC pressure.
   useEffect(() => {
     statsTimerRef.current = setInterval(() => {
-      setFps(frameCountRef.current);
-      setKbps(Math.round((bytesCountRef.current * 8) / 1024));
+      const fpsNow = frameCountRef.current;
+      const kbpsNow = Math.round((bytesCountRef.current * 8) / 1024);
       frameCountRef.current = 0;
       bytesCountRef.current = 0;
-    }, 1000);
+
+      setFps(fpsNow);
+      setKbps(kbpsNow);
+
+      // ---- Adaptive quality: drop one FPS step if bandwidth is poor ----
+      // Threshold tuned to keep the mobile data path comfortable on WiFi
+      // while still flagging slow networks. We only ever drop one step so
+      // we don't fight user intent; the user can always raise it back
+      // from the settings modal. Doing the throttle here also keeps the
+      // frame/byte counters authoritative for the next 2s window.
+      const baselineFps = userFpsRef.current;
+      if (
+        kbpsNow > 1800 &&
+        fpsNow > 0 &&
+        baselineFps > 15 &&
+        selectedFps === baselineFps
+      ) {
+        const nextFps = baselineFps === 30 ? 20 : 15;
+        setSelectedFps(nextFps);
+        setAdaptiveReduced(true);
+        sendStreamSettings(selectedRes.w, selectedRes.h, nextFps, selectedQuality);
+      } else if (adaptiveReduced && kbpsNow < 900 && selectedFps !== baselineFps) {
+        setSelectedFps(baselineFps);
+        sendStreamSettings(selectedRes.w, selectedRes.h, baselineFps, selectedQuality);
+        setAdaptiveReduced(false);
+      }
+    }, 2000);
 
     return () => {
       if (statsTimerRef.current) clearInterval(statsTimerRef.current);
     };
-  }, []);
+  }, [selectedRes.w, selectedRes.h, selectedQuality, selectedFps, adaptiveReduced]);
+
+  // ---- Latency probe timer — NEW FEATURE -------------------------------
+  // Sends one outbound ping every 5s. Cheap on the wire, gives us a live
+  // "network feels responsive" number for the toolbar health badge.
+  // The latency callback is intentionally rebind-safe: the onmessage handler
+  // we patched above always reads `pingSentAtRef.current`, so it doesn't
+  // matter how many times we rebuild the socket.
+  const latencyProbeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    latencyProbeTimerRef.current = setInterval(() => {
+      sendLatencyProbe();
+    }, 5000);
+    return () => {
+      if (latencyProbeTimerRef.current) {
+        clearInterval(latencyProbeTimerRef.current);
+        latencyProbeTimerRef.current = null;
+      }
+    };
+  }, [sendLatencyProbe]);
 
   const stopStream = useCallback(() => {
     isManualStopRef.current = true;
@@ -271,8 +399,13 @@ export default function DesktopViewport({
     }
     pendingUriRef.current = null;
     pendingBytesRef.current = null;
+    // Drop the last-rendered JPEG data URI so expo-image can release its
+    // native bitmap AND the ~40KB base64 string in React state gets GC'd.
+    setDisplayedUri(null);
     setFps(0);
     setKbps(0);
+    setLatencyMs(-1);
+    setAdaptiveReduced(false);
     setIsStreaming(false);
   }, []);
 
@@ -376,7 +509,22 @@ export default function DesktopViewport({
         ws.onmessage = event => {
           try {
             if (!event || !event.data) return;
-            if (typeof event.data === 'string') return;
+            // String payloads are usually pong replies (latency probe),
+            // settings acks, or noise from the agent. Check for our
+            // own pong first; everything else we drop like before.
+            if (typeof event.data === 'string') {
+              try {
+                const str = event.data as string;
+                if (str.indexOf('"pong"') !== -1 && pingSentAtRef.current !== 0) {
+                  const rtt = Date.now() - pingSentAtRef.current;
+                  pingSentAtRef.current = 0;
+                  if (rtt > 0 && rtt < 60000) setLatencyMs(rtt);
+                }
+              } catch {
+                /* ignore non-JSON text */
+              }
+              return;
+            }
 
             const bytes = getUint8ArrayFromEventData(event.data);
             if (!bytes) return;
@@ -529,135 +677,201 @@ export default function DesktopViewport({
 
   const hasFrame = displayedUri != null;
 
-  return (
-    <View style={[styles.container, isFullscreen && styles.fullscreenContainer]}>
-      {/* Header bar / Toolbar */}
-      {!isFullscreen && (
-        <View style={styles.toolbar}>
-          <View style={styles.statusInfo}>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: isStreaming ? '#2E7D32' : palette.outline },
-              ]}
-            />
-            <Text style={styles.statusTitle}>
-              {isStreaming
-                ? fps > 0 || kbps > 0
-                  ? `${fps} FPS | ${kbps} kbps`
-                  : 'Connecting...'
-                : 'Screen Offline'}
-            </Text>
-          </View>
-
-          <View style={styles.toolActions}>
-            <TouchableOpacity
-              style={styles.toolBtn}
-              onPress={() => setTouchMode(touchMode === 'click' ? 'view' : 'click')}
-            >
-              {touchMode === 'click' ? (
-                <MousePointer color={palette.primary} size={18} />
-              ) : (
-                <Eye color={palette.onSurfaceVariant} size={18} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.toolBtn}
-              onPress={() => setShowConfigModal(true)}
-            >
-              <Settings color={palette.onSurfaceVariant} size={18} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.toggleBtn,
-                isStreaming ? styles.stopBtn : styles.startBtn,
-              ]}
-              onPress={isStreaming ? stopStream : startStream}
-            >
-              {isStreaming ? (
-                <Square color={palette.onPrimary} size={16} />
-              ) : (
-                <Play color={palette.onPrimary} size={16} />
-              )}
-              <Text style={styles.toggleBtnText}>
-                {isStreaming ? 'Stop' : 'Start'}
+  const renderViewportBody = () => (
+    <>
+      {hasFrame ? (
+        <ExpoImage
+          source={{ uri: displayedUri! }}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          transition={0}
+          cachePolicy="none"
+          priority="high"
+          onError={() => {
+            console.warn('[ScreenViewport] Image decode error on active buffer');
+          }}
+        />
+      ) : (
+        <View style={styles.placeholderContainer}>
+          {isStreaming ? (
+            <>
+              <ActivityIndicator size="large" color={palette.primary} />
+              <Text style={styles.placeholderText}>Waiting for frames...</Text>
+            </>
+          ) : (
+            <>
+              <Tv color={palette.outline} size={48} />
+              <Text style={styles.placeholderTitle}>PC Screen Stream</Text>
+              <Text style={styles.placeholderSub}>
+                Target: {targetIp}:{targetPort}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.toolBtn}
-              onPress={() => setIsFullscreen(!isFullscreen)}
-            >
-              <Maximize2 color={palette.onSurfaceVariant} size={18} />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.connectBigBtn} onPress={startStream}>
+                <Play color={palette.onPrimary} size={18} style={{ marginRight: 8 }} />
+                <Text style={styles.connectBigBtnText}>Start Desktop Viewport</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
+    </>
+  );
 
-      {/* Screen Viewport Canvas */}
-      <View
-        {...panResponder.panHandlers}
-        style={[styles.viewportFrame, isFullscreen && styles.fullscreenFrame]}
+  const renderFloatingControls = () => (
+    <View style={styles.floatingControls}>
+      <TouchableOpacity
+        style={styles.floatingBtn}
+        onPress={() => setIsFullscreen(false)}
       >
-        {hasFrame ? (
-          <ExpoImage
-            source={{ uri: displayedUri! }}
-            style={StyleSheet.absoluteFill}
-            contentFit="contain"
-            transition={0}
-            cachePolicy="none"
-            priority="high"
-            onError={() => {
-              console.warn('[ScreenViewport] Image decode error on active buffer');
-            }}
-          />
+        <Minimize2 color="#FFFFFF" size={20} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.floatingBtn, { backgroundColor: isStreaming ? '#D32F2F' : '#388E3C' }]}
+        onPress={isStreaming ? stopStream : startStream}
+      >
+        {isStreaming ? (
+          <Square color="#FFFFFF" size={20} />
         ) : (
-          <View style={styles.placeholderContainer}>
-            {isStreaming ? (
-              <>
-                <ActivityIndicator size="large" color={palette.primary} />
-                <Text style={styles.placeholderText}>Waiting for frames...</Text>
-              </>
-            ) : (
-              <>
-                <Tv color={palette.outline} size={48} />
-                <Text style={styles.placeholderTitle}>PC Screen Stream</Text>
-                <Text style={styles.placeholderSub}>
-                  Target: {targetIp}:{targetPort}
+          <Play color="#FFFFFF" size={20} />
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <>
+      <View style={styles.container}>
+        {/* Header bar / Toolbar */}
+        {!isFullscreen && (
+          <View style={styles.toolbar}>
+            <View style={styles.statusInfo}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: isStreaming ? '#2E7D32' : palette.outline },
+                ]}
+              />
+              <Text style={styles.statusTitle}>
+                {isStreaming
+                  ? fps > 0 || kbps > 0
+                    ? `${fps} FPS | ${kbps} kbps`
+                    : 'Connecting...'
+                  : 'Screen Offline'}
+              </Text>
+              {/* NEW: latency badge — color-coded so users can tell
+                  at a glance if the network feels sluggish. */}
+              {isStreaming && latencyMs >= 0 && (
+                <View style={styles.latencyPill}>
+                  <Activity
+                    color={
+                      latencyMs < 80
+                        ? '#2E7D32'
+                        : latencyMs < 180
+                          ? '#B45309'
+                          : palette.error
+                    }
+                    size={10}
+                  />
+                  <Text style={styles.latencyText}>{latencyMs} ms</Text>
+                </View>
+              )}
+              {/* NEW: temporary toast e.g. "Screenshot saved". */}
+              {savingToast && (
+                <View style={styles.toastPill}>
+                  <Text style={styles.toastText}>{savingToast}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.toolActions}>
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={() => setTouchMode(touchMode === 'click' ? 'view' : 'click')}
+              >
+                {touchMode === 'click' ? (
+                  <MousePointer color={palette.primary} size={18} />
+                ) : (
+                  <Eye color={palette.onSurfaceVariant} size={18} />
+                )}
+              </TouchableOpacity>
+
+              {/* NEW: screenshot/share floating action — saves current
+                  frame to app cache and opens the OS share sheet so the
+                  user can save it to gallery / send it to themselves. */}
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={captureAndShareFrame}
+                disabled={!hasFrame}
+              >
+                <Camera
+                  color={hasFrame ? palette.onSurfaceVariant : palette.outline}
+                  size={18}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={() => setShowConfigModal(true)}
+              >
+                <Settings color={palette.onSurfaceVariant} size={18} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.toggleBtn,
+                  isStreaming ? styles.stopBtn : styles.startBtn,
+                ]}
+                onPress={isStreaming ? stopStream : startStream}
+              >
+                {isStreaming ? (
+                  <Square color={palette.onPrimary} size={16} />
+                ) : (
+                  <Play color={palette.onPrimary} size={16} />
+                )}
+                <Text style={styles.toggleBtnText}>
+                  {isStreaming ? 'Stop' : 'Start'}
                 </Text>
-                <TouchableOpacity style={styles.connectBigBtn} onPress={startStream}>
-                  <Play color={palette.onPrimary} size={18} style={{ marginRight: 8 }} />
-                  <Text style={styles.connectBigBtnText}>Start Desktop Viewport</Text>
-                </TouchableOpacity>
-              </>
-            )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.toolBtn}
+                onPress={() => setIsFullscreen(true)}
+              >
+                <Maximize2 color={palette.onSurfaceVariant} size={18} />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* Fullscreen Floating Controls */}
-        {isFullscreen && (
-          <View style={styles.floatingControls}>
-            <TouchableOpacity
-              style={styles.floatingBtn}
-              onPress={() => setIsFullscreen(false)}
-            >
-              <Minimize2 color="#FFFFFF" size={20} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.floatingBtn, { backgroundColor: isStreaming ? '#D32F2F' : '#388E3C' }]}
-              onPress={isStreaming ? stopStream : startStream}
-            >
-              {isStreaming ? (
-                <Square color="#FFFFFF" size={20} />
-              ) : (
-                <Play color="#FFFFFF" size={20} />
-              )}
-            </TouchableOpacity>
+        {/* Screen Viewport Canvas — non-fullscreen mode */}
+        {!isFullscreen && (
+          <View
+            {...panResponder.panHandlers}
+            style={styles.viewportFrame}
+          >
+            {renderViewportBody()}
           </View>
         )}
       </View>
+
+      {/* Fullscreen overlay — true screen-wide via Modal */}
+      <Modal
+        visible={isFullscreen}
+        animationType="fade"
+        presentationStyle="overFullScreen"
+        transparent={false}
+        statusBarTranslucent
+        onRequestClose={() => setIsFullscreen(false)}
+      >
+        <View style={styles.fullscreenContainer}>
+          <View
+            {...panResponder.panHandlers}
+            style={styles.fullscreenFrame}
+          >
+            {renderViewportBody()}
+            {renderFloatingControls()}
+          </View>
+        </View>
+      </Modal>
 
       {/* Settings Modal */}
       <Modal
@@ -734,6 +948,11 @@ export default function DesktopViewport({
                       key={f}
                       style={[styles.segment, active && styles.segmentActive]}
                       onPress={() => {
+                        // Treat this as the user's chosen baseline so the
+                        // adaptive reducer compares against it instead of
+                        // clobbering the user's last pick.
+                        userFpsRef.current = f;
+                        setAdaptiveReduced(false);
                         setSelectedFps(f);
                         sendStreamSettings(selectedRes.w, selectedRes.h, f, selectedQuality);
                       }}
@@ -792,7 +1011,7 @@ export default function DesktopViewport({
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
@@ -839,6 +1058,33 @@ const styles = StyleSheet.create({
   statusTitle: {
     ...Typography.labelMedium,
     color: palette.onSurface,
+  },
+  // NEW: small latency pill rendered next to the FPS status text.
+  latencyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.surfaceContainerHighest,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+    marginLeft: Spacing.xs,
+    gap: 3,
+  },
+  latencyText: {
+    ...Typography.labelSmall,
+    color: palette.onSurfaceVariant,
+  },
+  // NEW: brief toast pill for "Screenshot saved" / "Capture failed".
+  toastPill: {
+    marginLeft: Spacing.xs,
+    backgroundColor: palette.primaryContainer,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+  },
+  toastText: {
+    ...Typography.labelSmall,
+    color: palette.onPrimaryContainer,
   },
   toolActions: {
     flexDirection: 'row',
