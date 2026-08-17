@@ -92,9 +92,14 @@ export default function KeyboardScreen() {
       paste: ['ctrl', 'v'],
       undo: ['ctrl', 'z'],
       selectall: ['ctrl', 'a'],
+      desktop: ['win', 'd'],
+      taskmgr: ['ctrl', 'shift', 'esc'],
+      switch: ['alt', 'tab'],
+      lock: ['win', 'l'],
     };
     wsClient.send({ type: 'hotkey', keys: map[combo] ?? [] });
   };
+
 
   return (
     <View style={styles.screen}>
@@ -227,7 +232,18 @@ export default function KeyboardScreen() {
               <KeyButton key={i} label={k.label} icon={k.icon} onPress={k.action} disabled={!isConnected} tonal />
             ))}
           </View>
+          <View style={[styles.row, { marginTop: 6 }]}>
+            {[
+              { label: 'Desktop', icon: null, action: () => sendShortcut('desktop') },
+              { label: 'Switch', icon: null, action: () => sendShortcut('switch') },
+              { label: 'Tasks', icon: null, action: () => sendShortcut('taskmgr') },
+              { label: 'Lock', icon: null, action: () => sendShortcut('lock') },
+            ].map((k, i) => (
+              <KeyButton key={i} label={k.label} icon={k.icon} onPress={k.action} disabled={!isConnected} tonal />
+            ))}
+          </View>
         </View>
+
 
         {/* D-pad */}
         <View style={styles.section}>

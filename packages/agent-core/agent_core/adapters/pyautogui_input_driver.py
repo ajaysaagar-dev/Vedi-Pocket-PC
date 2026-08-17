@@ -102,7 +102,18 @@ class PyAutoGUIInputDriver(_InputDriverPort):
     def type_text(self, cmd: TextInputCommand) -> None:
         if not cmd.text:
             return
-        self._pyautogui.write(cmd.text, _pause=False)
+        try:
+            # Fast-path for standard ASCII typing
+            self._pyautogui.write(cmd.text, _pause=False)
+        except Exception:
+            # Fallback for unicode/emoji characters
+            try:
+                import pyperclip
+                pyperclip.copy(cmd.text)
+                self._pyautogui.hotkey("ctrl", "v", _pause=False)
+            except Exception:
+                pass
+
 
     def press_key(self, cmd: KeyPressCommand) -> None:
         if not cmd.key:

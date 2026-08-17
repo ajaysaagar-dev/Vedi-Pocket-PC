@@ -51,19 +51,33 @@ from config import (
 
 
 def get_lan_ip() -> str:
-    """Best-effort LAN IP discovery.
+    """Best-effort LAN IP discovery."""
+    try:
+        import psutil
+        interfaces = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
+        for name, addrs in interfaces.items():
+            is_up = stats.get(name).isup if name in stats else True
+            for a in addrs:
+                if a.family == socket.AF_INET and not a.address.startswith("127.") and not a.address.startswith("169.254."):
+                    lower = name.lower()
+                    if is_up and any(k in lower for k in ("wi-fi", "wifi", "ethernet", "lan", "wlan")):
+                        return a.address
+    except Exception:
+        pass
 
-    Kept separate from `vedi-pocketpc-backend/infrastructure/discovery`
-    because aiohttp servers don't necessarily need psutil on import.
-    """
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        if not ip.startswith("127.") and not ip.startswith("169.254."):
+            return ip
     except Exception:
-        return "127.0.0.1"
+        pass
+
+    return "127.0.0.1"
+
 
 
 class ScreenStreamServer:
@@ -166,18 +180,25 @@ class ScreenStreamServer:
         target_fps = max(1, self.stream_manager.target_fps)
         interval = 1.0 / target_fps
         next_frame_time = loop.time()
+        was_active = False
 
         while True:
             try:
                 # Idle optimization: If no clients connected, avoid hammering CPU with captures
                 if self.stream_manager.client_count == 0:
-                    await asyncio.sleep(0.1)
+                    if was_active:
+                        was_active = False
+                        import gc
+                        gc.collect()
+                    await asyncio.sleep(0.15)
                     next_frame_time = loop.time()
                     continue
 
+                was_active = True
                 target_fps = max(1, self.stream_manager.target_fps)
                 interval = 1.0 / target_fps
                 now = loop.time()
+
 
                 if now < next_frame_time:
                     await asyncio.sleep(next_frame_time - now)

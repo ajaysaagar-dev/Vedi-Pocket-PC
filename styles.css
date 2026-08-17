@@ -699,36 +699,46 @@ body {
 }
 
 .tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: none;
-
   border: none;
-
   padding: 6px 12px;
-
   font-size: 12px;
-
   font-weight: 500;
-
   color: var(--text-muted);
-
   border-radius: var(--radius-sm);
-
   cursor: pointer;
-
   transition: all 0.2s;
+}
+
+.tab-btn-logo {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.section-card-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .tab-btn:hover {
   color: var(--text-main);
-
   background-color: var(--surface-highest);
 }
 
 .tab-btn.active {
   color: #000000;
-
   background-color: #ffffff;
 }
+
 
 .console-actions {
   display: flex;

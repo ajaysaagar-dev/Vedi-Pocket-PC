@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { MousePointer, Keyboard, Sliders, Wifi } from 'lucide-react-native';
+import { MousePointer, Keyboard, Sliders, Wifi, Tv } from 'lucide-react-native';
 import { palette, Typography, Spacing } from '../../constants/theme-m3';
 import { AppLogo } from '../../constants/assets';
 
@@ -57,7 +57,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="screen"
         options={{
-          href: null,
+          headerTitle: () => <HeaderTitleWithLogo title="Screen Mirror" />,
+          tabBarLabel: 'Screen',
+          tabBarIcon: ({ color, size }) => <Tv color={color} size={size} />,
         }}
       />
       <Tabs.Screen

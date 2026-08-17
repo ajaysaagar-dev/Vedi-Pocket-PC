@@ -72,17 +72,22 @@ def get_all_local_ips() -> List[str]:
         import psutil
 
         addrs = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
         for iface_name, iface_addrs in addrs.items():
+            is_up = stats.get(iface_name).isup if iface_name in stats else True
             for addr in iface_addrs:
                 if addr.family != socket.AF_INET:
                     continue
                 ip = addr.address
-                if ip.startswith("127."):
+                if ip.startswith("127.") or ip.startswith("169.254."):
                     continue
                 if is_virtual_ip(ip, iface_name):
                     virtual_ips.append(ip)
                     continue
                 prio = _iface_priority(iface_name)
+                # Boost active interfaces
+                if not is_up:
+                    prio += 50
                 lan_ips.append((prio, ip))
     except Exception:
         pass
@@ -92,6 +97,7 @@ def get_all_local_ips() -> List[str]:
         item[0],
         item[1],
     ))
+
 
     if not lan_ips:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

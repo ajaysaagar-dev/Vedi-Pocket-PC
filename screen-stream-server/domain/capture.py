@@ -89,6 +89,14 @@ class ScreenCapturer:
             except Exception:
                 pass
             self._thread_local.sct = None
+        buf = getattr(self._thread_local, "buf", None)
+        if buf is not None:
+            try:
+                buf.close()
+            except Exception:
+                pass
+            self._thread_local.buf = None
+
 
     def get_monitors(self) -> List[Dict[str, Any]]:
         _ensure_windows_desktop_access()
@@ -189,7 +197,14 @@ class ScreenCapturer:
 
             self._last_resolution = (img.width, img.height)
 
-            buf = io.BytesIO()
+            buf = getattr(self._thread_local, "buf", None)
+            if buf is None:
+                buf = io.BytesIO()
+                self._thread_local.buf = buf
+            else:
+                buf.seek(0)
+                buf.truncate(0)
+
             img.save(buf, format="JPEG", quality=jpeg_quality, optimize=False, subsampling=2)
             jpeg_bytes = buf.getvalue()
 
@@ -202,6 +217,7 @@ class ScreenCapturer:
                 return None, (0, 0)
 
             return jpeg_bytes, (img.width, img.height)
+
 
         except RuntimeError as err:
             self._dispose_sct()

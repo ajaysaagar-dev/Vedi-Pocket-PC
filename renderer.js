@@ -349,6 +349,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnCopyIp.addEventListener('click', () => copyToClipboard(txtLanIp ? txtLanIp.textContent : ''));
   }
 
+  const btnCopyAllInfo = document.getElementById('btnCopyAllInfo');
+  if (btnCopyAllInfo) {
+    btnCopyAllInfo.addEventListener('click', () => {
+      const ip = txtLanIp ? txtLanIp.textContent : '';
+      const pin = txtPairingPin ? txtPairingPin.textContent : '';
+      const pairing = txtPairingUrl ? txtPairingUrl.textContent : '';
+      const expo = txtExpoUrl ? txtExpoUrl.textContent : '';
+      const summary = `IP: ${ip}\nPort: 8000\nPIN: ${pin}\nPairing URL: ${pairing}\nExpo URL: ${expo}`;
+      copyToClipboard(summary);
+    });
+  }
+
+
   // Tab switching
   if (tabPython && tabExpo && logPython && logExpo) {
     tabPython.addEventListener('click', () => {

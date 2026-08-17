@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VediPocketPC Controller</title>
-  <link rel="icon" type="image/jpeg" href="logo.jpeg" />
+  <title>Vedi Pocket PC</title>
+  <link rel="icon" type="image/x-icon" href="logo.ico" />
+  <link rel="shortcut icon" type="image/jpeg" href="logo.jpeg" />
   <link rel="stylesheet" href="styles.css" />
+
   <!-- Google Fonts: Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -65,9 +67,13 @@
         <div class="card qr-card">
           <div class="card-header">
             <div class="card-title-group">
-              <span class="card-tag tag-green">Server QR</span>
-              <h3>PC Stream Connection</h3>
+              <img src="logo.jpeg" alt="Python App Logo" class="section-card-logo" />
+              <div>
+                <span class="card-tag tag-green">Python Core</span>
+                <h3>PC Stream Connection</h3>
+              </div>
             </div>
+
             <button class="icon-btn" id="btnCopyServerUrl" title="Copy WebSocket URL">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -163,16 +169,24 @@
               <span class="row-label">Backend REST Port</span>
               <span class="row-value">8000</span>
             </div>
+            <div class="info-row" style="margin-top: 10px;">
+              <button class="small-copy-btn" id="btnCopyAllInfo" style="width: 100%; padding: 7px 12px; font-size: 12px;">Copy All Connection Details</button>
+            </div>
           </div>
         </div>
+
       </div>
 
       <!-- Bottom Panel: Tabbed Server Terminal Logs -->
       <div class="card console-card">
         <div class="console-header">
           <div class="console-tabs">
-            <button class="tab-btn active" id="tabPython">Python Server Logs</button>
+            <button class="tab-btn active" id="tabPython">
+              <img src="logo.jpeg" alt="Python App Logo" class="tab-btn-logo" />
+              Python Server Logs
+            </button>
             <button class="tab-btn" id="tabExpo">Expo App Logs</button>
+
           </div>
           <div class="console-actions">
             <button class="btn btn-sm" id="btnCopyLogs">Copy Logs</button>

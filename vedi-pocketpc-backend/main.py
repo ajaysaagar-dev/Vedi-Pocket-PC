@@ -178,13 +178,24 @@ def run_tray(container: Container) -> None:
         from PIL import Image, ImageDraw
 
         def create_image():
+            logo_path = os.path.abspath(os.path.join(_HERE, os.pardir, "logo.jpeg"))
+            if os.path.exists(logo_path):
+                try:
+                    img = Image.open(logo_path).convert("RGBA").resize((64, 64), Image.Resampling.LANCZOS)
+                    mask = Image.new("L", (64, 64), 0)
+                    mask_draw = ImageDraw.Draw(mask)
+                    mask_draw.rounded_rectangle([0, 0, 64, 64], radius=14, fill=255)
+                    output = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+                    output.paste(img, (0, 0), mask=mask)
+                    return output
+                except Exception:
+                    pass
             image = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
             draw = ImageDraw.Draw(image)
-            draw.ellipse([4, 4, 60, 60], fill=(33, 150, 243, 255))
+            draw.ellipse([4, 4, 60, 60], fill=(56, 189, 248, 255))
             draw.ellipse([4, 4, 60, 60], outline=(255, 255, 255, 255), width=2)
-            draw.rectangle([28, 16, 36, 48], fill=(255, 255, 255, 255))
-            draw.rectangle([16, 28, 48, 36], fill=(255, 255, 255, 255))
             return image
+
 
         def on_quit(icon, item):
             print("[SERVER] Shutting down agent...")

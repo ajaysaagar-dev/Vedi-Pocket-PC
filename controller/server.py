@@ -71,6 +71,7 @@ class ControllerServer:
         self.app.router.add_get("/styles.css", self.handle_static_css)
         self.app.router.add_get("/renderer.js", self.handle_static_js)
         self.app.router.add_get("/logo.jpeg", self.handle_static_logo)
+        self.app.router.add_get("/logo.ico", self.handle_static_ico)
 
     async def handle_options(self, request: web.Request) -> web.Response:
         return web.Response(status=204)
@@ -86,6 +87,10 @@ class ControllerServer:
 
     async def handle_static_logo(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(os.path.join(ROOT_DIR, "logo.jpeg"))
+
+    async def handle_static_ico(self, request: web.Request) -> web.FileResponse:
+        return web.FileResponse(os.path.join(ROOT_DIR, "logo.ico"))
+
 
     async def _build_full_info(self) -> dict:
         base = self.pm.get_status_payload()
