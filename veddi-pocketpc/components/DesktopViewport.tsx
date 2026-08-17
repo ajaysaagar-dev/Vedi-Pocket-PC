@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -24,47 +24,11 @@ import {
   Eye,
 } from 'lucide-react-native';
 import { useDeviceStore } from '../src/store/deviceStore';
-import wsClient from '../src/ws/client';
+import { wsClient } from '../src/ws/client';
 import { palette, Spacing, Radius, Typography, Elevation } from '../constants/theme-m3';
 
 // ---------------------------------------------------------------------------
-// Frame-pipeline plumbing
-// ---------------------------------------------------------------------------
-//
-// Root cause (per upstream issue investigation):
-//   The previous renderer fed every fresh JPEG byte sequence into a brand
-//   new `data:` URI on each `onmessage`. React Native's <Image> (and
-//   `expo-image`) treat each unique URI as a fresh image and run the full
-//   decode + texture upload path before any pixels reach the view. At 15–30
-//   FPS, with ~100–200 KB JPEGs, the decode path routinely exceeded the
-//   inter-frame interval, so the view sat in a transient "old bitmap
-//   released / new bitmap not yet decoded" window for most of each second
-//   — that window renders as a solid black frame, which is exactly the
-//   intermittent-blank symptom users reported.
-//
-// The fix has three layers:
-//
-//   1. SERVER  – ship only frames that have a real chance of being new and
-//                decodable: validate the JPEG EOI marker, deduplicate
-//                against the previous frame's content hash, and skip
-//                anomalously-small JPEGs that turn out to be blank
-//                desktops. Frames go on the wire inside a `STRM + length
-//                + bytes` envelope so the client can detect truncation.
-//
-//   2. CLIENT  – pull each incoming frame off the socket, validate it
-//                (SOI + EOI + envelope-length match), and queue it
-//                through a frame-rate governor. The governor runs at a
-//                fixed cadence (smaller than the decode budget) and
-//                *pre-decodes* the queued frame via `ExpoImage.prefetch`
-//                before swapping the visible source. That eliminates the
-//                blank-between-URI-change-and-decode window because the
-//                bitmap is in the cache (memory-disk) the moment we point
-//                the `<Image>` at it.
-//
-//   3. RENDER  – a single `<Image>` mounted with `cachePolicy="memory-disk"`
-//                and `priority="high"`, plus a render-health watchdog
-//                that detects when frames stop reaching the view and
-//                forces a stream reset.
+// Binary WebSocket Helpers
 // ---------------------------------------------------------------------------
 
 function getUint8ArrayFromEventData(data: any): Uint8Array | null {
@@ -86,10 +50,7 @@ function getUint8ArrayFromEventData(data: any): Uint8Array | null {
 }
 
 /**
- * Try to peel a `STRM + uint32-BE-length + bytes` envelope off the front
- * of the buffer. Returns null if the magic isn't present or the length
- * is impossible (the latter would only happen with corrupted bytes and
- * means the frame should be dropped, not interpreted as raw JPEG).
+ * Unwrap a `STRM + uint32-BE-length + bytes` envelope if present.
  */
 function tryUnwrapEnvelope(bytes: Uint8Array): { bytes: Uint8Array } | null {
   if (bytes.length < 8) return null;
@@ -102,28 +63,25 @@ function tryUnwrapEnvelope(bytes: Uint8Array): { bytes: Uint8Array } | null {
     return null;
   }
   const declared =
-    (bytes[4] << 24) |
-    (bytes[5] << 16) |
-    (bytes[6] << 8) |
-    bytes[7];
-  // Sanity: declared length cannot exceed buffer length. If it does
-  // the frame is truncated mid-flight; drop it.
+    ((bytes[4] & 0xff) << 24) |
+    ((bytes[5] & 0xff) << 16) |
+    ((bytes[6] & 0xff) << 8) |
+    (bytes[7] & 0xff);
+
   if (declared <= 0 || declared > bytes.length - 8) return null;
   return { bytes: bytes.subarray(8, 8 + declared) };
 }
 
 function isValidJpeg(bytes: Uint8Array | null): boolean {
   if (!bytes || bytes.length < 4) return false;
-  // Check JPEG SOI (Start of Image) marker: 0xFF, 0xD8
+  // Check JPEG SOI marker: 0xFF, 0xD8
   return bytes[0] === 0xff && bytes[1] === 0xd8;
 }
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 /**
- * Convert a Uint8Array to a base64 string without going through
- * `btoa` (which isn't available on React Native). The implementation is
- * a chunked loop that avoids building intermediate strings.
+ * High-speed Uint8Array to base64 converter.
  */
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   const len = bytes.length;
@@ -194,32 +152,31 @@ export default function DesktopViewport({
   const [selectedFps, setSelectedFps] = useState<number>(20);
   const [selectedQuality, setSelectedQuality] = useState<number>(45);
 
-  // The currently-displayed URI. We swap to this URI only after the
-  // frame-rate governor has had a chance to *pre-decode* the bitmap
-  // into the `expo-image` memory cache. That keeps the previous bitmap
-  // visible until the new one is ready, eliminating the blank window
-  // that caused the intermittent-black symptom.
   const [displayedUri, setDisplayedUri] = useState<string | null>(null);
 
-  // Latest decoded frame — used for the FPS / kbps counters in the
-  // toolbar, and to detect stalls (frames arriving but no decode in
-  // >1 s => force a stream reset).
+  const connectedAtRef = useRef<number>(0);
   const lastDecodedAtRef = useRef<number>(0);
   const lastFrameAtRef = useRef<number>(0);
-  const watchdogArmedRef = useRef(false);
 
-  // Refs that the socket handler updates without going through React
-  // state — keeping the hot path off `setState` is critical for not
-  // starving the JS thread at high frame rates.
   const pendingUriRef = useRef<string | null>(null);
   const isFrameScheduledRef = useRef(false);
 
-  const sendStreamSettings = (w: number, h: number, fps: number, quality: number) => {
+  const wsRef = useRef<WebSocket | null>(null);
+  const isMountedRef = useRef(true);
+  const isManualStopRef = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const frameCountRef = useRef(0);
+  const bytesCountRef = useRef(0);
+  const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const watchdogTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const panDeltaRef = useRef({ lastX: 0, lastY: 0 });
+
+  const sendStreamSettings = (w: number, h: number, targetFps: number, quality: number) => {
     const payloadObj = {
       type: 'set_stream_settings',
       max_width: w,
       max_height: h,
-      fps: fps,
+      fps: targetFps,
       jpeg_quality: quality,
     };
 
@@ -236,65 +193,48 @@ export default function DesktopViewport({
     }
   };
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const isMountedRef = useRef(true);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const frameCountRef = useRef(0);
-  const bytesCountRef = useRef(0);
-  const statsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const governorTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const watchdogTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastPanDx = useRef(0);
-  const lastPanDy = useRef(0);
-
-  // Stable per-session identifier used as `recyclingKey` so the cache
-  // is keyed by stream session, not by URI. We use `useState`'s lazy
-  // initializer (rather than `useRef`) so the impure `Date.now` /
-  // `Math.random` calls happen exactly once per mount, outside of the
-  // render path that React's purity rules inspect.
-  const [streamSessionId, setStreamSessionId] = useState<string>(
-    () => `stream-${Date.now()}-${Math.floor(Math.random() * 1e6).toString(36)}`
-  );
-
   // PanResponder to handle dragging finger on Desktop Viewport to move PC cursor
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => interactive && touchMode === 'click',
-      onMoveShouldSetPanResponder: () => interactive && touchMode === 'click',
-      onPanResponderGrant: () => {
-        lastPanDx.current = 0;
-        lastPanDy.current = 0;
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        const dx = gestureState.dx - lastPanDx.current;
-        const dy = gestureState.dy - lastPanDy.current;
-        lastPanDx.current = gestureState.dx;
-        lastPanDy.current = gestureState.dy;
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => interactive && touchMode === 'click',
+        onMoveShouldSetPanResponder: () => interactive && touchMode === 'click',
+        onPanResponderGrant: () => {
+          panDeltaRef.current.lastX = 0;
+          panDeltaRef.current.lastY = 0;
+        },
+        onPanResponderMove: (evt, gestureState) => {
+          const dx = gestureState.dx - panDeltaRef.current.lastX;
+          const dy = gestureState.dy - panDeltaRef.current.lastY;
+          panDeltaRef.current.lastX = gestureState.dx;
+          panDeltaRef.current.lastY = gestureState.dy;
 
-        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-          wsClient.send({
-            type: 'mouse_move',
-            dx,
-            dy,
-          });
-        }
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        if (Math.abs(gestureState.dx) < 3 && Math.abs(gestureState.dy) < 3) {
-          wsClient.send({
-            type: 'mouse_click',
-            button: 'left',
-          });
-        }
-        lastPanDx.current = 0;
-        lastPanDy.current = 0;
-      },
-    })
-  ).current;
+          if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+            wsClient.send({
+              type: 'mouse_move',
+              dx,
+              dy,
+            });
+          }
+        },
+        onPanResponderRelease: (evt, gestureState) => {
+          if (Math.abs(gestureState.dx) < 3 && Math.abs(gestureState.dy) < 3) {
+            wsClient.send({
+              type: 'mouse_click',
+              button: 'left',
+            });
+          }
+          panDeltaRef.current.lastX = 0;
+          panDeltaRef.current.lastY = 0;
+        },
+      }),
+    [interactive, touchMode]
+  );
 
   // Determine effective target IP and Port
   const targetIp = customIp || activeDevice?.ip || '127.0.0.1';
   const targetPort = customPort || String(streamPort);
+  const activeToken = activeDevice?.token;
 
   // Start FPS & KB/s calculation timer
   useEffect(() => {
@@ -311,244 +251,253 @@ export default function DesktopViewport({
   }, []);
 
   const stopStream = useCallback(() => {
+    isManualStopRef.current = true;
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
-    }
-    if (governorTimerRef.current) {
-      clearInterval(governorTimerRef.current);
-      governorTimerRef.current = null;
     }
     if (watchdogTimerRef.current) {
       clearInterval(watchdogTimerRef.current);
       watchdogTimerRef.current = null;
     }
     if (wsRef.current) {
-      try { wsRef.current.close(); } catch { /* ignore */ }
+      try {
+        wsRef.current.close();
+      } catch {
+        /* ignore */
+      }
       wsRef.current = null;
     }
     pendingUriRef.current = null;
+    setFps(0);
+    setKbps(0);
     setIsStreaming(false);
   }, []);
 
-  const startStream = useCallback(() => {
-    stopStream();
+  const startStream = useCallback(
+    function startStreamFn() {
+      isManualStopRef.current = false;
 
-    const fetchToken = async (): Promise<{ token: string; port: string }> => {
-      const candidatePorts = Array.from(new Set([targetPort, '8081', '8088', '8082', '8080']));
-      for (const p of candidatePorts) {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      if (watchdogTimerRef.current) {
+        clearInterval(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+      if (wsRef.current) {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 1500);
-          const res = await fetch(`http://${targetIp}:${p}/pair`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: '' }),
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            const data = (await res.json()) as { token?: string };
-            if (data && typeof data.token === 'string' && data.token) {
-              return { token: data.token, port: p };
-            }
-          }
+          wsRef.current.close();
         } catch {
-          // Probe next candidate port
-        }
-      }
-      return { token: activeDevice?.token || 'direct_stream_token', port: targetPort };
-    };
-
-    const openSocket = ({ token, port }: { token: string; port: string }) => {
-      const wsUrl = token
-        ? `ws://${targetIp}:${port}/ws?token=${encodeURIComponent(token)}`
-        : `ws://${targetIp}:${port}/ws`;
-      console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
-      setIsStreaming(true);
-
-      let ws: WebSocket;
-      try {
-        ws = new WebSocket(wsUrl);
-      } catch (e) {
-        console.error('[ScreenViewport] Failed to open stream socket:', e);
-        setIsStreaming(false);
-        return;
-      }
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('[ScreenViewport] Connected to screen stream');
-        // Reset the session ID so a freshly-handshaked socket gets its
-        // own `recyclingKey` and the cache doesn't carry old bitmaps
-        // from a previous session.
-        setStreamSessionId(
-          `stream-${Date.now()}-${Math.floor(Math.random() * 1e6).toString(36)}`
-        );
-
-        // Reset decode / frame heartbeat tracking on (re)connect.
-        lastDecodedAtRef.current = 0;
-        lastFrameAtRef.current = 0;
-        watchdogArmedRef.current = false;
-
-        try {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({
-                type: 'set_stream_settings',
-                max_width: selectedRes.w,
-                max_height: selectedRes.h,
-                fps: selectedFps,
-                jpeg_quality: selectedQuality,
-              })
-            );
-          }
-        } catch (e) {
-          console.warn('Failed sending initial settings on connect:', e);
-        }
-      };
-
-      ws.onmessage = event => {
-        try {
-          if (!event || !event.data) return;
-          if (typeof event.data === 'string') return;
-
-          const bytes = getUint8ArrayFromEventData(event.data);
-          if (!bytes) return;
-
-          // Prefer the new STRM envelope; fall back to legacy raw-JPEG
-          // frames so we don't break older servers.
-          let jpegBytes: Uint8Array | null = null;
-          const framed = tryUnwrapEnvelope(bytes);
-          if (framed) {
-            jpegBytes = framed.bytes;
-          } else {
-            jpegBytes = bytes;
-          }
-
-          if (!isValidJpeg(jpegBytes)) return;
-
-          // ---- account this frame for the on-screen stats ------------
-          bytesCountRef.current += jpegBytes.byteLength;
-          frameCountRef.current += 1;
-          lastFrameAtRef.current = Date.now();
-
-          const base64 = uint8ArrayToBase64(jpegBytes);
-          const nextUri = `data:image/jpeg;base64,${base64}`;
-
-          pendingUriRef.current = nextUri;
-
-          if (!isFrameScheduledRef.current) {
-            isFrameScheduledRef.current = true;
-            requestAnimationFrame(() => {
-              isFrameScheduledRef.current = false;
-              const target = pendingUriRef.current;
-              if (target && isMountedRef.current) {
-                setDisplayedUri(target);
-                lastDecodedAtRef.current = Date.now();
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('[ScreenViewport] Frame processing error:', err);
-        }
-      };
-
-      ws.onerror = err => {
-        // Don't tear the connection down here; let `onclose` handle
-        // reconnection so we don't double-fire the reconnect timer.
-        console.log('[ScreenViewport] Stream socket status event:', err);
-      };
-
-      ws.onclose = () => {
-        console.log('[ScreenViewport] Stream disconnected');
-        if (watchdogTimerRef.current) {
-          clearInterval(watchdogTimerRef.current);
-          watchdogTimerRef.current = null;
+          /* ignore */
         }
         wsRef.current = null;
-        setIsStreaming(false);
+      }
 
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current);
-        }
-        if (isMountedRef.current) {
-          reconnectTimerRef.current = setTimeout(() => {
-            if (isMountedRef.current && !wsRef.current) {
-              console.log('[ScreenViewport] Auto-reconnecting to stream...');
-              startStreamRef.current();
+      setIsStreaming(true);
+
+      const fetchToken = async (): Promise<{ token: string; port: string }> => {
+        const candidatePorts = Array.from(new Set([targetPort, '8080', '8081', '8088', '8082']));
+        for (const p of candidatePorts) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            const res = await fetch(`http://${targetIp}:${p}/pair`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin: '' }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              const data = (await res.json()) as { token?: string };
+              if (data && typeof data.token === 'string' && data.token) {
+                return { token: data.token, port: p };
+              }
             }
-          }, 1500);
+          } catch {
+            // Probe next candidate port
+          }
         }
+        return { token: activeToken || 'direct_stream_token', port: targetPort };
       };
 
-      // ---- Render-health watchdog --------------------------------------
-      //
-      // Two failure modes this catches:
-      //
-      //  (a) Frames arrive on the socket (FPS counter ticks) but the
-      //      decoder never finishes (lastDecodedAtRef stays stale).
-      //  (b) The socket goes quiet while `isStreaming === true` because
-      //      aiohttp's send queue stalled on a slow TCP link or a
-      //      silent server-side exception.
-      //
-      // Either case used to produce a frozen / black viewport. We now
-      // bail out of the connection and let the reconnect timer bring a
-      // fresh socket up.
-      watchdogArmedRef.current = false;
-      watchdogTimerRef.current = setInterval(() => {
-        const now = Date.now();
-        const lastFrame = lastFrameAtRef.current;
-        const lastDecoded = lastDecodedAtRef.current;
-        // Give the stream a few seconds to start producing frames
-        // before arming the watchdog.
-        if (lastFrame === 0) return;
-        if (!watchdogArmedRef.current && now - lastFrame > 2000) {
-          watchdogArmedRef.current = true;
-        }
-        if (!watchdogArmedRef.current) return;
-        // Hard stall: no frame in over 2 s OR frames arriving but no
-        // successful decode in over 2 s.
-        const frameStalled = now - lastFrame > 2500;
-        const decodeStalled = now - lastDecoded > 2500 && frameCountRef.current > 0;
-        if ((frameStalled || decodeStalled) && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          console.warn(
-            `[ScreenViewport] Render watchdog: frame=${frameStalled}, decode=${decodeStalled}; resetting stream`
-          );
-          try { wsRef.current.close(); } catch { /* ignore */ }
-        }
-      }, 1000);
-    };
+      const openSocket = ({ token, port }: { token: string; port: string }) => {
+        if (isManualStopRef.current || !isMountedRef.current) return;
 
-    fetchToken()
-      .then(openSocket)
-      .catch(err => {
-        console.error('[ScreenViewport] Failed to mint stream token:', err);
-        setIsStreaming(false);
-        if (isMountedRef.current) {
-          reconnectTimerRef.current = setTimeout(() => {
-            if (isMountedRef.current && !wsRef.current) {
-              startStreamRef.current();
+        const wsUrl = token
+          ? `ws://${targetIp}:${port}/ws?token=${encodeURIComponent(token)}`
+          : `ws://${targetIp}:${port}/ws`;
+        console.log(`[ScreenViewport] Connecting to ${wsUrl}`);
+
+        let ws: WebSocket;
+        try {
+          ws = new WebSocket(wsUrl);
+        } catch (e) {
+          console.error('[ScreenViewport] Failed to open stream socket:', e);
+          if (!isManualStopRef.current && isMountedRef.current) {
+            reconnectTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && !isManualStopRef.current) {
+                startStreamFn();
+              }
+            }, 2000);
+          }
+          return;
+        }
+        ws.binaryType = 'arraybuffer';
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('[ScreenViewport] Connected to screen stream');
+          connectedAtRef.current = Date.now();
+          lastDecodedAtRef.current = Date.now();
+          lastFrameAtRef.current = Date.now();
+
+          try {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({
+                  type: 'set_stream_settings',
+                  max_width: selectedRes.w,
+                  max_height: selectedRes.h,
+                  fps: selectedFps,
+                  jpeg_quality: selectedQuality,
+                })
+              );
             }
-          }, 2000);
-        }
-      });
-  }, [targetIp, targetPort, stopStream, selectedRes, selectedFps, selectedQuality, displayedUri]);
+          } catch (e) {
+            console.warn('Failed sending initial settings on connect:', e);
+          }
+        };
 
-  const stopStreamRef = useRef(stopStream);
-  stopStreamRef.current = stopStream;
+        ws.onmessage = event => {
+          try {
+            if (!event || !event.data) return;
+            if (typeof event.data === 'string') return;
 
-  const startStreamRef = useRef(startStream);
-  startStreamRef.current = startStream;
+            const bytes = getUint8ArrayFromEventData(event.data);
+            if (!bytes) return;
+
+            let jpegBytes: Uint8Array | null = null;
+            const framed = tryUnwrapEnvelope(bytes);
+            if (framed) {
+              jpegBytes = framed.bytes;
+            } else {
+              jpegBytes = bytes;
+            }
+
+            if (!isValidJpeg(jpegBytes)) return;
+
+            // Account stats
+            bytesCountRef.current += jpegBytes.byteLength;
+            frameCountRef.current += 1;
+            lastFrameAtRef.current = Date.now();
+
+            const base64 = uint8ArrayToBase64(jpegBytes);
+            const nextUri = `data:image/jpeg;base64,${base64}`;
+            pendingUriRef.current = nextUri;
+
+            if (!isFrameScheduledRef.current) {
+              isFrameScheduledRef.current = true;
+              requestAnimationFrame(() => {
+                isFrameScheduledRef.current = false;
+                const target = pendingUriRef.current;
+                if (target && isMountedRef.current) {
+                  setDisplayedUri(target);
+                  lastDecodedAtRef.current = Date.now();
+                }
+              });
+            }
+          } catch (err) {
+            console.warn('[ScreenViewport] Frame processing error:', err);
+          }
+        };
+
+        ws.onerror = err => {
+          console.log('[ScreenViewport] Stream socket event:', err);
+        };
+
+        ws.onclose = () => {
+          console.log('[ScreenViewport] Stream disconnected');
+          if (watchdogTimerRef.current) {
+            clearInterval(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
+          wsRef.current = null;
+
+          if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+          }
+
+          if (isManualStopRef.current || !isMountedRef.current) {
+            setIsStreaming(false);
+          } else {
+            // Auto-reconnect after transient disconnection
+            reconnectTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && !isManualStopRef.current && !wsRef.current) {
+                console.log('[ScreenViewport] Auto-reconnecting to stream...');
+                startStreamFn();
+              }
+            }, 1500);
+          }
+        };
+
+        // ---- Render-health watchdog --------------------------------------
+        watchdogTimerRef.current = setInterval(() => {
+          const now = Date.now();
+          const connectedAt = connectedAtRef.current;
+          const lastFrame = lastFrameAtRef.current;
+          const lastDecoded = lastDecodedAtRef.current;
+
+          // Grace period: allow 6 seconds after connecting before checking for stalls
+          if (connectedAt === 0 || now - connectedAt < 6000) return;
+
+          // Stall conditions:
+          // 1. Frame capture stalled: no frame received in over 6s
+          // 2. Decode stalled: frames are arriving but not rendering for over 6s
+          const frameStalled = now - lastFrame > 6000;
+          const decodeStalled = now - lastDecoded > 6000 && frameCountRef.current > 0;
+
+          if ((frameStalled || decodeStalled) && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            console.warn(
+              `[ScreenViewport] Render watchdog: frameStalled=${frameStalled}, decodeStalled=${decodeStalled}; restarting stream...`
+            );
+            try {
+              wsRef.current.close();
+            } catch {
+              /* ignore */
+            }
+          }
+        }, 1000);
+      };
+
+      fetchToken()
+        .then(openSocket)
+        .catch(err => {
+          console.error('[ScreenViewport] Failed to mint stream token:', err);
+          if (!isManualStopRef.current && isMountedRef.current) {
+            reconnectTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && !isManualStopRef.current && !wsRef.current) {
+                startStreamFn();
+              }
+            }, 2000);
+          } else {
+            setIsStreaming(false);
+          }
+        });
+    },
+    [targetIp, targetPort, activeToken, selectedRes.w, selectedRes.h, selectedFps, selectedQuality]
+  );
 
   // Listen to AppState (foreground/background) to recover stream on app resume
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === 'active') {
         console.log('[ScreenViewport] App resumed from background');
-        if (isMountedRef.current && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
-          startStreamRef.current();
+        if (isMountedRef.current && !isManualStopRef.current && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
+          startStream();
         }
       }
     };
@@ -557,12 +506,12 @@ export default function DesktopViewport({
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [startStream]);
 
   // Auto-start screen stream on component mount & clean up on unmount
   useEffect(() => {
     isMountedRef.current = true;
-    startStreamRef.current();
+    startStream();
 
     return () => {
       isMountedRef.current = false;
@@ -570,9 +519,9 @@ export default function DesktopViewport({
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
-      stopStreamRef.current();
+      stopStream();
     };
-  }, [targetIp, targetPort]);
+  }, [startStream, stopStream]);
 
   const hasFrame = displayedUri != null;
 
@@ -589,7 +538,11 @@ export default function DesktopViewport({
               ]}
             />
             <Text style={styles.statusTitle}>
-              {isStreaming ? `${fps} FPS | ${kbps} kbps` : 'Screen Offline'}
+              {isStreaming
+                ? fps > 0 || kbps > 0
+                  ? `${fps} FPS | ${kbps} kbps`
+                  : 'Connecting...'
+                : 'Screen Offline'}
             </Text>
           </View>
 
@@ -650,13 +603,8 @@ export default function DesktopViewport({
             style={StyleSheet.absoluteFill}
             contentFit="contain"
             transition={0}
-            cachePolicy="memory-disk"
+            cachePolicy="none"
             priority="high"
-            // Stable per-session key: keeps the cache coherent across
-            // hundreds of source changes within the same stream
-            // session, while letting us force a clean reset by
-            // rotating the key on every (re)connect.
-            recyclingKey={streamSessionId}
             onError={() => {
               console.warn('[ScreenViewport] Image decode error on active buffer');
             }}
@@ -731,6 +679,16 @@ export default function DesktopViewport({
                 placeholderTextColor={palette.outline}
                 value={customIp}
                 onChangeText={setCustomIp}
+              />
+
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Stream Server Port</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder={String(streamPort)}
+                placeholderTextColor={palette.outline}
+                value={customPort}
+                keyboardType="numeric"
+                onChangeText={setCustomPort}
               />
 
               <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>

@@ -76,11 +76,12 @@ class StreamManager:
         self._client_tasks: Dict[web.WebSocketResponse, asyncio.Task] = {}
 
         # Dynamic stream settings — adjusted at runtime by the client.
-        from config import MAX_WIDTH, MAX_HEIGHT, FPS, JPEG_QUALITY
+        from config import MAX_WIDTH, MAX_HEIGHT, FPS, JPEG_QUALITY, MONITOR_INDEX
         self.max_width: int = MAX_WIDTH
         self.max_height: int = MAX_HEIGHT
         self.target_fps: int = FPS
         self.jpeg_quality: int = JPEG_QUALITY
+        self.monitor_index: int = MONITOR_INDEX
 
     @property
     def client_count(self) -> int:
@@ -246,9 +247,11 @@ class StreamManager:
                     self.target_fps = max(1, min(60, int(payload["fps"])))
                 if "jpeg_quality" in payload:
                     self.jpeg_quality = max(10, min(100, int(payload["jpeg_quality"])))
+                if "monitor_index" in payload:
+                    self.monitor_index = int(payload["monitor_index"])
                 print(
                     f"[SETTINGS] Stream updated from {client_ip}: {self.max_width}x{self.max_height} "
-                    f"@ {self.target_fps} FPS (Quality: {self.jpeg_quality})",
+                    f"@ {self.target_fps} FPS (Quality: {self.jpeg_quality}, Monitor: {self.monitor_index})",
                     flush=True,
                 )
 
@@ -282,32 +285,32 @@ class StreamManager:
                 payload = await queue.get()
                 if ws.closed:
                     break
-                # The queue carries either raw JPEG bytes (legacy fast
-                # path) or a 4-byte length-prefixed envelope
-                # ``b"STRM" + uint32 BE length + JPEG bytes`` so the
-                # client can recover from truncated messages by detecting
-                # a length mismatch.
                 if isinstance(payload, (bytes, bytearray)) and payload.startswith(b"STRM"):
                     await ws.send_bytes(bytes(payload))
                 else:
-                    # Legacy raw-JPEG payload.
                     await ws.send_bytes(bytes(payload))
                 queue.task_done()
         except asyncio.CancelledError:
             pass
         except Exception as e:
             print(f"[ERROR] Frame send failed for {client_ip}: {e}", flush=True)
+            if not ws.closed:
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
 
     async def _disconnect_client(self, ws, client_ip):
-        if ws in self.connected_clients:
-            self.connected_clients.remove(ws)
-        if ws in self._client_queues:
-            del self._client_queues[ws]
+        self.connected_clients.discard(ws)
+        self._client_queues.pop(ws, None)
         task = self._client_tasks.pop(ws, None)
         if task and not task.done():
             task.cancel()
         if not ws.closed:
-            await ws.close()
+            try:
+                await ws.close()
+            except Exception:
+                pass
         print(f"[CLIENT] Disconnected: {client_ip}", flush=True)
 
     async def broadcast_frame(self, jpeg_bytes: bytes, sequence: int = 0) -> None:

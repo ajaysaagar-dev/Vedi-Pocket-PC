@@ -170,7 +170,7 @@ class ScreenStreamServer:
             try:
                 jpeg_bytes, _res = await asyncio.to_thread(
                     self.capturer.capture_frame,
-                    1,  # MONITOR_INDEX default
+                    self.stream_manager.monitor_index,
                     self.stream_manager.max_width,
                     self.stream_manager.max_height,
                     self.stream_manager.jpeg_quality,
