@@ -30,15 +30,23 @@ JPEG_EOI = b"\xff\xd9"
 JPEG_SOI = b"\xff\xd8"
 
 
+_capture_thread_local = threading.local()
+
+
 def _ensure_windows_desktop_access() -> None:
     if sys.platform == "win32":
+        if getattr(_capture_thread_local, "desktop_attached", False):
+            return
         try:
             user32 = ctypes.windll.user32
             hdesk = user32.OpenInputDesktop(0, False, 0x01FF)
             if hdesk:
-                user32.SetThreadDesktop(hdesk)
+                if user32.SetThreadDesktop(hdesk):
+                    _capture_thread_local.desktop_attached = True
+                user32.CloseDesktop(hdesk)
         except Exception:
             pass
+
 
 
 def _looks_like_jpeg(data: bytes) -> bool:
@@ -182,7 +190,7 @@ class ScreenCapturer:
             self._last_resolution = (img.width, img.height)
 
             buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=jpeg_quality, optimize=False)
+            img.save(buf, format="JPEG", quality=jpeg_quality, optimize=False, subsampling=2)
             jpeg_bytes = buf.getvalue()
 
             # --- validation ----------------------------

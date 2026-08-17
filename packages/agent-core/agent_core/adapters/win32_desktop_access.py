@@ -10,15 +10,22 @@ from __future__ import annotations
 import sys
 
 
+import threading
+
+_desktop_local = threading.local()
+
+
 def ensure_windows_desktop_access() -> None:
     """Attach the current thread to the active user-input desktop.
 
     FastAPI and aiohttp both run request handlers on thread-pool
     threads, so any input we issue from those threads needs this
     attached or pyautogui's PostMessage target is the wrong desktop.
-    Idempotent: safe to call repeatedly.
+    Idempotent: cached per thread to avoid leaking desktop handles.
     """
     if sys.platform != "win32":
+        return
+    if getattr(_desktop_local, "attached", False):
         return
     try:
         import ctypes
@@ -27,11 +34,14 @@ def ensure_windows_desktop_access() -> None:
         # 0x01FF = DESKTOP_ALL_ACCESS
         hdesk = user32.OpenInputDesktop(0, False, 0x01FF)
         if hdesk:
-            user32.SetThreadDesktop(hdesk)
+            if user32.SetThreadDesktop(hdesk):
+                _desktop_local.attached = True
+            user32.CloseDesktop(hdesk)
     except Exception:
         # Best-effort: many test/CI environments don't expose the
         # input desktop, but they also don't run the WS handler.
         pass
+
 
 
 # ----- monitor bounds (used to clamp absolute moves) -----

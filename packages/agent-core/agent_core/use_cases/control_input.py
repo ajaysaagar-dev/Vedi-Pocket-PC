@@ -17,6 +17,8 @@ from agent_core.entities.input_command import (
     HotkeyCommand,
     InputCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -60,6 +62,10 @@ class ControlInput:
                 self._driver.move_relative(command)
             elif isinstance(command, ClickCommand):
                 self._driver.click(command)
+            elif isinstance(command, MouseDownCommand):
+                self._driver.mouse_down(command)
+            elif isinstance(command, MouseUpCommand):
+                self._driver.mouse_up(command)
             elif isinstance(command, ScrollCommand):
                 self._driver.scroll(command)
             elif isinstance(command, TextInputCommand):

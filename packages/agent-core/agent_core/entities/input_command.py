@@ -79,13 +79,34 @@ class HotkeyCommand:
     keys: List[str]
 
 
+@dataclass(frozen=True)
+class MouseDownCommand:
+    """Press and hold a mouse button. (x, y) is optional."""
+
+    button: Button = Button.LEFT
+    x: Optional[int] = None
+    y: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class MouseUpCommand:
+    """Release a held mouse button. (x, y) is optional."""
+
+    button: Button = Button.LEFT
+    x: Optional[int] = None
+    y: Optional[int] = None
+
+
 # Discriminated union — exhaustive over every supported input action.
 InputCommand = Union[
     AbsoluteMove,
     RelativeMove,
     ClickCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     ScrollCommand,
     TextInputCommand,
     KeyPressCommand,
     HotkeyCommand,
 ]
+

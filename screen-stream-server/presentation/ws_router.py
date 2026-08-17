@@ -26,6 +26,8 @@ from agent_core.entities.input_command import (
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -216,22 +218,32 @@ class StreamManager:
                 )
 
             elif msg_type == "mouse_down":
-                # We treat down/up as press-and-release for portability;
-                # pyautogui has no separate "press and hold" semantic.
                 button = str(payload.get("button", "left"))
                 btn = Button(button if button in {"left", "right", "middle"} else "left")
                 x = payload.get("x")
                 y = payload.get("y")
                 await asyncio.to_thread(
                     self.control_input.execute,
-                    ClickCommand(button=btn,
-                                 x=int(x) if x is not None else None,
-                                 y=int(y) if y is not None else None),
+                    MouseDownCommand(
+                        button=btn,
+                        x=int(x) if x is not None else None,
+                        y=int(y) if y is not None else None,
+                    ),
                 )
 
             elif msg_type == "mouse_up":
-                # No-op equivalent.
-                return
+                button = str(payload.get("button", "left"))
+                btn = Button(button if button in {"left", "right", "middle"} else "left")
+                x = payload.get("x")
+                y = payload.get("y")
+                await asyncio.to_thread(
+                    self.control_input.execute,
+                    MouseUpCommand(
+                        button=btn,
+                        x=int(x) if x is not None else None,
+                        y=int(y) if y is not None else None,
+                    ),
+                )
 
             elif msg_type == "scroll":
                 dx = float(payload.get("dx", 0))

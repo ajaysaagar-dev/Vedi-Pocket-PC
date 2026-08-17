@@ -7,12 +7,6 @@ Pillow
 aiohttp
 pyautogui
 fastapi
-# `uvicorn` ships without WebSocket support by default — without
-# `uvicorn[standard]` (or a manual `pip install websockets wsproto`),
-# FastAPI's `@app.websocket("/ws")` route silently fails every
-# upgrade request and the backend logs:
-#   "WARNING: No supported WebSocket library detected."
-# Pinning `[standard]` here forces the right extras on every install.
 uvicorn[standard]
 websockets
 wsproto
@@ -22,3 +16,10 @@ comtypes; sys_platform == 'win32'
 pystray
 qrcode
 psutil
+httpx
+
+# Optional native desktop window GUI
+pywebview; sys_platform == 'win32'
+
+# Testing
+pytest

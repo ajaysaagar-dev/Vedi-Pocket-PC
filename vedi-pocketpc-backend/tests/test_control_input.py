@@ -25,6 +25,8 @@ from agent_core.entities.input_command import (  # noqa: E402
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -46,6 +48,8 @@ class FakeInputDriver(InputDriver):
     def move_to(self, cmd): self.calls.append(("move_to", cmd.x, cmd.y))
     def move_relative(self, cmd): self.calls.append(("move_relative", cmd.dx, cmd.dy))
     def click(self, cmd): self.calls.append(("click", cmd.button.value, cmd.clicks, cmd.x, cmd.y))
+    def mouse_down(self, cmd): self.calls.append(("mouse_down", cmd.button.value, cmd.x, cmd.y))
+    def mouse_up(self, cmd): self.calls.append(("mouse_up", cmd.button.value, cmd.x, cmd.y))
     def scroll(self, cmd): self.calls.append(("scroll", cmd.dx, cmd.dy))
     def type_text(self, cmd): self.calls.append(("type_text", cmd.text))
     def press_key(self, cmd): self.calls.append(("press_key", cmd.key))
@@ -74,6 +78,8 @@ def test_all_command_shapes_route_correctly(control_input, driver):
     control_input.execute(AbsoluteMove(x=1, y=2))
     control_input.execute(RelativeMove(dx=3, dy=4))
     control_input.execute(ClickCommand(button=Button.RIGHT, clicks=2))
+    control_input.execute(MouseDownCommand(button=Button.LEFT, x=10, y=20))
+    control_input.execute(MouseUpCommand(button=Button.LEFT, x=10, y=20))
     control_input.execute(ScrollCommand(dy=5))
     control_input.execute(TextInputCommand(text="hi"))
     control_input.execute(KeyPressCommand(key="enter"))
@@ -83,6 +89,8 @@ def test_all_command_shapes_route_correctly(control_input, driver):
         ("move_to", 1, 2),
         ("move_relative", 3, 4),
         ("click", "right", 2, None, None),
+        ("mouse_down", "left", 10, 20),
+        ("mouse_up", "left", 10, 20),
         ("scroll", 0, 5),
         ("type_text", "hi"),
         ("press_key", "enter"),

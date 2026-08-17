@@ -13,6 +13,8 @@ from agent_core.entities.input_command import (
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -36,6 +38,12 @@ class InputDriver(ABC):
 
     @abstractmethod
     def click(self, cmd: ClickCommand) -> None: ...
+
+    @abstractmethod
+    def mouse_down(self, cmd: MouseDownCommand) -> None: ...
+
+    @abstractmethod
+    def mouse_up(self, cmd: MouseUpCommand) -> None: ...
 
     @abstractmethod
     def scroll(self, cmd: ScrollCommand) -> None: ...

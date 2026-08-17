@@ -159,6 +159,7 @@ export default function DesktopViewport({
   const lastFrameAtRef = useRef<number>(0);
 
   const pendingUriRef = useRef<string | null>(null);
+  const pendingBytesRef = useRef<Uint8Array | null>(null);
   const isFrameScheduledRef = useRef(false);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -269,6 +270,7 @@ export default function DesktopViewport({
       wsRef.current = null;
     }
     pendingUriRef.current = null;
+    pendingBytesRef.current = null;
     setFps(0);
     setKbps(0);
     setIsStreaming(false);
@@ -394,17 +396,19 @@ export default function DesktopViewport({
             frameCountRef.current += 1;
             lastFrameAtRef.current = Date.now();
 
-            const base64 = uint8ArrayToBase64(jpegBytes);
-            const nextUri = `data:image/jpeg;base64,${base64}`;
-            pendingUriRef.current = nextUri;
+            pendingBytesRef.current = jpegBytes;
 
             if (!isFrameScheduledRef.current) {
               isFrameScheduledRef.current = true;
               requestAnimationFrame(() => {
                 isFrameScheduledRef.current = false;
-                const target = pendingUriRef.current;
-                if (target && isMountedRef.current) {
-                  setDisplayedUri(target);
+                const rawBytes = pendingBytesRef.current;
+                pendingBytesRef.current = null;
+
+                if (rawBytes && isMountedRef.current) {
+                  const base64 = uint8ArrayToBase64(rawBytes);
+                  const nextUri = `data:image/jpeg;base64,${base64}`;
+                  setDisplayedUri(nextUri);
                   lastDecodedAtRef.current = Date.now();
                 }
               });

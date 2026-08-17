@@ -13,9 +13,7 @@ echo.
 
 if exist "veddi-pocketpc" (
     cd veddi-pocketpc
-    set EXPO_NO_INTERACTIVE=1
-    set CI=1
-    call npx expo start -c --non-interactive --host lan --port 8088
+    call npx expo start -c --host lan --port 8088
 ) else (
     echo [ERROR] 'veddi-pocketpc' directory not found.
 )

@@ -1,4 +1,127 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  // Setup Controller Bridge API (Python REST & WebSocket Backend)
+  const api = window.electronAPI || (() => {
+    const listeners = {
+      'python-log': new Set(),
+      'expo-log': new Set(),
+      'status-update': new Set(),
+    };
+
+    let ws = null;
+    let reconnectTimeout = null;
+
+    function connectWs() {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/ws/events`;
+
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (e) {
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'log') {
+            const set = listeners[msg.channel];
+            if (set) {
+              set.forEach((cb) => {
+                try { cb(msg.payload); } catch (_) {}
+              });
+            }
+          } else if (msg.type === 'status-update') {
+            listeners['status-update'].forEach((cb) => {
+              try { cb(msg.data); } catch (_) {}
+            });
+          }
+        } catch (err) {
+          console.warn('[WS] Parse error:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        ws = null;
+        scheduleReconnect();
+      };
+
+      ws.onerror = () => {
+        if (ws) {
+          try { ws.close(); } catch (_) {}
+        }
+      };
+    }
+
+    function scheduleReconnect() {
+      if (!reconnectTimeout) {
+        reconnectTimeout = setTimeout(connectWs, 1500);
+      }
+    }
+
+    connectWs();
+
+    return {
+      getServerInfo: async () => {
+        const res = await fetch('/api/server-info');
+        return await res.json();
+      },
+      startServers: async () => {
+        const res = await fetch('/api/start-servers', { method: 'POST' });
+        return await res.json();
+      },
+      stopServers: async () => {
+        const res = await fetch('/api/stop-servers', { method: 'POST' });
+        return await res.json();
+      },
+      restartServers: async () => {
+        const res = await fetch('/api/restart-servers', { method: 'POST' });
+        return await res.json();
+      },
+      reloadExpo: async () => {
+        const res = await fetch('/api/reload-expo', { method: 'POST' });
+        return await res.json();
+      },
+      probeHealth: async () => {
+        try {
+          const res = await fetch('/api/probe-health');
+          return await res.json();
+        } catch (_) {
+          return { streamReachable: false, backendReachable: false };
+        }
+      },
+      generateQR: async (text) => {
+        const res = await fetch('/api/generate-qr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        return data.qr || '';
+      },
+      openExternal: (url) => {
+        window.open(url, '_blank');
+      },
+      onPythonLog: (cb) => {
+        listeners['python-log'].add(cb);
+        return () => listeners['python-log'].delete(cb);
+      },
+      onExpoLog: (cb) => {
+        listeners['expo-log'].add(cb);
+        return () => listeners['expo-log'].delete(cb);
+      },
+      onStatusUpdate: (cb) => {
+        listeners['status-update'].add(cb);
+        return () => listeners['status-update'].delete(cb);
+      },
+    };
+  })();
+
   // DOM Elements
   const globalStatusDot = document.getElementById('globalStatusDot');
   const globalStatusText = document.getElementById('globalStatusText');
@@ -20,6 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const pillPythonStatus = document.getElementById('pillPythonStatus');
   const pillExpoStatus = document.getElementById('pillExpoStatus');
+  const pillBackendStatus = document.getElementById('pillBackendStatus');
 
   const btnCopyServerUrl = document.getElementById('btnCopyServerUrl');
   const btnCopyExpoUrl = document.getElementById('btnCopyExpoUrl');
@@ -39,6 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let activeTab = 'python';
 
   function showToast(message) {
+    if (!toast) return;
     toast.textContent = message;
     toast.classList.add('show');
     setTimeout(() => {
@@ -47,32 +172,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function copyToClipboard(text) {
-    navigator.clipboard.writeText(text);
-    showToast(`Copied "${text}" to clipboard!`);
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`Copied "${text}" to clipboard!`);
+    }).catch(() => {
+      showToast('Copied to clipboard!');
+    });
   }
 
   // Load and refresh server information
   async function refreshServerInfo() {
     try {
-      const info = await window.electronAPI.getServerInfo();
+      const info = await api.getServerInfo();
 
       if (txtLanIp) txtLanIp.textContent = info.lanIp;
       if (txtWsUrl) txtWsUrl.textContent = info.wsUrl;
       if (txtExpoUrl) txtExpoUrl.textContent = info.expoUrl;
       if (txtPairingUrl) {
-        // Show the encoded QR payload, not the URL the WebSocket uses.
-        // That's what the mobile scanner parses.
         txtPairingUrl.textContent = info.pairingUrl || info.wsUrl;
       }
       if (txtPairingPin) {
         txtPairingPin.textContent = info.pairingPin || '----';
       }
 
-      // Render Server Connect QR — show as soon as we have a pairing
-      // payload (either the real `ip:port:pin` from the backend, or
-      // the http://ip:8080 fallback from the stream server). We no
-      // longer require both Python servers running — the stream server
-      // alone is enough to grant a session token via its /pair endpoint.
+      // Render Server Connect QR
       const hasQrPayload = !!(info.pairingUrl || info.serverQr);
       if (hasQrPayload && info.serverQr) {
         if (imgServerQr) {
@@ -88,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Render Expo Mobile App QR (Requires Expo Server running)
+      // Render Expo Mobile App QR
       if (info.isExpoRunning && info.expoQr) {
         if (imgExpoQr) {
           imgExpoQr.src = info.expoQr;
@@ -103,26 +226,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Update status badges. The spawn flags are the optimistic view;
-// the reachability probe (data-probe-stream / data-probe-backend
-// on the pill) is the truth — it actually fetched /health. When
-// they disagree we mark the pill as "stalled" so the user knows
-// the Node process says "running" but the network disagrees.
+      // Update status badges
       const probeStream = pillPythonStatus ? pillPythonStatus.dataset.probeStream : undefined;
-      const probeBackend = pillPythonStatus ? pillPythonStatus.dataset.probeBackend : undefined;
+      const probeBackend = pillBackendStatus ? pillBackendStatus.dataset.probeBackend : undefined;
       const streamReachable = probeStream === 'true';
       const backendReachable = probeBackend === 'true';
 
       if (pillPythonStatus) {
         if (info.isPythonRunning && !streamReachable) {
-          pillPythonStatus.textContent = 'Stalled';
-          pillPythonStatus.className = 'status-pill stalled';
-        } else if (streamReachable) {
+          pillPythonStatus.textContent = 'Running';
+          pillPythonStatus.className = 'status-pill online';
+        } else if (streamReachable || info.isPythonRunning) {
           pillPythonStatus.textContent = 'Running';
           pillPythonStatus.className = 'status-pill online';
         } else {
           pillPythonStatus.textContent = 'Stopped';
           pillPythonStatus.className = 'status-pill';
+        }
+      }
+
+      if (pillBackendStatus) {
+        if (info.isBackendRunning || backendReachable) {
+          pillBackendStatus.textContent = 'Running';
+          pillBackendStatus.className = 'status-pill online';
+        } else {
+          pillBackendStatus.textContent = 'Stopped';
+          pillBackendStatus.className = 'status-pill';
         }
       }
 
@@ -136,31 +265,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // We also surface backend reachability — if the backend says
-      // "Running" but /health on port 8000 is unreachable, that's a
-      // strong indicator the listening port never bound (port
-      // collision, missing dep, etc.).
-      const backendPill = document.getElementById('pillBackendStatus');
-      if (backendPill) {
-        if (info.isBackendRunning && !backendReachable) {
-          backendPill.textContent = 'Stalled';
-          backendPill.className = 'status-pill stalled';
-        } else if (backendReachable || info.isBackendRunning) {
-          backendPill.textContent = 'Running';
-          backendPill.className = 'status-pill online';
-        } else {
-          backendPill.textContent = 'Stopped';
-          backendPill.className = 'status-pill';
-        }
-      }
-
       if (globalStatusDot && globalStatusText) {
         if (hasQrPayload && info.isExpoRunning) {
           globalStatusDot.className = 'status-dot active';
           globalStatusText.textContent = `All Servers Active (${info.lanIp})`;
         } else if (hasQrPayload || info.isExpoRunning) {
           globalStatusDot.className = 'status-dot active';
-          globalStatusText.textContent = `Partial Active (${info.lanIp})`;
+          globalStatusText.textContent = `Active (${info.lanIp})`;
         } else {
           globalStatusDot.className = 'status-dot off';
           globalStatusText.textContent = 'Servers Offline';
@@ -172,48 +283,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Button Listeners
-  btnStartServers.addEventListener('click', async () => {
-    globalStatusText.textContent = 'Starting servers...';
-    serverQrLoader.classList.add('loading');
-    expoQrLoader.classList.add('loading');
-    await window.electronAPI.startServers();
-    setTimeout(refreshServerInfo, 1000);
-  });
+  if (btnStartServers) {
+    btnStartServers.addEventListener('click', async () => {
+      if (globalStatusText) globalStatusText.textContent = 'Starting servers...';
+      if (serverQrLoader) serverQrLoader.classList.add('loading');
+      if (expoQrLoader) expoQrLoader.classList.add('loading');
+      await api.startServers();
+      setTimeout(refreshServerInfo, 1000);
+    });
+  }
 
-  btnRestartServers.addEventListener('click', async () => {
-    globalStatusText.textContent = 'Restarting...';
-    serverQrLoader.classList.add('loading');
-    expoQrLoader.classList.add('loading');
-    await window.electronAPI.restartServers();
-    setTimeout(refreshServerInfo, 2000);
-  });
+  if (btnRestartServers) {
+    btnRestartServers.addEventListener('click', async () => {
+      if (globalStatusText) globalStatusText.textContent = 'Restarting...';
+      if (serverQrLoader) serverQrLoader.classList.add('loading');
+      if (expoQrLoader) expoQrLoader.classList.add('loading');
+      await api.restartServers();
+      setTimeout(refreshServerInfo, 2000);
+    });
+  }
 
-  btnStopServers.addEventListener('click', async () => {
-    globalStatusText.textContent = 'Stopping...';
-    await window.electronAPI.stopServers();
-    setTimeout(refreshServerInfo, 500);
-  });
+  if (btnStopServers) {
+    btnStopServers.addEventListener('click', async () => {
+      if (globalStatusText) globalStatusText.textContent = 'Stopping...';
+      await api.stopServers();
+      setTimeout(refreshServerInfo, 500);
+    });
+  }
 
-  btnRefreshInfo.addEventListener('click', refreshServerInfo);
+  if (btnRefreshInfo) {
+    btnRefreshInfo.addEventListener('click', refreshServerInfo);
+  }
 
-  // "Reload Metro" — taps the existing restart-servers IPC, which
-  // restarts Expo with `-c` (cleared Metro cache). This is the fix
-  // for the phone's "Failed to download remote update" error: the
-  // previous bundle download was interrupted mid-stream; restarting
-  // Metro clears its cache and re-emits a clean bundle so the next
-  // download succeeds.
+  // Reload Metro
   if (btnReloadMetro) {
     btnReloadMetro.addEventListener('click', async () => {
       btnReloadMetro.disabled = true;
       btnReloadMetro.textContent = 'Reloading…';
       try {
-        if (window.electronAPI && typeof window.electronAPI.reloadExpo === 'function') {
-          await window.electronAPI.reloadExpo();
-          showToast('Sent "r" (Reload) command to Expo CLI logs.');
-        } else {
-          await window.electronAPI.restartServers();
-          showToast('Metro reloading — re-scan the QR in a few seconds.');
-        }
+        await api.reloadExpo();
+        showToast('Sent Reload command to Expo CLI.');
       } catch (err) {
         console.error('Reload failed:', err);
       } finally {
@@ -225,83 +334,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  btnCopyServerUrl.addEventListener('click', () => {
-    const textToCopy = txtPairingUrl ? txtPairingUrl.textContent : (txtWsUrl ? txtWsUrl.textContent : '');
-    copyToClipboard(textToCopy);
-  });
-  btnCopyExpoUrl.addEventListener('click', () => copyToClipboard(txtExpoUrl ? txtExpoUrl.textContent : ''));
-  btnCopyIp.addEventListener('click', () => copyToClipboard(txtLanIp ? txtLanIp.textContent : ''));
+  if (btnCopyServerUrl) {
+    btnCopyServerUrl.addEventListener('click', () => {
+      const textToCopy = txtPairingUrl ? txtPairingUrl.textContent : (txtWsUrl ? txtWsUrl.textContent : '');
+      copyToClipboard(textToCopy);
+    });
+  }
+
+  if (btnCopyExpoUrl) {
+    btnCopyExpoUrl.addEventListener('click', () => copyToClipboard(txtExpoUrl ? txtExpoUrl.textContent : ''));
+  }
+
+  if (btnCopyIp) {
+    btnCopyIp.addEventListener('click', () => copyToClipboard(txtLanIp ? txtLanIp.textContent : ''));
+  }
 
   // Tab switching
-  tabPython.addEventListener('click', () => {
-    activeTab = 'python';
-    tabPython.classList.add('active');
-    tabExpo.classList.remove('active');
-    logPython.classList.remove('hidden');
-    logExpo.classList.add('hidden');
-  });
+  if (tabPython && tabExpo && logPython && logExpo) {
+    tabPython.addEventListener('click', () => {
+      activeTab = 'python';
+      tabPython.classList.add('active');
+      tabExpo.classList.remove('active');
+      logPython.classList.remove('hidden');
+      logExpo.classList.add('hidden');
+    });
 
-  tabExpo.addEventListener('click', () => {
-    activeTab = 'expo';
-    tabExpo.classList.add('active');
-    tabPython.classList.remove('active');
-    logExpo.classList.remove('hidden');
-    logPython.classList.add('hidden');
-  });
+    tabExpo.addEventListener('click', () => {
+      activeTab = 'expo';
+      tabExpo.classList.add('active');
+      tabPython.classList.remove('active');
+      logExpo.classList.remove('hidden');
+      logPython.classList.add('hidden');
+    });
+  }
 
   // Log Actions
-  btnClearLogs.addEventListener('click', () => {
-    if (activeTab === 'python') {
-      logPython.textContent = '';
-    } else {
-      logExpo.textContent = '';
+  if (btnClearLogs) {
+    btnClearLogs.addEventListener('click', () => {
+      if (activeTab === 'python' && logPython) {
+        logPython.textContent = '';
+      } else if (logExpo) {
+        logExpo.textContent = '';
+      }
+    });
+  }
+
+  if (btnCopyLogs) {
+    btnCopyLogs.addEventListener('click', () => {
+      const text = activeTab === 'python' ? (logPython ? logPython.textContent : '') : (logExpo ? logExpo.textContent : '');
+      copyToClipboard(text);
+    });
+  }
+
+  // Log Streams
+  api.onPythonLog((text) => {
+    if (logPython) {
+      logPython.textContent += text;
+      if (logPython.textContent.length > 150000) {
+        logPython.textContent = logPython.textContent.slice(-100000);
+      }
+      logPython.scrollTop = logPython.scrollHeight;
     }
   });
 
-  btnCopyLogs.addEventListener('click', () => {
-    const text = activeTab === 'python' ? logPython.textContent : logExpo.textContent;
-    copyToClipboard(text);
+  api.onExpoLog((text) => {
+    if (logExpo) {
+      logExpo.textContent += text;
+      if (logExpo.textContent.length > 150000) {
+        logExpo.textContent = logExpo.textContent.slice(-100000);
+      }
+      logExpo.scrollTop = logExpo.scrollHeight;
+    }
   });
 
-  // Log Streams
-  window.electronAPI.onPythonLog((text) => {
-    logPython.textContent += text;
-    logPython.scrollTop = logPython.scrollHeight;
-  });
-
-  window.electronAPI.onExpoLog((text) => {
-    logExpo.textContent += text;
-    logExpo.scrollTop = logExpo.scrollHeight;
-  });
-
-  window.electronAPI.onStatusUpdate((data) => {
+  api.onStatusUpdate(() => {
     refreshServerInfo();
   });
 
-  // Reachability probe — every 2 seconds, ask the Electron main
-  // process to fetch /health on the actual LAN IP:port. If the probe
-  // disagrees with the controller's spawn-tracked flags, we treat
-  // the probe as authoritative (the renderer can see what the mobile
-  // phone sees on the network). We surface the disagreement with a
-  // subtle dot color so the user notices a process that's "Running"
-  // according to Node but unreachable in practice.
+  // Reachability probe
   let probeInFlight = false;
   setInterval(async () => {
     if (probeInFlight) return;
     probeInFlight = true;
     try {
-      const reach = await window.electronAPI.probeHealth();
-      // Update pill colors based on *real* reachability.
-      pillPythonStatus.dataset.probeStream = String(reach.streamReachable);
-      pillPythonStatus.dataset.probeBackend = String(reach.backendReachable);
-      // Re-run the status render so the badges use the probe.
+      const reach = await api.probeHealth();
+      if (pillPythonStatus) pillPythonStatus.dataset.probeStream = String(reach.streamReachable);
+      if (pillBackendStatus) pillBackendStatus.dataset.probeBackend = String(reach.backendReachable);
       refreshServerInfo();
-    } catch (e) {
-      // Silent — the next tick will retry.
+    } catch (_) {
     } finally {
       probeInFlight = false;
     }
-  }, 2000);
+  }, 2500);
 
   // Initial load
   refreshServerInfo();

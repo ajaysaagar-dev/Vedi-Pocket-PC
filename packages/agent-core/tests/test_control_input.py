@@ -19,6 +19,8 @@ from agent_core.entities.input_command import (
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -40,6 +42,8 @@ class FakeInputDriver(InputDriver):
     def move_to(self, cmd): self.log.append(("move_to", cmd.x, cmd.y))
     def move_relative(self, cmd): self.log.append(("move_relative", cmd.dx, cmd.dy))
     def click(self, cmd): self.log.append(("click", cmd.button, cmd.clicks, cmd.x, cmd.y))
+    def mouse_down(self, cmd): self.log.append(("mouse_down", cmd.button, cmd.x, cmd.y))
+    def mouse_up(self, cmd): self.log.append(("mouse_up", cmd.button, cmd.x, cmd.y))
     def scroll(self, cmd): self.log.append(("scroll", cmd.dx, cmd.dy))
     def type_text(self, cmd): self.log.append(("type_text", cmd.text))
     def press_key(self, cmd): self.log.append(("press_key", cmd.key))
@@ -80,6 +84,17 @@ def test_click_default_left(controller, driver):
 def test_click_with_coords(controller, driver):
     controller.execute(ClickCommand(button=Button.RIGHT, clicks=2, x=5, y=6))
     assert driver.log == [("click", Button.RIGHT, 2, 5, 6)]
+
+
+def test_mouse_down(controller, driver):
+    controller.execute(MouseDownCommand(button=Button.LEFT, x=10, y=20))
+    assert driver.log == [("mouse_down", Button.LEFT, 10, 20)]
+
+
+def test_mouse_up(controller, driver):
+    controller.execute(MouseUpCommand(button=Button.LEFT, x=10, y=20))
+    assert driver.log == [("mouse_up", Button.LEFT, 10, 20)]
+
 
 
 def test_scroll(controller, driver):

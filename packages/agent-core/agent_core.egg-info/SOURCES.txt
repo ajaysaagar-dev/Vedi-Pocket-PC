@@ -26,4 +26,5 @@ agent_core/use_cases/control_input.py
 agent_core/use_cases/control_system.py
 agent_core/use_cases/pairing.py
 tests/test_control_input.py
+tests/test_controller.py
 tests/test_pairing.py

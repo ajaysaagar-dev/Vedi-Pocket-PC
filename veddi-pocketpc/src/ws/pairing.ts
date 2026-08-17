@@ -146,8 +146,9 @@ export async function pairWithHost(
     // Non-fatal — pairing still succeeded.
   }
 
+  const safeIp = cleanIp(ip);
   const device: PairedDevice = {
-    ip,
+    ip: safeIp,
     port: typeof port === 'string' ? parseInt(port, 10) : port,
     token,
     hostname,

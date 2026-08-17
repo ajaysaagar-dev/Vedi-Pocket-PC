@@ -16,6 +16,8 @@ from agent_core.entities.input_command import (
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -37,6 +39,15 @@ def _mouse_move(msg: dict, ctrl: ControlInput) -> dict | None:
     return None
 
 
+def _mouse_move_to(msg: dict, ctrl: ControlInput) -> dict | None:
+    x = int(msg.get("x", 0))
+    y = int(msg.get("y", 0))
+    duration = float(msg.get("duration", 0.0))
+    print(f"[WS] mouse_move_to x={x} y={y}")
+    ctrl.execute(AbsoluteMove(x=x, y=y, duration=duration))
+    return None
+
+
 def _mouse_click(msg: dict, ctrl: ControlInput) -> dict | None:
     button = msg.get("button", "left")
     clicks = int(msg.get("clicks", 1))
@@ -51,6 +62,35 @@ def _mouse_click(msg: dict, ctrl: ControlInput) -> dict | None:
         y=int(y) if y is not None else None,
     ))
     return None
+
+
+def _mouse_down(msg: dict, ctrl: ControlInput) -> dict | None:
+    button = msg.get("button", "left")
+    btn = Button(button if button in {"left", "right", "middle"} else "left")
+    x = msg.get("x")
+    y = msg.get("y")
+    print(f"[WS] mouse_down button={button}")
+    ctrl.execute(MouseDownCommand(
+        button=btn,
+        x=int(x) if x is not None else None,
+        y=int(y) if y is not None else None,
+    ))
+    return None
+
+
+def _mouse_up(msg: dict, ctrl: ControlInput) -> dict | None:
+    button = msg.get("button", "left")
+    btn = Button(button if button in {"left", "right", "middle"} else "left")
+    x = msg.get("x")
+    y = msg.get("y")
+    print(f"[WS] mouse_up button={button}")
+    ctrl.execute(MouseUpCommand(
+        button=btn,
+        x=int(x) if x is not None else None,
+        y=int(y) if y is not None else None,
+    ))
+    return None
+
 
 
 def _mouse_scroll(msg: dict, ctrl: ControlInput) -> dict | None:
@@ -96,9 +136,14 @@ def _auth_ok(_msg: dict, _ctrl: ControlInput) -> dict:
 # Public dispatch table — wire type → handler.
 DISPATCH: Dict[str, Handler] = {
     "mouse_move": _mouse_move,
+    "mouse_move_to": _mouse_move_to,
     "mouse_click": _mouse_click,
+    "mouse_down": _mouse_down,
+    "mouse_up": _mouse_up,
     "mouse_scroll": _mouse_scroll,
+    "scroll": _mouse_scroll,
     "keyboard_type": _keyboard_type,
+    "text_input": _keyboard_type,
     "key_press": _key_press,
     "hotkey": _hotkey,
     "key_combo": _hotkey,

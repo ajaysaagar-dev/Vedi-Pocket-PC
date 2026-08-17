@@ -17,6 +17,8 @@ from agent_core.entities.input_command import (
     ClickCommand,
     HotkeyCommand,
     KeyPressCommand,
+    MouseDownCommand,
+    MouseUpCommand,
     RelativeMove,
     ScrollCommand,
     TextInputCommand,
@@ -73,6 +75,22 @@ class PyAutoGUIInputDriver(_InputDriverPort):
             kwargs["x"] = x
             kwargs["y"] = y
         self._pyautogui.click(**kwargs)
+
+    def mouse_down(self, cmd: MouseDownCommand) -> None:
+        kwargs = {"button": cmd.button.value, "_pause": False}
+        if cmd.x is not None and cmd.y is not None:
+            x, y = clamp_to_active_monitor(int(cmd.x), int(cmd.y))
+            kwargs["x"] = x
+            kwargs["y"] = y
+        self._pyautogui.mouseDown(**kwargs)
+
+    def mouse_up(self, cmd: MouseUpCommand) -> None:
+        kwargs = {"button": cmd.button.value, "_pause": False}
+        if cmd.x is not None and cmd.y is not None:
+            x, y = clamp_to_active_monitor(int(cmd.x), int(cmd.y))
+            kwargs["x"] = x
+            kwargs["y"] = y
+        self._pyautogui.mouseUp(**kwargs)
 
     def scroll(self, cmd: ScrollCommand) -> None:
         if int(cmd.dy) != 0:

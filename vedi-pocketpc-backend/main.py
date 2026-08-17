@@ -246,6 +246,13 @@ def create_app(container: Container | None = None) -> FastAPI:
 
 
 def main() -> None:
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.winmm.timeBeginPeriod(1)
+        except Exception:
+            pass
+
     configure_logging()
 
     container = Container()
