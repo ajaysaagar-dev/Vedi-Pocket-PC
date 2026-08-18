@@ -23,7 +23,7 @@
 - [Overview & Key Features](#overview--key-features)
 - [Tech Stack & Libraries Deep-Dive](#tech-stack--libraries-deep-dive)
   - [Python Backend & Streaming Stack](#1-python-backend--streaming-stack)
-  - [Frontend Desktop Interface](#2-frontend-desktop-interface)
+  - [Desktop Controller Interface](#2-desktop-controller-interface)
   - [Mobile Client Application](#3-mobile-client-application)
 - [Architecture & System Flow](#architecture--system-flow)
 - [Repository Structure](#repository-structure)
@@ -63,15 +63,16 @@
 | **`websockets` / `wsproto`** | Low-Latency Binary WebSockets | Real-time bi-directional streaming for screen frame delivery and gesture event packets. |
 | **`pycaw` & `comtypes`** | Windows Core Audio Integration | Direct COM interop to `IAudioEndpointVolume` for master volume adjustment and mute toggling. |
 | **`zeroconf`** | mDNS Local Network Discovery | Registers `_vedi-pocketpc._tcp.local.` services so mobile devices automatically find the PC. |
-| **`pywebview`** | Native Windows Window GUI | Wraps the HTML/CSS management UI into a desktop application window powered by Edge WebView2. |
+| **`customtkinter`** | Native Windows Desktop GUI | Custom dark-themed Tkinter desktop application window displaying pairing QR codes, Expo/Metro status, live logs, and process controls. |
 | **`pystray`** | Taskbar System Tray Icon | `pystray.Icon()` for running the app minimized in the Windows system tray. |
 | **`qrcode`** | Dynamic Credentials QR | `qrcode.make()` to build inline QR code data URLs encoding IP, port, and security PIN. |
 | **`psutil`** | Process Lifecycle Management | `psutil.process_iter()`, port checks, and clean child process termination. |
 
-### 2. Frontend Desktop Interface
+### 2. Desktop Controller Interface
 
-* **HTML5 & Vanilla CSS3**: Designed with modern dark theme tokens (`#0a0a0a`), responsive flex layouts, CSS glassmorphism, and status indicators.
-* **Vanilla JavaScript (`renderer.js`)**: Handles live WebSocket log streams, server control actions (Start / Stop / Restart), and QR code updates.
+* **CustomTkinter Native GUI**: Modern dark-themed Python desktop window (`app.py`) featuring real-time pairing QR codes, Expo / Metro launcher & controls, service status pills, and live diagnostic log view.
+* **HTML5 & Vanilla CSS3**: Web management dashboard interface served at `http://127.0.0.1:8090`.
+* **Vanilla JavaScript (`renderer.js`)**: Handles live WebSocket log streams and interactive server process controls.
 
 ### 3. Mobile Client Application
 
@@ -88,7 +89,7 @@
 │  Vedi Pocket PC Desktop Controller (Python 3.10+ / PyInstaller)                                       │
 │  ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐  │
 │  │ ProcessManager                                                                                    │  │
-│  │   ├── Controller Server (aiohttp)      --> http://127.0.0.1:8090   (Management UI shell)            │  │
+│  │   ├── CustomTkinter GUI & Controller Server (aiohttp) --> http://127.0.0.1:8090 (Desktop App & Management shell) │  │
 │  │   ├── Screen Streamer (aiohttp WS)     --> ws://0.0.0.0:8080/ws     (JPEG Display Stream)           │  │
 │  │   └── Pairing & Remote Agent (FastAPI) --> http://0.0.0.0:8000     (REST API & Touch Control)      │  │
 │  └──────────────────────────────────────────────────────────────────────────────────────────────────┘  │
@@ -110,15 +111,12 @@
 
 ```
 Vedi-Pocket-PC/
-├── setup.bat                          # Root entry point: Installs dependencies
-├── start.bat                          # Root entry point: Launches desktop application
-├── build.bat                          # Root entry point: Builds production EXE
-├── requirements.txt                   # Master Python dependencies list
 ├── .env                               # Environment configuration settings
+├── requirements.txt                   # Master Python dependencies list
 │
 ├── apps/
 │   ├── desktop/controller/            # Desktop GUI shell & Process Manager
-│   │   ├── app.py                     # Primary execution entry point
+│   │   ├── app.py                     # Primary execution entry point (CustomTkinter GUI)
 │   │   ├── index.html                 # Management dashboard UI
 │   │   ├── styles.css                 # Dark theme styling tokens
 │   │   ├── renderer.js                # Frontend WebSocket & REST controller
@@ -132,10 +130,10 @@ Vedi-Pocket-PC/
 │   ├── core/                          # Shared domain core (`agent_core`)
 │   └── protocol/                      # Shared communication protocols
 │
-├── scripts/                           # Internal execution batch scripts
-│   ├── setup.bat
-│   ├── start.bat
-│   └── build.bat
+├── scripts/                           # Master execution & build scripts
+│   ├── setup.bat                      # Master setup: Installs dependencies
+│   ├── start.bat                      # Master launcher: Boots CustomTkinter GUI & services
+│   └── build.bat                      # Production builder: Generates standalone EXE
 │
 └── tests/                             # Unit and integration test suite
 ```
@@ -161,14 +159,14 @@ git clone https://github.com/ajaysaagar-dev/Vedi-Pocket-PC.git
 cd Vedi-Pocket-PC
 
 # 2. Run master setup (installs Python packages & mobile dependencies)
-.\setup.bat
+.\scripts\setup.bat
 
 # 3. Launch application from source
-.\start.bat
+.\scripts\start.bat
 ```
 
 > [!NOTE]
-> Running `.\start.bat` auto-detects free ports, verifies `.env`, sets up Windows Firewall permissions, and launches the native pywebview window.
+> Running `.\scripts\start.bat` auto-detects free ports, verifies `.env`, sets up Windows Firewall permissions, and launches the native CustomTkinter GUI window.
 
 ---
 
@@ -193,7 +191,7 @@ CONTROLLER_PORT=8090
 
 | Default Port | Protocol | Component Service |
 | :---: | :---: | :--- |
-| **`8090`** | HTTP / WS | Desktop Controller Management UI (`pywebview` / browser) |
+| **`8090`** | HTTP / WS | Desktop Controller Management UI (`CustomTkinter` GUI / Browser) |
 | **`8080`** | WebSocket | High-Speed Screen Streamer |
 | **`8000`** | HTTP REST | FastAPI Remote Control & Pairing Agent |
 
