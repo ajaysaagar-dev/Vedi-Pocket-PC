@@ -15,9 +15,9 @@ import pytest
 
 # Allow running `pytest tests/` from the backend root without an editable
 # install. Prepending the package root makes `agent_core` importable.
-BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-REPO_ROOT = os.path.abspath(os.path.join(BACKEND_ROOT, os.pardir))
-sys.path.insert(0, os.path.join(REPO_ROOT, "packages", "agent-core"))
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "apps", "agent", "server"))
+REPO_ROOT = os.path.abspath(os.path.join(BACKEND_ROOT, os.pardir, os.pardir, os.pardir))
+sys.path.insert(0, os.path.join(REPO_ROOT, "packages", "core"))
 
 from agent_core.entities.input_command import (  # noqa: E402
     AbsoluteMove,

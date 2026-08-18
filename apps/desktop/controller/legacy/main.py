@@ -31,9 +31,9 @@ if sys.platform == "win32":
 
 from aiohttp import web
 
-from controller.network import find_free_port, get_lan_ip
-from controller.process_manager import ProcessManager
-from controller.server import ControllerServer
+from .network import find_free_port, get_lan_ip
+from .process_manager import ProcessManager
+from .server import ControllerServer
 
 
 def print_banner(host: str, port: int, lan_ip: str) -> None:

@@ -13,11 +13,32 @@ from typing import Dict, Set
 
 from aiohttp import web
 
-from controller.network import get_lan_ip
-from controller.process_manager import ProcessManager
-from controller.qr import to_data_url
+from .network import get_lan_ip
+from .process_manager import ProcessManager
+from .qr import to_data_url
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# When the application is packaged with PyInstaller, the static assets
+# (index.html, styles.css, …) sit at the bundle root (``_internal/``),
+# not alongside this file (``_internal/apps/desktop/controller/``).
+# Probe both locations so the controller UI can be served from
+# either layout — source checkout or frozen EXE — without code
+# changes at the call site.
+_BUNDLE_ROOTS = [
+    ROOT_DIR,
+    os.path.abspath(os.path.join(ROOT_DIR, "..", "..", "..")),
+]
+
+
+def _resolve_static(filename: str) -> str:
+    """Return the first existing path for ``filename`` across the
+    candidate roots, falling back to ``ROOT_DIR`` if none match.
+    """
+    for base in _BUNDLE_ROOTS:
+        candidate = os.path.join(base, filename)
+        if os.path.isfile(candidate):
+            return candidate
+    return os.path.join(ROOT_DIR, filename)
 
 
 class ControllerServer:
@@ -77,19 +98,19 @@ class ControllerServer:
         return web.Response(status=204)
 
     async def handle_index(self, request: web.Request) -> web.FileResponse:
-        return web.FileResponse(os.path.join(ROOT_DIR, "index.html"))
+        return web.FileResponse(_resolve_static("index.html"))
 
     async def handle_static_css(self, request: web.Request) -> web.FileResponse:
-        return web.FileResponse(os.path.join(ROOT_DIR, "styles.css"))
+        return web.FileResponse(_resolve_static("styles.css"))
 
     async def handle_static_js(self, request: web.Request) -> web.FileResponse:
-        return web.FileResponse(os.path.join(ROOT_DIR, "renderer.js"))
+        return web.FileResponse(_resolve_static("renderer.js"))
 
     async def handle_static_logo(self, request: web.Request) -> web.FileResponse:
-        return web.FileResponse(os.path.join(ROOT_DIR, "logo.jpeg"))
+        return web.FileResponse(_resolve_static("logo.jpeg"))
 
     async def handle_static_ico(self, request: web.Request) -> web.FileResponse:
-        return web.FileResponse(os.path.join(ROOT_DIR, "logo.ico"))
+        return web.FileResponse(_resolve_static("logo.ico"))
 
 
     async def _build_full_info(self) -> dict:

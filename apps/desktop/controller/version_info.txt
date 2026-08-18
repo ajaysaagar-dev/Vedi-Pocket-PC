@@ -1,0 +1,39 @@
+# UTF-8
+#
+# Windows VERSIONINFO resource for ``VediPocketPC.exe``.
+# Read by PyInstaller via ``--version-file`` and embedded directly in
+# the executable so right-click → Properties → Details shows the
+# correct Product Name, Version, and Company.
+#
+# Numeric fields use comma-separated ``major,minor,patch,build`` form.
+
+VSVersionInfo(
+    ffi=FixedFileInfo(
+        filevers=(1, 0, 0, 0),
+        prodvers=(1, 0, 0, 0),
+        mask=0x3f,
+        flags=0x0,
+        OS=0x40004,         # Win32 / Win64
+        fileType=0x1,       # App
+        subtype=0x0,
+        date=(0, 0),
+    ),
+    kids=[
+        StringFileInfo([
+            StringTable(
+                u"040904B0",  # en-US, Unicode
+                [
+                    StringStruct(u"CompanyName",      u"Vedi"),
+                    StringStruct(u"FileDescription",  u"Vedi Pocket PC — wireless trackpad, keyboard, and screen mirror for Windows."),
+                    StringStruct(u"FileVersion",      u"1.0.0.0"),
+                    StringStruct(u"InternalName",     u"VediPocketPC"),
+                    StringStruct(u"OriginalFilename", u"VediPocketPC.exe"),
+                    StringStruct(u"ProductName",      u"Vedi Pocket PC"),
+                    StringStruct(u"ProductVersion",   u"1.0.0.0"),
+                    StringStruct(u"LegalCopyright",   u"Copyright (c) Vedi. MIT License."),
+                ],
+            ),
+        ]),
+        VarFileInfo([VarStruct(u"Translation", [1033, 1200])]),
+    ],
+)

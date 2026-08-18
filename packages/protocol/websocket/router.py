@@ -10,7 +10,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from agent_core.entities.pairing import SessionToken
 
-from presentation.ws.dispatch_table import dispatch
+from .dispatch_table import dispatch
 
 
 def build_router(container) -> APIRouter:

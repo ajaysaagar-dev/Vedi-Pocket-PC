@@ -25,18 +25,22 @@ The local server agent that runs on your laptop/PC to handle mouse, keyboard, me
 After the hexagonal-architecture refactor this folder is a **thin shell** over the shared `agent_core` package:
 
 ```
-vedi-pocketpc-backend/
+apps/agent/server/
 ├── main.py                    composition root — only place adapters get constructed
-├── presentation/
-│   ├── http/                  FastAPI routers (pairing, system, media)
-│   └── ws/                    WebSocket transport + dispatch table
-├── infrastructure/            logging, mDNS discovery
-└── tests/                     composition-root smoke + fake-driver tests
+├── PCRemoteAgent.spec         PyInstaller spec for standalone EXE
+├── build/                     PyInstaller build outputs (gitignored)
+└── README.md
+
+Shared:
+├── packages/core/agent_core/  hexagonal domain (adapters / ports / entities / use cases)
+├── packages/protocol/         FastAPI routers (http, pairing, websocket)
+├── infrastructure/            logging, mDNS discovery (networking, logging)
+└── tests/unit/agent/          composition-root smoke + fake-driver tests
 ```
 
 ```bash
 # 1. Install the shared domain package
-pip install -e ../packages/agent-core
+pip install -e ../../packages/core
 
 # 2. Backend deps
 pip install -r requirements.txt
@@ -62,7 +66,7 @@ working.
 To package the agent into a single executable file that requires no Python installation:
 
 ```cmd
-build_agent.bat
+../../scripts/build_agent.bat
 ```
 
 Output binary will be located at `dist/PCRemoteAgent.exe`.
@@ -70,5 +74,5 @@ Output binary will be located at `dist/PCRemoteAgent.exe`.
 ## 🧪 Tests
 
 ```bash
-pytest tests/
+pytest ../../tests/unit/agent
 ```

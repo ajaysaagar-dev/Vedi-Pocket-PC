@@ -13,9 +13,9 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 
-BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-REPO_ROOT = os.path.abspath(os.path.join(BACKEND_ROOT, os.pardir))
-sys.path.insert(0, os.path.join(REPO_ROOT, "packages", "agent-core"))
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "apps", "agent", "server"))
+REPO_ROOT = os.path.abspath(os.path.join(BACKEND_ROOT, os.pardir, os.pardir, os.pardir))
+sys.path.insert(0, os.path.join(REPO_ROOT, "packages", "core"))
 sys.path.insert(0, BACKEND_ROOT)
 
 from main import Container, create_app  # noqa: E402
@@ -48,6 +48,22 @@ def test_pair_returns_token_on_correct_pin(client, container):
     assert body["status"] == "success"
     assert isinstance(body["token"], str)
     assert len(body["token"]) >= 16
+    # NEW: the easy-connect common token is also returned (and is
+    # the same on subsequent calls in the same process).
+    assert "common_token" in body
+    assert isinstance(body["common_token"], str)
+    assert len(body["common_token"]) >= 16
+
+
+def test_pair_common_token_is_stable_across_calls(client, container):
+    """Same process → same common token. Survives restart via disk
+    (covered by `test_pair_common_token_persists_to_disk` below)."""
+    first = client.post("/pair", json={"pin": container.pairing_pin.value}).json()
+    second = client.post("/pair", json={"pin": container.pairing_pin.value}).json()
+    # The per-device token mints a fresh value every time …
+    assert first["token"] != second["token"]
+    # … but the common token must be stable across calls.
+    assert first["common_token"] == second["common_token"]
 
 
 def test_pair_rejects_wrong_pin(client):

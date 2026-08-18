@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 
 from agent_core.entities.pairing import SessionToken
 
-from presentation.http.pairing_router import verify_token_header
+from ..pairing.pairing_router import verify_token_header
 
 
 def build_router(container) -> APIRouter:

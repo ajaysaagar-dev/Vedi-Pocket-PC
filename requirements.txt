@@ -1,5 +1,5 @@
 # Vedi Pocket PC - Master Python Requirements
--e ./packages/agent-core
+-e ./packages/core
 
 # Screen Stream Server & Remote Agent dependencies
 mss
@@ -19,7 +19,7 @@ psutil
 httpx
 
 # Optional native desktop window GUI
-pywebview; sys_platform == 'win32'
+customtkinter; sys_platform == 'win32'
 
 # Testing
 pytest

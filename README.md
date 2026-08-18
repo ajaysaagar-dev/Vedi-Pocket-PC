@@ -1,260 +1,214 @@
-<div align="center">
+<p align="center">
+  <img src="apps/desktop/controller/logo.jpeg" alt="Vedi Pocket PC Logo" width="140" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);" />
+</p>
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:203a43,100:2c5364&height=220&section=header&text=Vedi%20Pocket%20PC&fontSize=52&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Your%20phone.%20Your%20PC.%20No%20cloud%20required.&descAlignY=58&descAlign=50" width="100%"/>
+<h1 align="center">Vedi Pocket PC</h1>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=2800&pause=900&color=38BDF8&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=90&lines=Wireless+Trackpad+%2B+Keyboard+%2B+Screen+Mirror;100%25+Local+%E2%80%A2+Zero+Cloud+%E2%80%A2+Zero+Internet;Pure+Python+%2B+FastAPI+%2B+Expo+%2B+WebSockets" alt="Typing SVG" />
+<p align="center">
+  <strong>Transform your smartphone into a wireless trackpad, keyboard, media remote, and real-time screen mirror for your Windows PC — 100% offline over local Wi-Fi.</strong>
+</p>
 
-<br/>
-
-![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=for-the-badge&logo=windows11&logoColor=white)
-![Python](https://img.shields.io/badge/Controller%20%26%20Backend-Python%203.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Expo](https://img.shields.io/badge/Mobile-Expo%20%2F%20RN-000020?style=for-the-badge&logo=expo&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-4c1?style=for-the-badge)
-
-<br/>
-
-<img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" />
-<img src="https://img.shields.io/badge/LAN%20only-no%20cloud-critical?style=flat-square&color=orange" />
-<img src="https://img.shields.io/badge/latency-%3C30ms-9cf?style=flat-square" />
-
-</div>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## ✨ Overview
-
-**Vedi Pocket PC** turns your phone into a wireless trackpad, keyboard, and live screen for your desktop PC — streamed entirely over your **local Wi-Fi network**. No accounts, no third-party servers, no cloud relay, and zero internet dependency. 
-
-Scan a QR code on your PC screen and immediately take remote control.
-
-<div align="center">
-<table>
-<tr>
-<td align="center" width="25%">
-
-### 🖥️
-**Screen Mirror**
-Low-latency JPEG stream over WebSockets with VSync alignment (<30ms)
-
-</td>
-<td align="center" width="25%">
-
-### 🖱️
-**Trackpad**
-Move · Left/Right Click · Press & Drag · Smooth Scroll
-
-</td>
-<td align="center" width="25%">
-
-### ⌨️
-**Keyboard**
-Full soft keys + shortcut bar (Ctrl, Alt, Win, Del)
-
-</td>
-<td align="center" width="25%">
-
-### ⚡
-**Power & Media**
-Lock · Sleep · Shutdown · Mute · Volume Control
-
-</td>
-</tr>
-</table>
-</div>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 📋 System Requirements
-
-| Component | Requirement | Notes |
-|:---:|:---:|:---|
-| **OS** | Windows 10 / 11 | Host desktop machine |
-| **Python** | 3.10 or higher | Powers the desktop controller, backend agent & screen stream server |
-| **Node.js** | v18.0 or higher | Required only to bundle the Expo dev server for mobile |
-| **Network** | Local Wi-Fi (LAN) | Phone & PC must be on the same local Wi-Fi router |
-| **Mobile** | Expo Go App | Available free on iOS App Store & Android Google Play |
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🚀 Quick Start Guide
-
-### ⚡ Option A — 1-Click Automated Setup (Recommended)
-
-1. **Install All Dependencies**:
-   Double-click **[`setup.bat`](file:///P:/Vedi-Pocket-PC/setup.bat)** (or run `.\setup.bat` in PowerShell).
-   > *This script automatically checks Python & Node, installs all Python packages and mobile Expo packages.*
-
-2. **Launch the Application**:
-   Double-click **[`start.bat`](file:///P:/Vedi-Pocket-PC/start.bat)** (or run `python controller/main.py`).
-   > *Launches the Python desktop controller (:8090), starts Screen Streamer (:8080), Remote Agent (:8000), and Mobile Expo Dev Server (:8088).*
-
-3. **Connect Mobile App**:
-   - Open **Expo Go** on your phone.
-   - Scan the **Expo QR Code** shown in your desktop UI / terminal.
-   - Once inside the mobile app, scan the **PC Pairing QR Code** to connect!
+<p align="center">
+  <a href="#tech-stack--libraries-deep-dive"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+" /></a>
+  <a href="#tech-stack--libraries-deep-dive"><img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="#tech-stack--libraries-deep-dive"><img src="https://img.shields.io/badge/React_Native-Expo-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native Expo" /></a>
+  <a href="#tech-stack--libraries-deep-dive"><img src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-green.style=for-the-badge" alt="MIT License" /></a>
+</p>
 
 ---
 
-### ⚙️ Option B — Manual Step-by-Step Installation
+## 📋 Table of Contents
 
-<details>
-<summary><b>Click to expand manual setup instructions</b></summary>
+- [Overview & Key Features](#overview--key-features)
+- [Tech Stack & Libraries Deep-Dive](#tech-stack--libraries-deep-dive)
+  - [Python Backend & Streaming Stack](#1-python-backend--streaming-stack)
+  - [Frontend Desktop Interface](#2-frontend-desktop-interface)
+  - [Mobile Client Application](#3-mobile-client-application)
+- [Architecture & System Flow](#architecture--system-flow)
+- [Repository Structure](#repository-structure)
+- [Quick Start Guide](#quick-start-guide)
+  - [For End Users](#for-end-users)
+  - [For Developers](#for-developers)
+- [Ports & Configuration (.env)](#ports--configuration-env)
+- [Logs & Persistent Data](#logs--persistent-data)
+- [License](#license)
 
-<br/>
+---
 
-#### 1️⃣ Install Python Dependencies
-```powershell
-pip install -r requirements.txt
+## 🚀 Overview & Key Features
+
+**Vedi Pocket PC** is a zero-latency, private local network remote control suite for Windows PCs. It requires **no user accounts, no cloud relays, and no active internet connection**.
+
+* 📲 **Wireless Trackpad & Multitouch**: Smooth cursor movement, left/right/middle clicks, click-and-drag, and 2-finger scroll gestures.
+* ⌨️ **Full Remote Keyboard**: Low-latency typing input, backspace handling, modifier keys (`Ctrl`, `Alt`, `Shift`), and media hotkeys.
+* 🖥️ **High-FPS Screen Mirroring**: Ultra-fast desktop capture compressed into JPEG streams over WebSockets directly to the phone display.
+* 🔊 **System Media & Volume Control**: Adjust PC master volume, toggle mute, and control playback directly through Windows Core Audio APIs.
+* 🔒 **Zero-Trust Local Pairing**: Secure 4-digit PIN authentication paired instantly via camera QR code scan.
+
+---
+
+## 🛠️ Tech Stack & Libraries Deep-Dive
+
+### 1. Python Backend & Streaming Stack
+
+| Library / Module | Purpose | Specific Functions & Features Used |
+| :--- | :--- | :--- |
+| **`mss`** | Ultra-Fast Screen Capture | `mss.mss()` for direct DXGI desktop frame grabbing without GDI overhead. |
+| **`Pillow` (PIL)** | Image Processing | `Image.frombytes()`, JPEG compression, dynamic resizing (`STREAM_MAX_WIDTH` x `STREAM_MAX_HEIGHT`). |
+| **`pyautogui`** | OS Mouse & Keyboard Automation | `pyautogui.moveTo()`, `click()`, `press()`, `scroll()`, `hotkey()` for simulating physical PC inputs. |
+| **`fastapi`** | REST API Service | APIRouter, JWT authentication endpoints, and pairing PIN verification routes (`/api/pair`). |
+| **`uvicorn[standard]`** | High-Performance ASGI Server | Drives the `fastapi` pairing and control agent with asynchronous event handlers. |
+| **`aiohttp`** | Async Web Server & WebSockets | Drives the controller management server, static asset distribution, and WebSockets event bus. |
+| **`websockets` / `wsproto`** | Low-Latency Binary WebSockets | Real-time bi-directional streaming for screen frame delivery and gesture event packets. |
+| **`pycaw` & `comtypes`** | Windows Core Audio Integration | Direct COM interop to `IAudioEndpointVolume` for master volume adjustment and mute toggling. |
+| **`zeroconf`** | mDNS Local Network Discovery | Registers `_vedi-pocketpc._tcp.local.` services so mobile devices automatically find the PC. |
+| **`pywebview`** | Native Windows Window GUI | Wraps the HTML/CSS management UI into a desktop application window powered by Edge WebView2. |
+| **`pystray`** | Taskbar System Tray Icon | `pystray.Icon()` for running the app minimized in the Windows system tray. |
+| **`qrcode`** | Dynamic Credentials QR | `qrcode.make()` to build inline QR code data URLs encoding IP, port, and security PIN. |
+| **`psutil`** | Process Lifecycle Management | `psutil.process_iter()`, port checks, and clean child process termination. |
+
+### 2. Frontend Desktop Interface
+
+* **HTML5 & Vanilla CSS3**: Designed with modern dark theme tokens (`#0a0a0a`), responsive flex layouts, CSS glassmorphism, and status indicators.
+* **Vanilla JavaScript (`renderer.js`)**: Handles live WebSocket log streams, server control actions (Start / Stop / Restart), and QR code updates.
+
+### 3. Mobile Client Application
+
+* **React Native / Expo Go**: Cross-platform mobile framework.
+* **`expo-camera`**: Hardware camera integration for instant QR code pairing scan.
+* **`react-native-reanimated`**: High-frequency 60FPS gesture handling for fluid trackpad control.
+
+---
+
+## 🏗️ Architecture & System Flow
+
+```
+┌────────────────────────────────────────────── Windows PC ──────────────────────────────────────────────┐
+│  Vedi Pocket PC Desktop Controller (Python 3.10+ / PyInstaller)                                       │
+│  ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ ProcessManager                                                                                    │  │
+│  │   ├── Controller Server (aiohttp)      --> http://127.0.0.1:8090   (Management UI shell)            │  │
+│  │   ├── Screen Streamer (aiohttp WS)     --> ws://0.0.0.0:8080/ws     (JPEG Display Stream)           │  │
+│  │   └── Pairing & Remote Agent (FastAPI) --> http://0.0.0.0:8000     (REST API & Touch Control)      │  │
+│  └──────────────────────────────────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                    │
+                                                    │ 🔒 QR Code Pairing & Local Wi-Fi WebSockets
+                                                    ▼
+┌──────────────────────────────────────── Mobile Application ───────────────────────────────────────────┐
+│  React Native / Expo App (Android Release APK)                                                         │
+│  ├── Camera Scan  --> Decodes PC LAN IP, Port, and 4-Digit Security PIN                                │
+│  ├── Screen Mirror --> Renders 30FPS JPEG WebSocket stream                                            │
+│  └── Trackpad UI   --> Translates gestures to PyAutoGUI commands on PC                                │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 2️⃣ Install Mobile Client Dependencies
-```powershell
-cd veddi-pocketpc
-npm install --legacy-peer-deps
-cd ..
+---
+
+## 📁 Repository Structure
+
 ```
-
-#### 3️⃣ Launch Desktop Controller
-```powershell
-python controller/main.py
-```
-
-#### 4️⃣ Running Individual Services Separately
-If you prefer running backends manually in individual PowerShell windows:
-
-- **Screen Stream Server** (Port `8080`):
-  ```powershell
-  cd screen-stream-server
-  python main.py
-  ```
-
-- **FastAPI Remote Agent Backend** (Port `8000`):
-  ```powershell
-  cd vedi-pocketpc-backend
-  python main.py
-  ```
-
-- **Mobile Client Expo App** (Port `8088`):
-  ```powershell
-  cd veddi-pocketpc
-  npx expo start -c
-  ```
-
-</details>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 📱 How to Pair Mobile App with PC
-
-```mermaid
-sequenceDiagram
-    participant U as 👤 User
-    participant C as 🖥️ Python Controller (:8090)
-    participant B as 🔧 Backend (:8000)
-    participant S as 📡 Stream Server (:8080)
-    participant M as 📱 Mobile App
-
-    U->>C: Run start.bat / python controller/main.py
-    C->>B: Spawn FastAPI Agent process
-    C->>S: Spawn Stream Server process
-    B->>B: Generate Pairing PIN & QR Code
-    U->>M: Scan Expo QR with Expo Go
-    M->>M: Launch Vedi Pocket PC app
-    U->>M: Scan PC Pairing QR Code
-    M->>B: Verify PIN & Authenticate
-    B-->>M: Pairing Confirmed (Token granted)
-    M->>S: Open WebSocket (ws://<LAN_IP>:8080/ws)
-    S-->>M: Stream low-latency JPEG frames & trackpad inputs
-```
-
-1. Make sure your **Phone and PC are connected to the same Wi-Fi**.
-2. Run `start.bat` on your PC.
-3. Open **Expo Go** on your phone:
-   - **Android**: Scan the terminal QR code inside Expo Go.
-   - **iOS**: Scan the terminal QR code with your default Camera app, then tap "Open in Expo Go".
-4. In the mobile app, tap **Pair Device** and point your camera at the **PC Pairing QR code** displayed on your desktop screen.
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🧩 System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Desktop["🖥️ Windows Desktop"]
-        C["⚡ Python Desktop Controller<br/>controller/main.py<br/>:8090"]
-        S["📡 Screen Stream Server<br/>Python · aiohttp · mss · VSync<br/>:8080"]
-        B["🔧 Remote Agent Backend<br/>FastAPI · WebSockets<br/>:8000"]
-        C -->|spawns & monitors| S
-        C -->|spawns & monitors| B
-    end
-
-    subgraph Phone["📱 Mobile Client"]
-        M["Expo / React Native App<br/>Screen · Trackpad · Keyboard · Controls"]
-    end
-
-    S <-->|"JPEG frames + trackpad events (WS)"| M
-    B <-->|"pairing · keyboard · media · power (REST/WS)"| M
-    B -.->|"mDNS service discovery<br/>_pcremote._tcp.local."| M
-
-    style C fill:#38BDF8,color:#0f172a,stroke:#0284c7,stroke-width:2px
-    style S fill:#a78bfa,color:#1e1b4b,stroke:#7c3aed,stroke-width:2px
-    style B fill:#34d399,color:#022c22,stroke:#059669,stroke-width:2px
-    style M fill:#fb923c,color:#431407,stroke:#ea580c,stroke-width:2px
-```
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
-
-## 🗂️ Repository Structure
-
-```text
 Vedi-Pocket-PC/
-├── setup.bat                          ⚡ One-click installer (Python + Expo dependencies)
-├── start.bat                          🚀 One-click launcher (Python Controller + Backends + Expo)
-├── main.py                            🐍 Root entry point
-├── requirements.txt                   📦 Master Python dependencies file
-├── controller/                        ⚡ Pure Python Desktop Controller (:8090)
-│   ├── main.py                        Controller entry point & launcher
-│   ├── process_manager.py             Process manager & log streamer
-│   ├── server.py                      REST & WebSocket controller API server
-│   ├── network.py                     LAN IP resolution & port finder
-│   └── qr.py                          QR code generation
-├── screen-stream-server/              📡 High-performance screen capture & trackpad server (:8080)
-│   ├── domain/capture.py              Fast screen grabber (mss, Pillow 4:2:0 YUV)
-│   ├── presentation/ws_router.py      Low-latency mouse & keyboard input WebSocket
-│   └── main.py                        aiohttp server with 1ms high-res timer & VSync frame pacing
-├── vedi-pocketpc-backend/             🔧 FastAPI remote management agent (:8000)
-│   ├── presentation/                  Pairing, system info, power & media routes
-│   ├── infrastructure/discovery.py    mDNS local network discovery broadcast
-│   └── main.py                        FastAPI app entry point
-├── veddi-pocketpc/                    📱 Expo / React Native mobile application (:8088)
-│   ├── app/(tabs)/                    Screens: Home, Screen Mirror, Trackpad, Keyboard, Controls
-│   ├── app/pairing.tsx                Camera QR code scanner screen
-│   └── components/DesktopViewport.tsx VSync-aligned real-time desktop screen renderer
-└── packages/agent-core/               🧠 Shared Python domain models & input drivers
+├── setup.bat                          # Root entry point: Installs dependencies
+├── start.bat                          # Root entry point: Launches desktop application
+├── build.bat                          # Root entry point: Builds production EXE
+├── requirements.txt                   # Master Python dependencies list
+├── .env                               # Environment configuration settings
+│
+├── apps/
+│   ├── desktop/controller/            # Desktop GUI shell & Process Manager
+│   │   ├── app.py                     # Primary execution entry point
+│   │   ├── index.html                 # Management dashboard UI
+│   │   ├── styles.css                 # Dark theme styling tokens
+│   │   ├── renderer.js                # Frontend WebSocket & REST controller
+│   │   └── logo.jpeg / logo.ico       # Application icons
+│   │
+│   ├── streamer/server/               # Screen streamer engine (MSS + WebSockets)
+│   ├── agent/server/                  # FastAPI remote control agent (PyAutoGUI + PyCAW)
+│   └── mobile/app/                    # React Native / Expo mobile application
+│
+├── packages/
+│   ├── core/                          # Shared domain core (`agent_core`)
+│   └── protocol/                      # Shared communication protocols
+│
+├── scripts/                           # Internal execution batch scripts
+│   ├── setup.bat
+│   ├── start.bat
+│   └── build.bat
+│
+└── tests/                             # Unit and integration test suite
 ```
 
-<img src="https://raw.githubusercontent.com/andreasbm/rainbow/master/assets/lines/rainbow.gif" width="100%">
+---
 
-## 🚨 Troubleshooting & FAQ
+## 🚦 Quick Start Guide
 
-### 1. Windows Firewall Blocking Connection
-If your phone cannot connect to the PC, open PowerShell **as Administrator** and allow inbound traffic on ports `8080`, `8000`, and `8090`:
+### For End Users
+
+1. Download **`Vedi Pocket PC Setup-1.0.0.exe`** from the release page.
+2. Run the installer and launch **Vedi Pocket PC** from your Start Menu.
+3. Open the **Vedi Pocket PC** app on your phone, tap **Scan QR**, and point the camera at the desktop window.
+4. Your phone is now paired as your PC's wireless trackpad, keyboard, and display stream!
+
+### For Developers
+
+Clone the repository and set up your workspace:
 
 ```powershell
-New-NetFirewallRule -DisplayName "Vedi Pocket PC - Screen Stream (8080)" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow -Profile Private,Domain
-New-NetFirewallRule -DisplayName "Vedi Pocket PC - Backend Agent (8000)" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow -Profile Private,Domain
-New-NetFirewallRule -DisplayName "Vedi Pocket PC - Controller (8090)" -Direction Inbound -LocalPort 8090 -Protocol TCP -Action Allow -Profile Private,Domain
+# 1. Clone repository
+git clone https://github.com/ajaysaagar-dev/Vedi-Pocket-PC.git
+cd Vedi-Pocket-PC
+
+# 2. Run master setup (installs Python packages & mobile dependencies)
+.\setup.bat
+
+# 3. Launch application from source
+.\start.bat
 ```
 
-### 2. `Port is being used by another process`
-The controller automatically detects occupied ports and binds to the next available free port.
+> [!NOTE]
+> Running `.\start.bat` auto-detects free ports, verifies `.env`, sets up Windows Firewall permissions, and launches the native pywebview window.
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%">
+---
 
-<div align="center">
+## ⚙️ Ports & Configuration (.env)
 
-### 📄 License
+The application configuration can be customized via `.env` in the root folder:
 
-**MIT License** — See `package.json` for details.
+```ini
+# Screen Stream Server Settings
+STREAM_HOST=0.0.0.0
+STREAM_PORT=8080
+STREAM_FPS=30
+STREAM_JPEG_QUALITY=50
+STREAM_MAX_WIDTH=1280
+STREAM_MAX_HEIGHT=720
 
-</div>
+# Backend Server Settings
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=8000
+CONTROLLER_PORT=8090
+```
+
+| Default Port | Protocol | Component Service |
+| :---: | :---: | :--- |
+| **`8090`** | HTTP / WS | Desktop Controller Management UI (`pywebview` / browser) |
+| **`8080`** | WebSocket | High-Speed Screen Streamer |
+| **`8000`** | HTTP REST | FastAPI Remote Control & Pairing Agent |
+
+---
+
+## 📊 Logs & Persistent Data
+
+All application logs and user configurations are stored under `%LOCALAPPDATA%\Vedi Pocket PC\`:
+
+* **Log File**: `%LOCALAPPDATA%\Vedi Pocket PC\logs\vedi-pocketpc.log` (Auto-rotating log files)
+* **Configuration Overrides**: `%LOCALAPPDATA%\Vedi Pocket PC\config.json`
+* **Session Reconnect Token**: `%LOCALAPPDATA%\Vedi Pocket PC\common_token.txt`
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. See [`LICENSE`](file:///p:/Vedi-Pocket-PC/LICENSE) for details.

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from controller.network import find_free_port, get_lan_ip, is_port_in_use
-from controller.process_manager import ProcessManager
-from controller.qr import to_data_url
+from apps.desktop.controller.legacy.network import find_free_port, get_lan_ip, is_port_in_use
+from apps.desktop.controller.legacy.process_manager import ProcessManager
+from apps.desktop.controller.legacy.qr import to_data_url
 
 
 def test_get_lan_ip():

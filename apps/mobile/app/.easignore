@@ -1,0 +1,72 @@
+### .easignore -- files EAS should NOT bundle into the project archive.
+### See https://docs.expo.dev/build-reference/easignore/
+###
+### Each pattern uses leading ``/`` where applicable so the rules
+### apply regardless of how ``eas-cli`` walks the project root.
+### Without leading slashes, a pattern like ``node_modules`` has
+### occasionally been ignored on older versions of eas-cli, so we
+### list both anchored and unanchored forms.
+
+### --- Dependencies -------------------------------------------------
+### EAS runs ``npm install`` on the build server, so uploading these
+### eats hundreds of MB for nothing.
+/node_modules/
+/**/node_modules/
+node_modules/
+.npm/
+.npm-cache/
+.pnp.*
+
+### --- Lockfiles / logs the build server regenerates itself --------
+package-lock.json
+yarn.lock
+yarn-error.log*
+yarn-debug.log*
+npm-debug.log*
+
+### --- Build outputs ----------------------------------------------
+### Produced fresh on the build server; previous outputs have no
+### value and may cause confusion if shipped.
+/dist/
+/.web-build/
+/.expo/
+/.expo-shared/
+/.expo.cache/
+.metro-cache/
+.metro-health-check*
+.bundle/
+.expo-router/
+*.tsbuildinfo
+*.log
+
+### --- Android local builds ---------------------------------------
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/release/
+/android/app/debug/
+/android/local.properties
+/android/keystores/
+
+### --- iOS local builds -------------------------------------------
+/ios/Pods/
+/ios/build/
+/ios/.xcode.env.local
+/ios/DerivedData/
+
+### --- Tests, docs, editor noise -----------------------------------
+/coverage/
+/.vscode/
+/.idea/
+CHANGELOG*.md
+HISTORY.md
+*.lcov
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+### --- CI / GitHub / GitLab / Circle metadata -----------------------
+/.github/
+/.gitlab-ci.yml
+/.circleci/

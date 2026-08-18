@@ -23,6 +23,12 @@ class PairRequest(BaseModel):
 class PairResponse(BaseModel):
     token: str
     status: str
+    # NEW: optional "easy-connect" token. Same wire format the mobile
+    # app already speaks is preserved; older clients that ignore the
+    # extra field keep working. The mobile app caches this so the user
+    # can re-connect to the same PC without re-entering the PIN as
+    # long as the common-token file on the agent survives restart.
+    common_token: str | None = None
 
 
 def _container(request: Request):
@@ -77,7 +83,15 @@ def build_router(container) -> APIRouter:
             print(f"[AUTH] Failed pairing attempt with PIN: {req.pin}")
             raise HTTPException(status_code=400, detail=result.reason or "Invalid PIN code")
         print("[AUTH] Device successfully paired! Token issued.")
-        return PairResponse(token=result.device_token.value, status="success")
+        # NEW: include the optional easy-connect common token when the
+        # store exposes one. Older clients that don't read this field
+        # are unaffected — they're still authenticated via `token`.
+        common_value = result.common_token.value if result.common_token is not None else None
+        return PairResponse(
+            token=result.device_token.value,
+            common_token=common_value,
+            status="success",
+        )
 
     @router.get("/status")
     def get_system_status(_token: SessionToken = Depends(verify_token_header)):

@@ -1,0 +1,21 @@
+{
+  "name": "vedi-pocketpc-desktop",
+  "version": "1.0.0",
+  "description": "VediPocketPC Desktop Controller (Pure Python)",
+  "main": "legacy/main.py",
+  "scripts": {
+    "start": "python apps/desktop/controller/app.py",
+    "dev": "python apps/desktop/controller/app.py",
+    "mobile": "cd apps/mobile/app && npx expo start -c"
+  },
+  "keywords": [
+    "pocketpc",
+    "screen-stream",
+    "remote-control",
+    "expo",
+    "fastapi",
+    "python"
+  ],
+  "author": "VediPocketPC Team",
+  "license": "MIT"
+}

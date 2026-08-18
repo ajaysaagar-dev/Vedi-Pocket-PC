@@ -14,7 +14,7 @@ import threading
 import time
 from typing import Callable, Dict, List, Optional, Set
 
-from controller.network import find_free_port, get_lan_ip
+from .network import find_free_port, get_lan_ip
 
 
 def resolve_project_dir(subdir_name: str) -> str:

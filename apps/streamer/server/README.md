@@ -58,7 +58,7 @@ screen-stream-server/
 
 ```bash
 # Shared domain package (required)
-pip install -e ../packages/agent-core
+pip install -e ../../packages/core
 
 # This server's deps
 pip install -r requirements.txt

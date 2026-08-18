@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from agent_core.entities.input_command import KeyPressCommand, TextInputCommand
 
-from presentation.http.pairing_router import verify_token_header
+from ..pairing.pairing_router import verify_token_header
 
 
 class VolumeRequest(BaseModel):

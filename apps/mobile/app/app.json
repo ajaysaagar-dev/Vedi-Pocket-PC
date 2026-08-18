@@ -1,0 +1,103 @@
+{
+  "expo": {
+    "name": "mobile-new",
+    "slug": "mobile-new",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "../logo.jpeg",
+    "scheme": "mobilenew",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "local": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
+      }
+    },
+    "android": {
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#0F131A",
+        "foregroundImage": "../logo.jpeg",
+        "backgroundImage": "../logo.jpeg",
+        "monochromeImage": "../logo.jpeg"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.harshar007.mobilenew"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "../logo.jpeg"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow PC Remote to access the camera to scan pairing QR codes."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "../logo.jpeg",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0F131A",
+          "dark": {
+            "backgroundColor": "#0F131A"
+          }
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "enableProguardInReleaseBuilds": true,
+            "enableSeparateBuildPerCPUArchitecture": true,
+            "manifest": {
+              "usesFeature": [
+                {
+                  "name": "android.hardware.camera",
+                  "required": false
+                },
+                {
+                  "name": "android.hardware.camera.autofocus",
+                  "required": false
+                }
+              ]
+            }
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a0c53a7b-17bc-402b-93ab-d69b42d95193"
+      }
+    }
+  }
+}

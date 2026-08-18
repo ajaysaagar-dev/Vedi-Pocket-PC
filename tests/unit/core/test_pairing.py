@@ -46,3 +46,42 @@ def test_pin_format_validated():
         PairingPin(value="abcd")
     with pytest.raises(ValueError):
         PairingPin(value="12")  # too short
+
+
+def test_pairing_emits_common_token():
+    store = MemoryTokenStore()
+    use_case = PairDevice(PairingPin(value="1234"), store)
+
+    result = use_case.pair("1234")
+
+    assert result.common_token is not None
+    assert store.verify(result.common_token) is True
+
+
+def test_common_token_is_stable_across_pairs():
+    store = MemoryTokenStore()
+    use_case = PairDevice(PairingPin(value="1234"), store)
+
+    a = use_case.pair("1234")
+    b = use_case.pair("1234")
+
+    # device_token changes each time …
+    assert a.device_token != b.device_token
+    # … but the common token is stable.
+    assert a.common_token == b.common_token
+
+
+def test_common_token_persists_across_restart(tmp_path):
+    persist = tmp_path / "common_token.txt"
+
+    first_store = MemoryTokenStore(persist_path=str(persist))
+    first_token = first_store.common_token()
+    assert first_token is not None
+
+    # Simulate a process restart by constructing a fresh store
+    # pointed at the same file — it must pick up the same token.
+    second_store = MemoryTokenStore(persist_path=str(persist))
+    second_token = second_store.common_token()
+
+    assert second_token is not None
+    assert first_token == second_token

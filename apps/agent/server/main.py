@@ -21,13 +21,21 @@ import threading
 import time
 
 # Make the shared `agent_core` package importable without requiring
-# `pip install -e ../packages/agent-core`. The packaged build does
+# `pip install -e packages/core`. The packaged build does
 # not always have agent-core installed editable, so we add the path
 # here explicitly.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_AGENT_CORE_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, "packages", "agent-core"))
-if os.path.isdir(_AGENT_CORE_ROOT) and _AGENT_CORE_ROOT not in sys.path:
-    sys.path.insert(0, _AGENT_CORE_ROOT)
+_REPO_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, os.pardir))
+# Insert the repo root so the project-local Python packages
+# (`infrastructure`, `protocol`) resolve as qualified top-level names
+# instead of clashing with stdlib names (`logging`, `http`).
+for _p in (
+    _REPO_ROOT,                                              # infrastructure, protocol
+    os.path.join(_REPO_ROOT, "packages"),                    # protocol namespace pkg
+    os.path.join(_REPO_ROOT, "packages", "core"),            # agent_core
+):
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import qrcode
 import uvicorn
@@ -44,10 +52,11 @@ from agent_core.use_cases.control_input import ControlInput
 from agent_core.use_cases.control_system import ControlSystem
 from agent_core.use_cases.pairing import PairDevice
 
-from infrastructure.discovery import ServiceAdvertiser, get_local_ip, get_all_local_ips
-from infrastructure.logging_config import configure_logging
-from presentation.http import media_router, pairing_router, system_router
-from presentation.ws import router as ws_router
+from infrastructure.networking.discovery import ServiceAdvertiser, get_local_ip, get_all_local_ips
+from infrastructure.logging.logging_config import configure_logging
+from protocol.http import media_router, system_router
+from protocol.pairing import pairing_router
+from protocol.websocket import router as ws_router
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +73,13 @@ class Container:
         self.input_driver = PyAutoGUIInputDriver()
         self.audio_driver = PyCawAudioDriver()
         self.power_driver = Win32PowerDriver()
-        self.token_store = MemoryTokenStore()
+        # NEW: keep the common ("easy-connect") token on disk so it
+        # survives an agent restart. The mobile app caches the same
+        # value and reconnects without re-entering the PIN. Falls
+        # back to in-memory only if the disk path is unavailable.
+        self.token_store = MemoryTokenStore(
+            persist_path=_common_token_path()
+        )
 
         # Use cases
         self.control_input = ControlInput(self.input_driver)
@@ -109,6 +124,23 @@ def _generate_initial_pin() -> str:
     import secrets
 
     return f"{secrets.randbelow(10000):04d}"
+
+
+def _common_token_path() -> str:
+    """Return the disk path that stores the persistent common token.
+
+    Lives in the agent's per-user data folder so it survives restart
+    of the agent but isn't accidentally shipped with the repo.
+    """
+    base = os.environ.get("PCREMOTE_DATA_DIR")
+    if not base:
+        if sys.platform == "win32":
+            base = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCRemoteAgent")
+        elif sys.platform == "darwin":
+            base = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PCRemoteAgent")
+        else:
+            base = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.join(os.path.expanduser("~"), ".local", "share")), "PCRemoteAgent")
+    return os.path.join(base, "common_token.txt")
 
 
 # ---------------------------------------------------------------------------

@@ -16,17 +16,18 @@ import socket
 import sys
 from typing import Any, Dict
 
-# Make the local `screen_stream_server` package importable as
-# `presentation.*` without an editable install: this file is the
-# project's entry point and is expected to run from the repo root.
+# Make the local `presentation` package importable without an
+# editable install: this file is the project's entry point and is
+# expected to run from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Make the shared `agent_core` package importable without requiring
-# `pip install -e ../packages/agent-core`. This is the same trick the
+# `pip install -e packages/core`. This is the same trick the
 # previous monolithic `main.py` used, just kept explicit so the path
 # is obvious when running from a packaged build.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_AGENT_CORE_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, "packages", "agent-core"))
+_REPO_ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, os.pardir))
+_AGENT_CORE_ROOT = os.path.join(_REPO_ROOT, "packages", "core")
 if os.path.isdir(_AGENT_CORE_ROOT) and _AGENT_CORE_ROOT not in sys.path:
     sys.path.insert(0, _AGENT_CORE_ROOT)
 
@@ -80,6 +81,24 @@ def get_lan_ip() -> str:
 
 
 
+def _common_token_path() -> str:
+    """Disk path that stores the persistent common token (control-agent
+    compatible location). Survives a stream-server restart so the
+    mobile app can re-connect without a PIN round-trip."""
+    base = os.environ.get("PCREMOTE_DATA_DIR")
+    if not base:
+        if sys.platform == "win32":
+            base = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "PCRemoteAgent")
+        elif sys.platform == "darwin":
+            base = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PCRemoteAgent")
+        else:
+            base = os.path.join(
+                os.environ.get("XDG_DATA_HOME", os.path.join(os.path.expanduser("~"), ".local", "share")),
+                "PCRemoteAgent",
+            )
+    return os.path.join(base, "common_token.txt")
+
+
 class ScreenStreamServer:
     """Main application server combining screen capture, WebSockets, and HTTP API."""
 
@@ -91,7 +110,12 @@ class ScreenStreamServer:
         # so a single `ControlInput` does all input work.
         self.input_driver = PyAutoGUIInputDriver()
         self.control_input = ControlInput(self.input_driver)
-        self.token_store = MemoryTokenStore()
+        # NEW: persist the common ("easy-connect") token to the same
+        # per-user data directory the control agent uses. The mobile
+        # app caches this token so reconnects can skip the PIN step.
+        self.token_store = MemoryTokenStore(
+            persist_path=_common_token_path(),
+        )
 
         self.stream_manager = build_ws_router(
             capturer=self.capturer,
@@ -139,6 +163,11 @@ class ScreenStreamServer:
         We accept whatever the mobile app sends and mint a token; the
         websocket layer then verifies it. If the body is malformed we
         still issue a token so existing clients keep working.
+
+        NEW: alongside the per-device token we also surface the stable
+        "common" token (when the underlying store provides one). The
+        mobile app caches it so subsequent reconnects to this stream
+        server can skip the pairing round-trip.
         """
         try:
             payload: Dict[str, Any] = await request.json()
@@ -148,7 +177,11 @@ class ScreenStreamServer:
         # don't reject — the stream server's threat model is local-LAN.
         _ = payload.get("pin", "")
         token = self.token_store.issue()
-        return web.json_response({"status": "success", "token": token.value})
+        common = self.token_store.common_token()
+        body: Dict[str, Any] = {"status": "success", "token": token.value}
+        if common is not None:
+            body["common_token"] = common.value
+        return web.json_response(body)
 
     async def handle_status(self, request: web.Request) -> web.Response:
         return web.json_response({"status": "online", "hostname": socket.gethostname()})
