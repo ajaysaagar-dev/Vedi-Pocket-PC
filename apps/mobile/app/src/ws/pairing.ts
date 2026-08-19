@@ -179,3 +179,33 @@ export function describePairError(result: Exclude<PairResult, { kind: 'ok' }>): 
   }
   return { title: 'PC not reachable', body: result.reason };
 }
+
+/**
+ * Silently verify whether a cached device token is still valid.
+ * Never throws or bubbles errors to the UI — returns true if authenticated, false otherwise.
+ */
+export async function validateStoredToken(
+  ip: string,
+  port: number | string,
+  token?: string
+): Promise<boolean> {
+  if (!token) return false;
+  const safeIp = cleanIp(ip);
+  const targetPort = port || 8000;
+  const url = `http://${safeIp}:${targetPort}/status`;
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3500);
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: ctrl.signal,
+    }).catch(() => null);
+    clearTimeout(timer);
+    return Boolean(res && res.ok);
+  } catch {
+    return false;
+  }
+}
+

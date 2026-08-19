@@ -55,8 +55,23 @@ class MemoryTokenStore(TokenStore):
         return token
 
     def verify(self, token: SessionToken) -> bool:
+        if not token or not token.value:
+            return False
         with self._lock:
-            return token.value in self._tokens
+            if token.value in self._tokens:
+                return True
+            # Re-check persisted disk token in case it was written/updated
+            if self._persist_path and os.path.isfile(self._persist_path):
+                try:
+                    with open(self._persist_path, "r", encoding="utf-8") as fh:
+                        persisted = fh.read().strip()
+                        if len(persisted) >= 16 and persisted == token.value:
+                            self._common = persisted
+                            self._tokens.add(persisted)
+                            return True
+                except OSError:
+                    pass
+            return False
 
     def revoke(self, token: SessionToken) -> None:
         with self._lock:

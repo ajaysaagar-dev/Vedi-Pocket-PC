@@ -29,16 +29,24 @@ def collect_release_artifacts(directory: str) -> list[tuple[str, str]]:
     release folder that should be hashed."""
     out: list[tuple[str, str]] = []
     for name in (
+        "VediPocketPC.exe",
+        "VediPocketPC*.exe",
+        "*Setup*.exe",
         "VediRemote.exe",
-        "VediRemote*.apk",
-        "VediRemote*.aab",
-        "VediRemote*.apks",
+        "*.exe",
     ):
         import glob
 
         for path in glob.glob(os.path.join(directory, name)):
             out.append((path, os.path.basename(path)))
-    return out
+    # Deduplicate while preserving order
+    seen = set()
+    deduped = []
+    for p, n in out:
+        if p not in seen and os.path.isfile(p):
+            seen.add(p)
+            deduped.append((p, n))
+    return deduped
 
 
 def main() -> int:

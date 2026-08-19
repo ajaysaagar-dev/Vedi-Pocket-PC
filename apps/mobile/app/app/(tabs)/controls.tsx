@@ -29,23 +29,27 @@ export default function ControlsScreen() {
     body: object | null = null
   ) => {
     if (!isConnected || !activeDevice) {
-      Alert.alert('Not connected', 'Please connect to a device first.');
       return;
     }
     try {
       const serverUrl = `http://${activeDevice.ip}:${activeDevice.port}`;
+      const token = activeDevice.commonToken || activeDevice.token;
       const response = await fetch(`${serverUrl}${endpoint}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${activeDevice.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: body ? JSON.stringify(body) : null,
       });
+      if (response.status === 401) {
+        console.warn(`[Controls] Token rejected on ${endpoint} (401).`);
+        wsClient.disconnect();
+        return;
+      }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
     } catch (err) {
       console.warn(`Error sending command to ${endpoint}:`, err);
-      Alert.alert('Connection error', 'Failed to reach the PC. Ensure the agent is running.');
     }
   };
 

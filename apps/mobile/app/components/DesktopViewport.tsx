@@ -315,7 +315,7 @@ export default function DesktopViewport({
   // Determine effective target IP and Port
   const targetIp = customIp || activeDevice?.ip || '127.0.0.1';
   const targetPort = customPort || String(streamPort);
-  const activeToken = activeDevice?.token;
+  const activeToken = activeDevice?.commonToken || activeDevice?.token;
 
   // Start FPS & KB/s calculation timer.
 // Tick at 2s rather than 1s — this halves the React re-render frequency

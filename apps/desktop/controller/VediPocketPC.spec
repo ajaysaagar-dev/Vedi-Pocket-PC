@@ -41,7 +41,7 @@ modules:
 
 import os
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 
 SPEC_DIR = os.path.abspath(os.path.dirname(SPEC))
@@ -106,6 +106,9 @@ agent_core_pyproject = os.path.join(REPO, "packages", "core", "pyproject.toml")
 if os.path.isfile(agent_core_pyproject):
     data_files.append((agent_core_pyproject, os.path.join("packages", "core")))
 
+# CustomTkinter theme assets and JSON data
+data_files += collect_data_files("customtkinter")
+
 
 # ---------------------------------------------------------------------------
 # Hidden imports — every transitive dependency the bundled scripts
@@ -117,6 +120,8 @@ hiddenimports = []
 
 # --- Controller (frozen as a normal Python package) ---
 hiddenimports += collect_submodules("apps.desktop.controller")
+hiddenimports += collect_submodules("customtkinter")
+hiddenimports += collect_submodules("tkinter")
 
 # --- aiohttp (controller + screen-stream) ---
 hiddenimports += [
@@ -195,7 +200,7 @@ hiddenimports += collect_submodules("agent_core")
 # ---------------------------------------------------------------------------
 a = Analysis(
     [os.path.join(REPO, "apps", "desktop", "controller", "launch.py")],
-    pathex=[REPO],
+    pathex=[REPO, os.path.join(REPO, "packages", "core")],
     binaries=[],
     datas=data_files,
     hiddenimports=hiddenimports,
@@ -205,7 +210,7 @@ a = Analysis(
     # Trim large unused stacks so the bundle stays small.
     excludes=[
         "matplotlib", "numpy", "pandas", "scipy",
-        "tkinter", "test", "unittest",
+        "test", "unittest",
         # Cloud SDKs that PyInstaller's analyser sometimes pulls in
         # via transitive imports — we never use them.
         "azure", "boto3", "botocore", "google",

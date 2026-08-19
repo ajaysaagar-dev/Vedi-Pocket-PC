@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { MousePointer, Keyboard, Sliders, Wifi, Tv } from 'lucide-react-native';
+import { Sliders, Wifi, Tv, MousePointer, Keyboard } from 'lucide-react-native';
 import { palette, Typography, Spacing } from '../../constants/theme-m3';
 import { AppLogo } from '../../constants/assets';
 
@@ -20,16 +20,11 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        // Freeze inactive tabs — their JS context and native views are
-        // suspended while not focused, which dramatically lowers RAM usage
-        // (each tab can otherwise keep an idle stream socket + image buffer
-        // mounted). Tab state is preserved on return. Tune to `false` if
-        // you want all tabs hot at all times.
         freezeOnBlur: true,
         tabBarStyle: {
           backgroundColor: palette.surfaceContainer,
           borderTopWidth: 0,
-          height: 72,
+          height: 70,
           paddingBottom: Spacing.xs,
           paddingTop: Spacing.xs,
         },
@@ -37,7 +32,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: palette.onSurfaceVariant,
         tabBarLabelStyle: {
           fontSize: Typography.labelMedium.fontSize,
-          fontWeight: '500',
+          fontWeight: '600',
           letterSpacing: 0.5,
         },
         headerStyle: {
@@ -63,33 +58,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="screen"
         options={{
-          headerTitle: () => <HeaderTitleWithLogo title="Screen Mirror" />,
-          tabBarLabel: 'Screen',
+          headerTitle: () => <HeaderTitleWithLogo title="Remote Control" />,
+          tabBarLabel: 'Remote',
           tabBarIcon: ({ color, size }) => <Tv color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="trackpad"
-        options={{
-          headerTitle: () => <HeaderTitleWithLogo title="Trackpad" />,
-          tabBarLabel: 'Trackpad',
-          tabBarIcon: ({ color, size }) => <MousePointer color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="keyboard"
-        options={{
-          headerTitle: () => <HeaderTitleWithLogo title="Keyboard" />,
-          tabBarLabel: 'Keyboard',
-          tabBarIcon: ({ color, size }) => <Keyboard color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="controls"
         options={{
-          headerTitle: () => <HeaderTitleWithLogo title="Controls" />,
+          headerTitle: () => <HeaderTitleWithLogo title="System Controls" />,
           tabBarLabel: 'Controls',
           tabBarIcon: ({ color, size }) => <Sliders color={color} size={size} />,
+        }}
+      />
+
+      {/* Repurposed redundant tab entries - hidden from tab bar to maintain routing compatibility */}
+      <Tabs.Screen
+        name="trackpad"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="keyboard"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen

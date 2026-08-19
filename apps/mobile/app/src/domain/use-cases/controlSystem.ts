@@ -55,7 +55,7 @@ async function post(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${device.token}`,
+        Authorization: `Bearer ${device.commonToken || device.token}`,
       },
       body: body ? JSON.stringify(body) : undefined,
     });
