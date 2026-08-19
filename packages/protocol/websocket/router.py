@@ -25,10 +25,14 @@ def build_router(container) -> APIRouter:
         authenticated = False
 
         # 1) Query-param auth (preferred path — saves a round-trip)
-        if token and container.token_store.verify(SessionToken(value=token)):
-            authenticated = True
-            print("[WS] WebSocket client connected and authenticated via query parameter.")
-        else:
+        if token:
+            try:
+                if container.token_store.verify(SessionToken(value=token)):
+                    authenticated = True
+                    print("[WS] WebSocket client connected and authenticated via query parameter.")
+            except Exception:
+                pass
+        if not authenticated:
             print("[WS] Client connected. Awaiting authentication message...")
 
         try:
@@ -44,7 +48,13 @@ def build_router(container) -> APIRouter:
                 if not authenticated:
                     if message.get("type") == "auth":
                         auth_token = message.get("token")
-                        if auth_token and container.token_store.verify(SessionToken(value=auth_token)):
+                        valid = False
+                        if auth_token:
+                            try:
+                                valid = container.token_store.verify(SessionToken(value=auth_token))
+                            except Exception:
+                                valid = False
+                        if valid:
                             authenticated = True
                             print("[WS] Client authenticated via auth message.")
                             await websocket.send_json({"type": "auth_result", "status": "success"})

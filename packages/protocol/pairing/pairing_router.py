@@ -55,8 +55,11 @@ def verify_token_header(
         )
 
     container = request.app.state.container
-    token = SessionToken(value=parts[1])
-    if not container.token_store.verify(token):
+    try:
+        token = SessionToken(value=parts[1])
+        if not container.token_store.verify(token):
+            raise HTTPException(status_code=401, detail="Invalid session token")
+    except ValueError:
         raise HTTPException(status_code=401, detail="Invalid session token")
     return token
 

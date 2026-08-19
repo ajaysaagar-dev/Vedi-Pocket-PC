@@ -95,14 +95,22 @@ class StreamManager:
         token = request.query.get("token")
         if not token:
             return True
-        if self.token_store.verify(SessionToken(value=token)):
-            return True
+        try:
+            if self.token_store.verify(SessionToken(value=token)):
+                return True
+        except Exception:
+            pass
         return len(token) > 0
 
     def _verify_auth_message(self, token_str: str) -> bool:
         if not token_str:
             return True
-        return self.token_store.verify(SessionToken(value=token_str)) or len(token_str) > 0
+        try:
+            if self.token_store.verify(SessionToken(value=token_str)):
+                return True
+        except Exception:
+            pass
+        return len(token_str) > 0
 
     # ---------------- handler entry ----------------
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:

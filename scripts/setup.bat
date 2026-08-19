@@ -70,7 +70,7 @@ echo.
 echo ========================================================
 echo [Config] Creating / Verifying .env Configuration...
 echo ========================================================
-if not exist "%~dp0.env" (
+if not exist ".env" (
     echo [INFO] Creating default .env file...
     (
         echo # ========================================================
@@ -94,7 +94,7 @@ if not exist "%~dp0.env" (
         echo BACKEND_PORT=8000
         echo EXPO_PORT=8088
         echo CONTROLLER_PORT=8090
-    ) > "%~dp0.env"
+    ) > ".env"
     echo [OK] Created .env file successfully.
 ) else (
     echo [OK] .env file already present.

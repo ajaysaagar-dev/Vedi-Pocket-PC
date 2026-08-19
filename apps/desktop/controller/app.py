@@ -290,6 +290,11 @@ class ControllerWindow:
         self._last_status: dict = {}
         self._pills_state: dict = {}
 
+        # Log buffers for tabbed log viewer
+        self._python_logs: list[str] = []
+        self._expo_logs: list[str] = []
+        self._active_tab = "python"
+
         # Re-entrancy guard so a slow apply_status can't pile up calls.
         self._applying = False
 
@@ -733,13 +738,27 @@ class ControllerWindow:
 
     # ------------------------------------------------------------- handlers
     def _switch_tab(self, tab: str) -> None:
+        if self._active_tab == tab:
+            return
         self._active_tab = tab
         if tab == "python":
             self._tab_python.configure(fg_color=_ACCENT_DIM, hover_color=_ACCENT, text_color="#FFFFFF")
             self._tab_expo.configure(fg_color=_SURFACE_HIGH, hover_color=_BORDER, text_color=_TEXT)
+            active_content = "".join(self._python_logs)
         else:
             self._tab_expo.configure(fg_color=_PURPLE_DIM, hover_color=_PURPLE, text_color="#FFFFFF")
             self._tab_python.configure(fg_color=_SURFACE_HIGH, hover_color=_BORDER, text_color=_TEXT)
+            active_content = "".join(self._expo_logs)
+
+        try:
+            self._log_box.configure(state="normal")
+            self._log_box.delete("1.0", "end")
+            if active_content:
+                self._log_box.insert("end", active_content)
+            self._log_box.see("end")
+            self._log_box.configure(state="disabled")
+        except Exception:
+            pass
 
     def _on_copy_pin(self) -> None:
         pin = self._pills_state.get("pairingPin") or "----"
@@ -762,9 +781,16 @@ class ControllerWindow:
             pass
 
     def _on_clear_logs(self) -> None:
-        self._log_box.configure(state="normal")
-        self._log_box.delete("1.0", "end")
-        self._log_box.configure(state="disabled")
+        if self._active_tab == "python":
+            self._python_logs.clear()
+        else:
+            self._expo_logs.clear()
+        try:
+            self._log_box.configure(state="normal")
+            self._log_box.delete("1.0", "end")
+            self._log_box.configure(state="disabled")
+        except Exception:
+            pass
 
     def _on_copy_logs(self) -> None:
         try:
@@ -823,14 +849,24 @@ class ControllerWindow:
 
     # -------------------------------------------------------- queue draining
     def _drain_queues(self) -> None:
-        logs: list[str] = []
+        new_py_logs: list[str] = []
+        new_expo_logs: list[str] = []
         for _ in range(500):
             try:
                 channel, msg = self._log_queue.get_nowait()
             except queue.Empty:
                 break
-            tag = "PY> " if channel == "python-log" else "EX> "
-            logs.append(tag + msg)
+            if channel == "expo-log":
+                new_expo_logs.append(msg)
+                self._expo_logs.append(msg)
+            else:
+                new_py_logs.append(msg)
+                self._python_logs.append(msg)
+
+        if len(self._python_logs) > 5000:
+            self._python_logs = self._python_logs[-3000:]
+        if len(self._expo_logs) > 5000:
+            self._expo_logs = self._expo_logs[-3000:]
 
         latest = None
         for _ in range(20):
@@ -841,8 +877,10 @@ class ControllerWindow:
         if latest is not None:
             self._apply_status(latest)
 
-        if logs:
-            self._append_logs(logs)
+        if self._active_tab == "python" and new_py_logs:
+            self._append_logs(new_py_logs)
+        elif self._active_tab == "expo" and new_expo_logs:
+            self._append_logs(new_expo_logs)
 
         try:
             self.root.after(150, self._drain_queues)
@@ -1016,6 +1054,26 @@ class _LogBridge:
             self._pm.add_log_listener(self._on_log)
         if hasattr(self._pm, "add_status_listener"):
             self._pm.add_status_listener(self._on_status)
+
+        # Mirror standard Python logging records into the GUI log queue
+        class _QueueLoggingHandler(logging.Handler):
+            def __init__(handler_self, bridge: "_LogBridge") -> None:
+                super().__init__()
+                handler_self._bridge = bridge
+
+            def emit(handler_self, record: logging.LogRecord) -> None:
+                if record.name.startswith("vedi.expo"):
+                    return
+                try:
+                    msg = handler_self.format(record) + "\n"
+                    handler_self._bridge._on_log("python-log", msg)
+                except Exception:
+                    pass
+
+        formatter = logging.Formatter("%(asctime)s %(levelname)-7s [%(name)s] %(message)s", "%H:%M:%S")
+        handler = _QueueLoggingHandler(self)
+        handler.setFormatter(formatter)
+        logging.getLogger().addHandler(handler)
 
     def _on_log(self, channel: str, message: str) -> None:
         try:

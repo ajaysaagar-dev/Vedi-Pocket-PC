@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Vedi Pocket PC - Launcher (Python Controller)
+title Vedi Pocket PC - Launcher
 cd /d "%~dp0\.."
 
 echo ========================================================
@@ -8,7 +8,7 @@ echo           Vedi Pocket PC - Launcher
 echo ========================================================
 echo.
 echo Launch Options:
-echo   [1] Start Vedi Pocket PC (Controller + Backend + Screen Stream + Mobile)
+echo   [1] Start Vedi Pocket PC (Controller + Backend + Screen Stream)
 echo   [2] Reload Expo App (Clear Metro Cache - Non-Interactive)
 echo   [3] Start Expo App (Interactive Terminal Mode for Devs)
 echo   [4] Create / Verify .env File
@@ -70,8 +70,8 @@ echo ========================================================
 echo         Downloading All Dependencies...
 echo ========================================================
 echo.
-call :DOWNLOAD_PYTHON_DEPS 1
-call :DOWNLOAD_NODE_DEPS 1
+call :DOWNLOAD_PYTHON_DEPS
+call :DOWNLOAD_NODE_DEPS
 echo.
 echo   [OK] All dependencies successfully downloaded and installed.
 echo.
@@ -79,128 +79,145 @@ pause
 exit /b 0
 
 :RUN_SETUP
-call setup.bat
+call "%~dp0setup.bat"
 exit /b 0
 
 :MAIN_PREFLIGHT
 :: ----------------------------------------------------------------
-:: 1. Pre-flight checks
+:: 1. Virtual Environment & Python Detection
 :: ----------------------------------------------------------------
 echo [1/5] Checking prerequisites...
 
-if exist "%~dp0.venv\Scripts\python.exe" (
-    set "PATH=%~dp0.venv\Scripts;!PATH!"
+if exist ".venv\Scripts\python.exe" (
+    set "PATH=%CD%\.venv\Scripts;!PATH!"
+) else if exist "venv\Scripts\python.exe" (
+    set "PATH=%CD%\venv\Scripts;!PATH!"
 )
 
+set "PYTHON_CMD="
 where python >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+if !ERRORLEVEL! EQU 0 (
+    set "PYTHON_CMD=python"
+) else (
+    where py >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        set "PYTHON_CMD=py -3"
+    )
+)
+
+if not defined PYTHON_CMD (
     echo.
-    echo   [ERROR] Python was not found in your PATH or .venv.
-    echo   Vedi Pocket PC needs Python 3.10+ to run the desktop
-    echo   controller, screen stream server, and FastAPI pairing backend.
+    echo   [ERROR] Python was not found on this system.
+    echo   Vedi Pocket PC requires Python 3.10+ to run the desktop
+    echo   controller, screen streamer, and FastAPI pairing server.
     echo.
-    echo   Install from https://www.python.org/ ^(tick "Add Python to PATH"^)
-    echo   then re-run this file.
+    echo   Please install Python from: https://www.python.org/
+    echo   IMPORTANT: Make sure to check "Add Python to PATH" during installation.
     echo.
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PY_VER=%%i
+
+for /f "tokens=*" %%i in ('!PYTHON_CMD! --version 2^>^&1') do set "PY_VER=%%i"
 echo   [OK] Python    !PY_VER!
 
-where node >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+:: Check for Tkinter (Tcl/Tk support)
+!PYTHON_CMD! -c "import tkinter" >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
     echo.
-    echo   [ERROR] Node.js was not found in your PATH.
-    echo   Node.js v18+ is required to bundle the Expo mobile app.
-    echo   Install from https://nodejs.org/ then re-run this file.
+    echo   [WARN] Python was installed without Tkinter [Tcl/Tk] support.
+    echo   The graphical desktop controller requires Tkinter.
+    echo   To fix: Re-run the Python installer, choose "Modify", and check "tcl/tk and IDLE".
     echo.
-    pause
-    exit /b 1
 )
-for /f "tokens=*" %%i in ('node -v') do set NODE_VER=%%i
-echo   [OK] Node.js   !NODE_VER!
+
+:: Check for Node.js (Optional for mobile bundling)
+set "HAS_NODE=0"
+where node >nul 2>&1
+if !ERRORLEVEL! EQU 0 (
+    set "HAS_NODE=1"
+    for /f "tokens=*" %%i in ('node -v') do set "NODE_VER=%%i"
+    echo   [OK] Node.js   !NODE_VER!
+) else (
+    echo   [INFO] Node.js not detected - optional [mobile app can connect directly over LAN].
+)
 
 :: ----------------------------------------------------------------
 :: 2. Check / Create .env configuration file
 :: ----------------------------------------------------------------
 echo.
-echo [2/5] Verifying environment configuration ^(.env^)...
+echo [2/5] Verifying environment configuration (.env)...
 call :ENSURE_ENV_FILE 0
 
 :: ----------------------------------------------------------------
 :: 3. Port check
 :: ----------------------------------------------------------------
 echo.
-echo [3/5] Checking ports ^(8080, 8000, 8088, 8090^)...
+echo [3/5] Checking ports (8080, 8000, 8088, 8090)...
 for %%P in (8080 8000 8088 8090) do (
     netstat -ano | findstr ":%%P " | findstr "LISTENING" >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
-        echo   [INFO] Port %%P is in use. Controller will auto-bind to next free port if needed.
+        echo   [INFO] Port %%P is currently listening.
     )
 )
 echo   [OK] Port check complete.
 
 :: ----------------------------------------------------------------
-:: 4. Verify Dependencies
+:: 4. Verify & Auto-install Dependencies
 :: ----------------------------------------------------------------
 echo.
 echo [4/5] Verifying Dependencies...
-python -c "import mss, aiohttp, fastapi, pyautogui, websockets, qrcode" >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo   [INFO] Missing Python deps. Running pip install...
-    call :DOWNLOAD_PYTHON_DEPS 0
+!PYTHON_CMD! -c "import agent_core, mss, aiohttp, fastapi, pyautogui, websockets, qrcode, customtkinter, pycaw, zeroconf" >nul 2>&1
+if !ERRORLEVEL! NEQ 0 (
+    echo   [INFO] Missing or incomplete Python dependencies detected.
+    echo   [INFO] Auto-installing required packages...
+    call :DOWNLOAD_PYTHON_DEPS
 ) else (
-    echo   [OK] Python deps present.
+    echo   [OK] Python packages verified.
 )
 
-if not exist apps\mobile\app\node_modules\expo\package.json (
-    echo   [INFO] Installing mobile app deps ^(this can take a few minutes^)...
-    cd apps\mobile\app
-    call npm install --legacy-peer-deps
-    set "MOBILE_ERR=!ERRORLEVEL!"
-    cd /d "%~dp0\.."
-    if !MOBILE_ERR! NEQ 0 (
-        echo   [ERROR] Mobile app npm install failed.
-        pause
-        exit /b 1
+if "!HAS_NODE!"=="1" (
+    if not exist "apps\mobile\app\node_modules\expo\package.json" (
+        echo   [INFO] Installing mobile app dependencies...
+        call :DOWNLOAD_NODE_DEPS
+    ) else (
+        echo   [OK] Mobile dependencies present.
     )
-) else (
-    echo   [OK] Mobile deps present.
 )
 
 :: ----------------------------------------------------------------
-:: 4b. Firewall rules
+:: 4b. Windows Firewall rules (Best Effort)
 :: ----------------------------------------------------------------
 echo.
-echo [4b] Ensuring Windows Firewall allows inbound 8080 / 8000 / 8088 / 8090...
+echo [4b] Checking Windows Firewall rules (8080 / 8000 / 8088 / 8090)...
 set "FW_OK=1"
 for %%P in (8080 8000 8088 8090) do (
     powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "try { if (-not (Get-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Direction Inbound -LocalPort %%P -Protocol TCP -Action Allow -Profile Private,Domain | Out-Null }; exit 0 } catch { exit 1 }" >nul 2>&1
+        "try { if (-not (Get-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -ErrorAction SilentlyContinue)) { New-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Direction Inbound -LocalPort %%P -Protocol TCP -Action Allow -Profile Any | Out-Null } else { Set-NetFirewallRule -DisplayName 'VediPocketPC-%%P' -Profile Any | Out-Null }; exit 0 } catch { exit 1 }" >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
-        echo   [OK]  VediPocketPC-%%P ^(port %%P^)
+        echo   [OK]  VediPocketPC-%%P [port %%P]
     ) else (
         set "FW_OK=0"
     )
 )
 if "!FW_OK!"=="0" (
-    echo   [WARN] Run start.bat as Administrator if mobile devices cannot connect.
+    echo   [INFO] If your mobile phone cannot reach the PC, right-click start.bat and select "Run as Administrator" once.
 )
 
 :: ----------------------------------------------------------------
 :: 5. Launch Python Desktop Controller
 :: ----------------------------------------------------------------
 echo.
-echo [5/5] Launching Vedi Pocket PC Controller (Python)...
+echo [5/5] Launching Vedi Pocket PC Controller...
 echo.
 
-python -m apps.desktop.controller.app
-if %ERRORLEVEL% NEQ 0 (
+!PYTHON_CMD! -m apps.desktop.controller.app
+set "APP_ERR=!ERRORLEVEL!"
+if !APP_ERR! NEQ 0 (
     echo.
-    echo   [ERROR] Controller exited with code %ERRORLEVEL%.
+    echo   [ERROR] Controller exited with code !APP_ERR!.
     pause
-    exit /b %ERRORLEVEL%
+    exit /b !APP_ERR!
 )
 
 endlocal
@@ -211,9 +228,9 @@ exit /b 0
 :: ================================================================
 
 :ENSURE_ENV_FILE
-if exist "%~dp0.env" (
+if exist ".env" (
     if "%~1"=="1" (
-        echo   .env file already exists at "%~dp0.env".
+        echo   .env file already exists at "%CD%\.env".
         set /p OVERWRITE="Do you want to overwrite .env with default values? (Y/N): "
         if /i "!OVERWRITE!" NEQ "Y" (
             echo   Keeping existing .env file.
@@ -248,15 +265,17 @@ echo   [INFO] Creating default .env configuration...
     echo BACKEND_PORT=8000
     echo EXPO_PORT=8088
     echo CONTROLLER_PORT=8090
-) > "%~dp0.env"
+) > ".env"
 echo   [OK] Default .env created successfully.
 exit /b 0
 
 :DOWNLOAD_PYTHON_DEPS
+echo   Updating pip...
+!PYTHON_CMD! -m pip install --upgrade pip >nul 2>&1
 echo   Installing shared packages\core (editable)...
-python -m pip install -e packages\core >nul 2>&1
+!PYTHON_CMD! -m pip install -e packages\core
 echo   Installing requirements.txt...
-python -m pip install -r requirements.txt
+!PYTHON_CMD! -m pip install -r requirements.txt
 exit /b 0
 
 :DOWNLOAD_NODE_DEPS
